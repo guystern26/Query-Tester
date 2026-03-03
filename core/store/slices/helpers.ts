@@ -50,7 +50,11 @@ export function deepCloneTestWithNewIds(test: TestDefinition): TestDefinition {
     query: { ...test.query },
     validation: {
       ...test.validation,
-      fieldConditions: test.validation.fieldConditions.map((fc) => ({ ...fc, id: newId(fc.id) })),
+      fieldGroups: test.validation.fieldGroups.map((g) => ({
+        ...g,
+        id: newId(g.id),
+        conditions: g.conditions.map((c) => ({ ...c, id: newId(c.id) })),
+      })),
     },
   };
 }

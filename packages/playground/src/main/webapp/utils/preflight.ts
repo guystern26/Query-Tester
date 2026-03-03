@@ -33,43 +33,46 @@ export function validateBeforeRun(test: TestDefinition): string[] {
     errors.push('SPL query is required before running the test.');
   }
 
-  for (const scenario of test.scenarios) {
-    for (const input of scenario.inputs) {
-      if (hasMissingRowIdentifier(input)) {
-        errors.push('Every input must have a row identifier.');
-        break;
+  // Scenario / input validations only apply to standard mode
+  if (test.testType !== 'query_only') {
+    for (const scenario of test.scenarios) {
+      for (const input of scenario.inputs) {
+        if (hasMissingRowIdentifier(input)) {
+          errors.push('Every input must have a row identifier.');
+          break;
+        }
       }
     }
-  }
 
-  for (const scenario of test.scenarios) {
-    for (const input of scenario.inputs) {
-      if (hasValueWithoutFieldName(input.events)) {
-        errors.push('Field values cannot have a value without a field name.');
-        break;
+    for (const scenario of test.scenarios) {
+      for (const input of scenario.inputs) {
+        if (hasValueWithoutFieldName(input.events)) {
+          errors.push('Field values cannot have a value without a field name.');
+          break;
+        }
       }
     }
-  }
 
-  for (const scenario of test.scenarios) {
-    for (const input of scenario.inputs) {
-      if (hasInvalidJson(input)) {
-        errors.push('One or more inputs contain invalid JSON.');
-        break;
+    for (const scenario of test.scenarios) {
+      for (const input of scenario.inputs) {
+        if (hasInvalidJson(input)) {
+          errors.push('One or more inputs contain invalid JSON.');
+          break;
+        }
       }
     }
-  }
 
-  for (const scenario of test.scenarios) {
-    for (const input of scenario.inputs) {
-      const cfg = input.generatorConfig;
-      if (cfg.enabled && cfg.rules.length === 0) {
-        errors.push('Event generator is enabled but has no rules configured.');
-        break;
-      }
-      if (cfg.rules.some((r) => !r.type)) {
-        errors.push('One or more generator rules are missing a type.');
-        break;
+    for (const scenario of test.scenarios) {
+      for (const input of scenario.inputs) {
+        const cfg = input.generatorConfig;
+        if (cfg.enabled && cfg.rules.length === 0) {
+          errors.push('Event generator is enabled but has no rules configured.');
+          break;
+        }
+        if (cfg.rules.some((r) => !r.type)) {
+          errors.push('One or more generator rules are missing a type.');
+          break;
+        }
       }
     }
   }

@@ -3,27 +3,34 @@
  * See spec sections 2 (React 16), 3 (Key Decisions), 4 (Data Model), 13 (Results), 14 (Errors).
  */
 
-// ─── IDs & Enums (4.1) ─────────────────────────────────────────────────────
+// Re-export foundation types
+export type {
+  EntityId, TestType, ValidationType, InputMode,
+  ConditionOperator, ResultCountOperator, ResponseMessageSeverity, GeneratorType,
+} from './base';
 
-export type EntityId = string;
+// Re-export generator types
+export type {
+  NumberedGeneratorConfig, PickListItem, PickListGeneratorConfig,
+  RandomNumberVariant, RandomNumberGeneratorConfig,
+  UniqueIdFormat, UniqueIdVariant, UniqueIdGeneratorConfig,
+  EmailComponentType, EmailVariant, EmailGeneratorConfig,
+  IpType, IpAddressVariant, IpAddressGeneratorConfig,
+  GeneralComponentType, GeneralFieldVariant, GeneralFieldGeneratorConfig,
+  FieldGenerationRule, GeneratorConfig,
+} from './generator';
 
-export type TestType = 'standard' | 'query_only';
-export type ValidationType = 'standard' | 'ijump_alert';
-export type InputMode = 'json' | 'fields' | 'no_events';
-export type ConditionOperator = 'equals' | 'contains' | 'regex' | 'not_empty';
-export type ResultCountOperator = 'equals' | 'greater_than' | 'less_than';
+// Re-export result types
+export type {
+  ResponseMessage, QueryInfo, TestResultSummary,
+  FieldValidationResult, EventValidationResult,
+  InputResult, ScenarioResult, TestResponse,
+} from './results';
 
-export type ResponseMessageSeverity = 'fatal' | 'error' | 'warning' | 'caution' | 'info';
-
-/** Generator rule type (section 17.6 backend). */
-export type GeneratorType =
-  | 'numbered'
-  | 'pick_list'
-  | 'random_number'
-  | 'unique_id'
-  | 'email'
-  | 'ip_address'
-  | 'general_field';
+// ─── Imports needed for interfaces below ────────────────────────────────────
+import type { EntityId, ValidationType, ResultCountOperator } from './base';
+import type { GeneratorConfig } from './generator';
+import type { TestResponse } from './results';
 
 // ─── Field & Event (4.3) ────────────────────────────────────────────────────
 
@@ -38,28 +45,12 @@ export interface InputEvent {
   fieldValues: FieldValue[];
 }
 
-// ─── Generator (payload + spec 17.6) ────────────────────────────────────────
-
-export interface FieldGenerationRule {
-  id: EntityId;
-  field: string;
-  type: GeneratorType;
-  /** Type-specific config: items (pick_list), variants (weighted), min/max/decimals (random_number), etc. */
-  config: Record<string, unknown>;
-}
-
-export interface GeneratorConfig {
-  enabled: boolean;
-  eventCount?: number;
-  rules: FieldGenerationRule[];
-}
-
 // ─── Test Input (4.3) ────────────────────────────────────────────────────────
 
 export interface TestInput {
   id: EntityId;
   rowIdentifier: string;
-  inputMode: InputMode;
+  inputMode: 'json' | 'fields' | 'no_events';
   jsonContent: string;
   events: InputEvent[];
   fileRef: { name: string; size: number } | null;
@@ -84,11 +75,19 @@ export interface QueryConfig {
 
 // ─── Validation (4.3) ───────────────────────────────────────────────────────
 
-export interface FieldCondition {
+export type ValidationScope = 'all_events' | 'any_event' | 'exactly_n' | 'at_least_n' | 'at_most_n';
+
+export interface SingleCondition {
+  id: EntityId;
+  operator: import('./base').ConditionOperator;
+  value: string;
+}
+
+export interface FieldConditionGroup {
   id: EntityId;
   field: string;
-  operator: ConditionOperator;
-  value: string;
+  conditions: SingleCondition[];
+  conditionLogic: 'and' | 'or';
   scenarioScope: 'all' | EntityId[];
 }
 
@@ -103,7 +102,10 @@ export interface ValidationConfig {
   approach: 'expected_result' | 'field_conditions';
   expectedResultJson: string;
   expectedResultFileRef: { name: string; size: number } | null;
-  fieldConditions: FieldCondition[];
+  fieldGroups: FieldConditionGroup[];
+  fieldLogic: 'and' | 'or';
+  validationScope: ValidationScope;
+  scopeN: number | null;
   resultCount: ResultCountRule;
 }
 
@@ -113,7 +115,7 @@ export interface TestDefinition {
   id: EntityId;
   name: string;
   app: string;
-  testType: TestType;
+  testType: import('./base').TestType;
   scenarios: Scenario[];
   query: QueryConfig;
   validation: ValidationConfig;
@@ -133,84 +135,9 @@ export interface FieldExtraction {
   timestamp: string;
 }
 
-// ─── Response / Results (13, 14) ───────────────────────────────────────────
+// ─── Bug Report (spec 15) ───────────────────────────────────────────────────
 
-export interface ResponseMessage {
-  code: string;
-  message: string;
-  severity: ResponseMessageSeverity;
-  source?: string;
-  line?: number;
-  tip?: string;
-}
-
-export interface QueryInfo {
-  executedQuery: string;
-  executionTimeMs: number;
-  resultCount: number;
-  scanCount: number;
-  earliestTime?: string;
-  latestTime?: string;
-}
-
-export interface TestResultSummary {
-  totalScenarios: number;
-  passedScenarios: number;
-  failedScenarios: number;
-  totalInputs: number;
-  totalEvents: number;
-  validationType: ValidationType;
-}
-
-export interface FieldValidationResult {
-  field: string;
-  passed: boolean;
-  expected?: string;
-  actual?: string;
-  message?: string;
-}
-
-export interface EventValidationResult {
-  eventIndex: number;
-  passed: boolean;
-  fieldValidations: FieldValidationResult[];
-  error?: string;
-}
-
-export interface InputResult {
-  inputId: EntityId;
-  passed: boolean;
-  eventsValidated: number;
-  eventsPassed: number;
-  eventResults: EventValidationResult[];
-  executionTimeMs?: number;
-  error?: string;
-}
-
-export interface ScenarioResult {
-  scenarioId: EntityId;
-  scenarioName: string;
-  passed: boolean;
-  inputsProcessed: number;
-  inputsPassed: number;
-  inputResults: InputResult[];
-}
-
-export interface TestResponse {
-  status: 'success' | 'error' | 'partial';
-  message: string;
-  testName: string;
-  testType: TestType;
-  timestamp: string;
-  executionTimeMs: number;
-  errors: ResponseMessage[];
-  warnings: ResponseMessage[];
-  queryInfo: QueryInfo | null;
-  summary: TestResultSummary | null;
-  scenarioResults: ScenarioResult[];
-}
-
-/** Payload for bug/feature report export and mailto. Spec 15. */
+/** Payload for bug/feature report export and mailto. */
 export interface BugReportPayload {
   reportGeneratedAt: string;
   reportType: 'bug' | 'feature';

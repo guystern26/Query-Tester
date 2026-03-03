@@ -1,7 +1,8 @@
 import React from 'react';
 import { useTestStore } from 'core/store/testStore';
-import type { EntityId, FieldGenerationRule } from 'core/types';
-import { Button } from '../../../common';
+import type { EntityId, FieldGenerationRule, EmailVariant, EmailComponentType } from 'core/types';
+import { normalizeWeights, genId } from '../utils/normalizeWeights';
+import { VHeader, VRow, VWeight, VDelBtn, VAddBtn, VHelper, vInputCls, vSelectCls, vHeaderCls } from './VariantRow';
 
 export interface EmailConfigProps {
   testId: EntityId;
@@ -10,134 +11,79 @@ export interface EmailConfigProps {
   rule: FieldGenerationRule;
 }
 
-type DomainItem = {
-  id: string;
-  domain: string;
-  weight: number;
-};
-
-function getDomains(rule: FieldGenerationRule): DomainItem[] {
-  const cfg = (rule.config ?? {}) as any;
-  const raw = Array.isArray(cfg.domains) ? cfg.domains : [];
-  return raw.map((it: any, idx: number) => ({
-    id: String(it.id ?? idx),
-    domain: String(it.domain ?? ''),
-    weight: typeof it.weight === 'number' ? it.weight : 1,
+function getVariants(rule: FieldGenerationRule): EmailVariant[] {
+  const c = rule.config as any;
+  const raw = Array.isArray(c?.variants) ? c.variants : [];
+  return raw.map((v: any, i: number) => ({
+    id: String(v.id ?? i),
+    localPart: String(v.localPart ?? ''),
+    domain: String(v.domain ?? ''),
+    componentType: (v.componentType === 'string' ? 'string' : 'numeric') as EmailComponentType,
+    componentLength: typeof v.componentLength === 'number' ? v.componentLength : 4,
+    weight: typeof v.weight === 'number' ? v.weight : 1,
   }));
 }
 
-export function EmailConfig({
-  testId,
-  scenarioId,
-  inputId,
-  rule,
-}: EmailConfigProps) {
+export function EmailConfig({ testId, scenarioId, inputId, rule }: EmailConfigProps) {
   const store = useTestStore();
-  const domains = getDomains(rule);
+  const variants = getVariants(rule);
 
-  const updateDomains = (next: DomainItem[]) => {
+  const save = (next: EmailVariant[]) => {
     store.updateGeneratorRule(testId, scenarioId, inputId, rule.id, {
-      config: {
-        ...(rule.config ?? {}),
-        domains: next.map((it) => ({
-          id: it.id,
-          domain: it.domain,
-          weight: it.weight,
-        })),
-      } as any,
+      config: { ...rule.config, variants: next } as any,
     });
   };
 
+  const update = (id: string, patch: Partial<EmailVariant>) => {
+    save(variants.map((v) => (v.id === id ? { ...v, ...patch } : v)));
+  };
+
+  const handleWeight = (id: string, raw: string) => {
+    const n = Number(raw);
+    if (Number.isNaN(n) || n < 0) return;
+    save(normalizeWeights(variants.map((v) => (v.id === id ? { ...v, weight: n } : v))));
+  };
+
   const handleAdd = () => {
-    const id = crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
-    updateDomains([...domains, { id, domain: '', weight: 1 }]);
+    save(normalizeWeights([...variants, {
+      id: genId(), localPart: '', domain: '', componentType: 'numeric' as EmailComponentType, componentLength: 4, weight: 1,
+    }]));
   };
 
   const handleRemove = (id: string) => {
-    updateDomains(domains.filter((d) => d.id !== id));
-  };
-
-  const handleDomainChange = (id: string, domain: string) => {
-    updateDomains(
-      domains.map((d) => (d.id === id ? { ...d, domain } : d))
-    );
-  };
-
-  const handleWeightChange = (id: string, raw: string) => {
-    const n = Number(raw);
-    if (Number.isNaN(n) || n <= 0) {
-      updateDomains(
-        domains.map((d) => (d.id === id ? { ...d, weight: 1 } : d))
-      );
-      return;
-    }
-    updateDomains(
-      domains.map((d) => (d.id === id ? { ...d, weight: n } : d))
-    );
+    const next = variants.filter((v) => v.id !== id);
+    save(next.length > 0 ? normalizeWeights(next) : next);
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--radius-sm)' }}>
-      <div>
-        <Button variant="secondary" size="sm" onClick={handleAdd}>
-          Add Domain
-        </Button>
-      </div>
-      {domains.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          {domains.map((d) => (
-            <div
-              key={d.id}
-              style={{
-                display: 'flex',
-                gap: 'var(--radius-sm)',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-              }}
-            >
-              <input
-                type="text"
-                value={d.domain}
-                onChange={(e) => handleDomainChange(d.id, e.target.value)}
-                placeholder="example.com"
-                style={{
-                  flex: '2 1 180px',
-                  padding: '4px 8px',
-                  background: 'var(--bg-input)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 'var(--radius-sm)',
-                  color: 'var(--text-primary)',
-                  fontSize: '0.875rem',
-                }}
-              />
-              <input
-                type="number"
-                min={1}
-                value={d.weight}
-                onChange={(e) => handleWeightChange(d.id, e.target.value)}
-                placeholder="weight"
-                style={{
-                  flex: '0 0 80px',
-                  padding: '4px 8px',
-                  background: 'var(--bg-input)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 'var(--radius-sm)',
-                  color: 'var(--text-primary)',
-                  fontSize: '0.875rem',
-                }}
-              />
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => handleRemove(d.id)}
-              >
-                ×
-              </Button>
-            </div>
-          ))}
-        </div>
+    <div className="mt-2">
+      {variants.length > 0 && (
+        <VHeader>
+          <span className={`${vHeaderCls} w-20`}>Type</span>
+          <span className={`${vHeaderCls} w-10`}>Len</span>
+          <span className={`${vHeaderCls} w-16`}>Local</span>
+          <span className="w-3" />
+          <span className={`${vHeaderCls} flex-1`}>Domain</span>
+          <span className={`${vHeaderCls} w-14`}>Weight</span>
+          <span className="w-5" />
+        </VHeader>
       )}
+      {variants.map((v) => (
+        <VRow key={v.id}>
+          <select className={`${vSelectCls} w-20`} value={v.componentType} onChange={(e) => update(v.id, { componentType: e.target.value as EmailComponentType })}>
+            <option value="numeric">Numeric</option>
+            <option value="string">String</option>
+          </select>
+          <input type="number" min={1} max={20} className={`${vInputCls} w-10`} value={v.componentLength} onChange={(e) => update(v.id, { componentLength: Math.min(Number(e.target.value) || 1, 20) })} />
+          <input className={`${vInputCls} w-16`} value={v.localPart} onChange={(e) => update(v.id, { localPart: e.target.value })} placeholder="user" />
+          <span className="text-cyan-400 font-bold text-sm w-3 text-center flex-shrink-0">@</span>
+          <input className={`${vInputCls} flex-1`} value={v.domain} onChange={(e) => update(v.id, { domain: e.target.value })} placeholder="example.com" />
+          <VWeight value={v.weight} onChange={(raw) => handleWeight(v.id, raw)} />
+          <VDelBtn disabled={variants.length <= 1} onClick={() => handleRemove(v.id)} />
+        </VRow>
+      ))}
+      <VAddBtn onClick={handleAdd} label="Add Variant" />
+      <VHelper>Format: {'{localPart}{random}@{domain}'} → user1234@example.com</VHelper>
     </div>
   );
 }
-

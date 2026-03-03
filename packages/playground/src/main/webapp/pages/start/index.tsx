@@ -1,11 +1,9 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { ThemeProvider } from '../../common';
+import './globals.css';
 import { StartPage } from './StartPage';
 
 ReactDOM.render(
-  <ThemeProvider>
-    <StartPage />
-  </ThemeProvider>,
+  <StartPage />,
   document.getElementById('root')
 );

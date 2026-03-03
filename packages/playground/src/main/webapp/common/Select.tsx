@@ -1,31 +1,5 @@
 import React from 'react';
-import styled from 'styled-components';
 // TODO: Replace with @splunk/react-ui
-
-const StyledSelect = styled.select`
-  background: var(--bg-input);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: var(--radius-sm) var(--radius-md);
-  color: var(--text-primary);
-  font-size: 1rem;
-  min-width: 120px;
-  cursor: pointer;
-  transition: var(--transition-fast);
-  &:focus {
-    outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 1px var(--accent);
-  }
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-  option {
-    background: var(--bg-card);
-    color: var(--text-primary);
-  }
-`;
 
 export interface SelectOption {
   value: string;
@@ -37,20 +11,20 @@ export interface SelectProps {
   options: SelectOption[];
   onChange: (value: string) => void;
   disabled?: boolean;
+  className?: string;
 }
 
-export function Select({ value, options, onChange, disabled }: SelectProps) {
+export function Select({ value, options, onChange, disabled, className = '' }: SelectProps) {
   return (
-    <StyledSelect
+    <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
+      className={`px-3 py-2 text-sm bg-slate-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/30 cursor-pointer transition disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
     >
       {options.map((opt) => (
-        <option key={opt.value} value={opt.value}>
-          {opt.label}
-        </option>
+        <option key={opt.value} value={opt.value}>{opt.label}</option>
       ))}
-    </StyledSelect>
+    </select>
   );
 }

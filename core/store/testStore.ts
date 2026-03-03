@@ -11,9 +11,10 @@ import type {
   TestResponse,
   InputMode,
   ValidationType,
-  ConditionOperator,
+  ValidationScope,
   ResultCountOperator,
-  FieldCondition,
+  FieldConditionGroup,
+  SingleCondition,
   FieldGenerationRule,
   ExtractedDataSource,
   TestType,
@@ -74,28 +75,34 @@ export interface TestStoreState {
     fieldValueId: EntityId,
     patch: { field?: string; value?: string }
   ) => void;
+  updateFieldNameInAllEvents: (
+    testId: EntityId,
+    scenarioId: EntityId,
+    inputId: EntityId,
+    fieldIndex: number,
+    newName: string
+  ) => void;
 
   updateSpl: (testId: EntityId, spl: string) => void;
   loadSavedSearchSpl: (testId: EntityId, spl: string, savedSearchOrigin: string | null) => void;
 
-  addFieldCondition: (testId: EntityId, condition?: Partial<FieldCondition>) => void;
-  removeFieldCondition: (testId: EntityId, conditionId: EntityId) => void;
-  updateFieldCondition: (
-    testId: EntityId,
-    conditionId: EntityId,
-    patch: Partial<Pick<FieldCondition, 'field' | 'operator' | 'value' | 'scenarioScope'>>
-  ) => void;
+  addFieldGroup: (testId: EntityId, initial?: Partial<FieldConditionGroup>) => void;
+  removeFieldGroup: (testId: EntityId, groupId: EntityId) => void;
+  duplicateFieldGroup: (testId: EntityId, groupId: EntityId) => void;
+  updateFieldGroupField: (testId: EntityId, groupId: EntityId, field: string) => void;
+  updateFieldGroupLogic: (testId: EntityId, groupId: EntityId, logic: 'and' | 'or') => void;
+  updateFieldGroupScope: (testId: EntityId, groupId: EntityId, scope: 'all' | EntityId[]) => void;
+  addConditionToGroup: (testId: EntityId, groupId: EntityId, initial?: Partial<SingleCondition>) => void;
+  removeConditionFromGroup: (testId: EntityId, groupId: EntityId, conditionId: EntityId) => void;
+  updateConditionInGroup: (testId: EntityId, groupId: EntityId, conditionId: EntityId, patch: Partial<Pick<SingleCondition, 'operator' | 'value'>>) => void;
+  updateFieldLogic: (testId: EntityId, logic: 'and' | 'or') => void;
+  updateValidationScope: (testId: EntityId, scope: ValidationScope, scopeN?: number | null) => void;
+  replaceAllFieldGroups: (testId: EntityId, groups: FieldConditionGroup[]) => void;
   setValidationType: (testId: EntityId, validationType: ValidationType) => void;
   setValidationApproach: (testId: EntityId, approach: 'expected_result' | 'field_conditions') => void;
   setExpectedResultJson: (testId: EntityId, json: string) => void;
-  setExpectedResultFileRef: (
-    testId: EntityId,
-    fileRef: { name: string; size: number } | null
-  ) => void;
-  updateResultCount: (
-    testId: EntityId,
-    patch: Partial<{ enabled: boolean; operator: ResultCountOperator; value: number }>
-  ) => void;
+  setExpectedResultFileRef: (testId: EntityId, fileRef: { name: string; size: number } | null) => void;
+  updateResultCount: (testId: EntityId, patch: Partial<{ enabled: boolean; operator: ResultCountOperator; value: number }>) => void;
 
   setGeneratorEnabled: (testId: EntityId, scenarioId: EntityId, inputId: EntityId, enabled: boolean) => void;
   updateGeneratorEventCount: (testId: EntityId, scenarioId: EntityId, inputId: EntityId, eventCount: number) => void;

@@ -134,6 +134,24 @@ export function inputSlice(set: SetState) {
         }
       }),
 
+    updateFieldNameInAllEvents: (
+      testId: EntityId,
+      scenarioId: EntityId,
+      inputId: EntityId,
+      fieldIndex: number,
+      newName: string
+    ) =>
+      set((draft) => {
+        const t = findTest(draft.tests, testId);
+        const s = t && findScenario(t, scenarioId);
+        const input = s && findInput(s, inputId);
+        if (!input) return;
+        for (const evt of input.events) {
+          const fv = evt.fieldValues[fieldIndex];
+          if (fv) fv.field = newName;
+        }
+      }),
+
     selectDataSource: (testId: EntityId, scenarioId: EntityId, inputId: EntityId, source: ExtractedDataSource) =>
       set((draft) => {
         const t = findTest(draft.tests, testId);

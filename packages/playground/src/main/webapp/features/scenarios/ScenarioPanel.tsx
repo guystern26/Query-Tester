@@ -1,215 +1,188 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTestStore } from 'core/store/testStore';
 import { selectActiveTest } from 'core/store/selectors';
 import { MAX_SCENARIOS_PER_TEST, MAX_INPUTS_PER_SCENARIO } from 'core/constants/limits';
 import type { Scenario } from 'core/types';
-import { Tabs, TextArea, Button, Modal } from '../../common';
+import { Button, Modal } from '../../common';
 import { InputCard } from './InputCard';
 
-function scenarioHasInputsWithData(scenario: Scenario): boolean {
-  return scenario.inputs.some((input) => {
-    if (input.rowIdentifier.trim() !== '') return true;
-    if (input.jsonContent.trim() !== '') return true;
-    if (input.fileRef) return true;
-    return input.events.some((e) =>
-      e.fieldValues.some((fv) => fv.field.trim() !== '' || fv.value.trim() !== '')
-    );
+function hasData(s: Scenario): boolean {
+  return s.inputs.some((inp) => {
+    if (inp.rowIdentifier.trim()) return true;
+    if (inp.jsonContent.trim()) return true;
+    if (inp.fileRef) return true;
+    return inp.events.some((e) => e.fieldValues.some((fv) => fv.field.trim() || fv.value.trim()));
   });
 }
 
 export function ScenarioPanel() {
   const state = useTestStore();
-  const activeTest = selectActiveTest(state);
-  const scenarios = activeTest?.scenarios ?? [];
+  const test = selectActiveTest(state);
+  const scenarios = test?.scenarios ?? [];
 
-  const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null);
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [scenarioToDelete, setScenarioToDelete] = useState<string | null>(null);
-
-  // When scenarios grow, select the last (newly added)
-  useEffect(() => {
-    if (scenarios.length > 0 && selectedScenarioId === null) {
-      setSelectedScenarioId(scenarios[0].id);
-    }
-  }, [scenarios.length, selectedScenarioId]);
+  const [selId, setSelId] = useState<string | null>(null);
+  const [openInputId, setOpenInputId] = useState<string | null>(null);
+  const [delModal, setDelModal] = useState(false);
+  const [delTarget, setDelTarget] = useState<string | null>(null);
+  const prevLen = useRef(scenarios.length);
+  const prevInputLen = useRef(0);
 
   useEffect(() => {
-    if (scenarios.length > 0 && selectedScenarioId !== null) {
-      const exists = scenarios.some((s) => s.id === selectedScenarioId);
-      if (!exists) setSelectedScenarioId(scenarios[0].id);
-    } else if (scenarios.length > 0 && !selectedScenarioId) {
-      setSelectedScenarioId(scenarios[0].id);
-    } else if (scenarios.length === 0) {
-      setSelectedScenarioId(null);
-    }
-  }, [scenarios, selectedScenarioId]);
+    if (!scenarios.length) { setSelId(null); return; }
+    if (selId && scenarios.some((s) => s.id === selId)) return;
+    setSelId(scenarios[0].id);
+  }, [scenarios, selId]);
 
-  // When we add a scenario, select the new one (last in list)
-  const prevLengthRef = React.useRef(scenarios.length);
   useEffect(() => {
-    if (scenarios.length > prevLengthRef.current) {
-      setSelectedScenarioId(scenarios[scenarios.length - 1].id);
+    if (scenarios.length > prevLen.current) setSelId(scenarios[scenarios.length - 1].id);
+    prevLen.current = scenarios.length;
+  }, [scenarios]);
+
+  const sel = scenarios.find((s) => s.id === selId);
+
+  // Auto-open first input when switching scenarios, or newly added input
+  useEffect(() => {
+    if (!sel) { setOpenInputId(null); return; }
+    const inputs = sel.inputs;
+    if (inputs.length > prevInputLen.current) {
+      // New input added — open it
+      setOpenInputId(inputs[inputs.length - 1].id);
+    } else if (inputs.length === 1) {
+      setOpenInputId(inputs[0].id);
     }
-    prevLengthRef.current = scenarios.length;
-  }, [scenarios.length, scenarios]);
+    prevInputLen.current = inputs.length;
+  }, [sel?.inputs.length]);
 
-  const selectedScenario = scenarios.find((s) => s.id === selectedScenarioId);
-  const canAddScenario = activeTest && scenarios.length < MAX_SCENARIOS_PER_TEST;
-  const canAddInput =
-    activeTest && selectedScenario && selectedScenario.inputs.length < MAX_INPUTS_PER_SCENARIO;
+  // Reset open input when scenario changes
+  useEffect(() => {
+    if (!sel) return;
+    const inputs = sel.inputs;
+    setOpenInputId(inputs.length === 1 ? inputs[0].id : null);
+    prevInputLen.current = inputs.length;
+  }, [selId]);
 
-  const tabs = scenarios.map((s) => ({
-    id: s.id,
-    label: s.name.trim() || 'Unnamed',
-  }));
+  if (!test) return null;
 
-  const handleAddScenario = () => {
-    if (activeTest && canAddScenario) state.addScenario(activeTest.id);
+  const canAddScenario = scenarios.length < MAX_SCENARIOS_PER_TEST;
+  const canAddInput = sel ? sel.inputs.length < MAX_INPUTS_PER_SCENARIO : false;
+
+  const handleRemoveTab = (id: string) => {
+    const sc = scenarios.find((s) => s.id === id);
+    if (!sc) return;
+    if (hasData(sc)) { setDelTarget(id); setDelModal(true); return; }
+    doDelete(id);
   };
 
-  const handleRemoveTab = (scenarioId: string) => {
-    const scenario = scenarios.find((s) => s.id === scenarioId);
-    if (!scenario || !activeTest) return;
-    if (scenarioHasInputsWithData(scenario)) {
-      setScenarioToDelete(scenarioId);
-      setDeleteModalOpen(true);
-    } else {
-      state.deleteScenario(activeTest.id, scenarioId);
-      if (selectedScenarioId === scenarioId) {
-        const idx = scenarios.findIndex((s) => s.id === scenarioId);
-        const next = scenarios[idx === 0 ? 1 : idx - 1];
-        setSelectedScenarioId(next?.id ?? null);
-      }
+  const doDelete = (id: string) => {
+    state.deleteScenario(test.id, id);
+    if (selId === id) {
+      const idx = scenarios.findIndex((s) => s.id === id);
+      const rest = scenarios.filter((s) => s.id !== id);
+      setSelId(rest[idx === 0 ? 0 : idx - 1]?.id ?? null);
     }
   };
 
   const confirmDelete = () => {
-    if (activeTest && scenarioToDelete) {
-      state.deleteScenario(activeTest.id, scenarioToDelete);
-      if (selectedScenarioId === scenarioToDelete) {
-        const scenariosAfter = activeTest.scenarios.filter((s) => s.id !== scenarioToDelete);
-        const idx = activeTest.scenarios.findIndex((s) => s.id === scenarioToDelete);
-        const next = scenariosAfter[idx === 0 ? 0 : idx - 1];
-        setSelectedScenarioId(next?.id ?? null);
-      }
-      setScenarioToDelete(null);
-      setDeleteModalOpen(false);
-    }
+    if (delTarget) doDelete(delTarget);
+    setDelTarget(null);
+    setDelModal(false);
   };
 
-  const handleScenarioNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (activeTest && selectedScenario) {
-      state.updateScenarioName(activeTest.id, selectedScenario.id, e.target.value);
-    }
-  };
-
-  const handleDescriptionChange = (value: string) => {
-    if (activeTest && selectedScenario) {
-      state.updateScenarioDescription(activeTest.id, selectedScenario.id, value);
-    }
-  };
-
-  const handleAddInput = () => {
-    if (activeTest && selectedScenario && canAddInput) {
-      state.addInput(activeTest.id, selectedScenario.id);
-    }
-  };
-
-  if (!activeTest) return null;
+  const delName = scenarios.find((s) => s.id === delTarget)?.name?.trim() || 'this scenario';
 
   return (
     <>
-      <div
-        style={{
-          padding: 'var(--radius-lg)',
-          background: 'var(--bg-card)',
-          border: '1px solid var(--border)',
-          borderRadius: 'var(--radius-lg)',
-        }}
-      >
-        <Tabs
-          tabs={tabs}
-          activeId={selectedScenarioId ?? ''}
-          onChange={(id) => setSelectedScenarioId(id)}
-          onRemove={scenarios.length > 1 ? handleRemoveTab : undefined}
-          onAdd={handleAddScenario}
-        />
-
-        {selectedScenario && (
-          <>
-            <div style={{ marginBottom: 'var(--radius-md)' }}>
-              <label style={{ display: 'block', marginBottom: 'var(--radius-sm)', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-                Scenario name
-              </label>
-              <input
-                type="text"
-                value={selectedScenario.name}
-                onChange={handleScenarioNameChange}
-                placeholder="e.g., Normal user activity, Brute force attack..."
-                style={{
-                  padding: 'var(--radius-sm) var(--radius-md)',
-                  background: 'var(--bg-input)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 'var(--radius-md)',
-                  color: 'var(--text-primary)',
-                  width: '100%',
-                  maxWidth: 320,
-                }}
-              />
-            </div>
-            <div style={{ marginBottom: 'var(--radius-lg)' }}>
-              <label style={{ display: 'block', marginBottom: 'var(--radius-sm)', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-                Scenario description
-              </label>
-              <TextArea
-                value={selectedScenario.description}
-                onChange={handleDescriptionChange}
-                placeholder="Describe what this scenario tests..."
-                rows={3}
-              />
-            </div>
-
-            <div style={{ marginBottom: 'var(--radius-md)' }}>
-              <h3 style={{ fontSize: '0.9375rem', marginBottom: 'var(--radius-sm)', color: 'var(--text-secondary)' }}>
-                Inputs
-              </h3>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--radius-md)', marginBottom: 'var(--radius-lg)' }}>
-              {selectedScenario.inputs.map((input, i) => (
-                <InputCard
-                  key={input.id}
-                  testId={activeTest.id}
-                  scenarioId={selectedScenario.id}
-                  input={input}
-                  index={i + 1}
-                />
-              ))}
-            </div>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleAddInput}
-              disabled={!canAddInput}
+      {/* Tab row */}
+      <div className="flex items-center border-b border-slate-800 mb-4">
+        {scenarios.map((s, i) => (
+          <div key={s.id} className="relative group">
+            <button
+              className={`px-4 py-2 text-[13px] -mb-px border-b-2 transition cursor-pointer flex items-center gap-1.5 ${
+                s.id === selId
+                  ? 'font-semibold text-cyan-400 border-cyan-400'
+                  : 'text-slate-400 hover:text-slate-200 border-transparent hover:bg-slate-800'
+              }`}
+              onClick={() => setSelId(s.id)}
             >
-              Add Input
-            </Button>
-          </>
-        )}
+              {s.name.trim() || `Scenario ${i + 1}`}
+              {hasData(s) && <span className="w-1.5 h-1.5 rounded-full bg-green-400" />}
+            </button>
+            {scenarios.length > 1 && (
+              <button
+                className="absolute right-0.5 top-0.5 w-4 h-4 rounded-full text-[11px] text-slate-500 hover:text-red-400 hover:bg-red-900/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition cursor-pointer"
+                onClick={() => handleRemoveTab(s.id)}
+              >
+                ×
+              </button>
+            )}
+          </div>
+        ))}
+        <button
+          className="w-6 h-6 rounded-full bg-slate-800 text-slate-400 text-sm ml-2 -mb-px flex items-center justify-center hover:text-cyan-400 hover:bg-slate-700 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          onClick={() => state.addScenario(test.id)}
+          disabled={!canAddScenario}
+        >
+          +
+        </button>
       </div>
 
-      <Modal
-        open={deleteModalOpen}
-        title="Delete scenario?"
-        onClose={() => { setDeleteModalOpen(false); setScenarioToDelete(null); }}
-        confirmLabel="Delete"
-        onConfirm={confirmDelete}
-        variant="danger"
-      >
-        <p style={{ margin: 0 }}>
-          Delete &quot;
-          {scenarios.find((s) => s.id === scenarioToDelete)?.name || 'this scenario'}
-          &quot;? This cannot be undone.
-        </p>
+      {sel && (
+        <>
+          <input
+            type="text"
+            value={sel.name}
+            onChange={(e) => state.updateScenarioName(test.id, sel.id, e.target.value)}
+            placeholder="e.g., Normal user activity..."
+            className="w-full bg-transparent border-0 border-b border-slate-700 rounded-none px-0 py-1.5 text-[13px] font-medium text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition mb-1"
+          />
+          <input
+            type="text"
+            value={sel.description}
+            onChange={(e) => state.updateScenarioDescription(test.id, sel.id, e.target.value)}
+            placeholder="Describe this scenario..."
+            className="w-full bg-transparent border-0 border-b border-slate-700 rounded-none px-0 py-1.5 text-[13px] text-slate-400 placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:text-slate-200 transition"
+          />
+
+          {sel.inputs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-slate-600 mb-3">
+                <ellipse cx="12" cy="5" rx="9" ry="3" />
+                <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+                <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+              </svg>
+              <p className="text-sm text-slate-400 mb-1">No inputs yet</p>
+              <p className="text-xs text-slate-500 mb-4">Add your first input to define test data</p>
+              <Button variant="primary" size="sm" onClick={() => state.addInput(test.id, sel.id)}>+ Add Input</Button>
+            </div>
+          ) : (
+            <>
+              <div className="flex flex-col gap-3 mt-3">
+                {sel.inputs.map((inp, i) => (
+                  <InputCard
+                    key={inp.id}
+                    testId={test.id}
+                    scenarioId={sel.id}
+                    input={inp}
+                    index={i + 1}
+                    isOpen={openInputId === inp.id}
+                    onToggle={() => setOpenInputId(openInputId === inp.id ? null : inp.id)}
+                  />
+                ))}
+              </div>
+              <button
+                className="w-full py-2.5 mt-3 border border-dashed border-slate-700 rounded-lg text-sm text-slate-400 hover:text-cyan-400 hover:border-cyan-500 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                onClick={() => state.addInput(test.id, sel.id)}
+                disabled={!canAddInput}
+              >
+                + Add another input
+              </button>
+            </>
+          )}
+        </>
+      )}
+
+      <Modal open={delModal} title="Delete scenario?" onClose={() => { setDelModal(false); setDelTarget(null); }} confirmLabel="Delete" onConfirm={confirmDelete} variant="danger">
+        <p className="m-0">Delete &quot;{delName}&quot;? All inputs and events will be lost.</p>
       </Modal>
     </>
   );

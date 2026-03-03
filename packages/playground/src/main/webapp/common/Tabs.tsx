@@ -1,68 +1,5 @@
 import React from 'react';
-import styled from 'styled-components';
 // TODO: Replace with @splunk/react-ui
-
-const TabBar = styled.div`
-  display: flex;
-  gap: 0;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: var(--radius-md);
-`;
-
-const Tab = styled.button<{ $active: boolean }>`
-  padding: var(--radius-md) var(--radius-lg);
-  background: ${(p) => (p.$active ? 'var(--bg-card)' : 'transparent')};
-  border: none;
-  border-bottom: 2px solid ${(p) => (p.$active ? 'var(--accent)' : 'transparent')};
-  color: ${(p) => (p.$active ? 'var(--text-primary)' : 'var(--text-secondary)')};
-  cursor: pointer;
-  font-size: 1rem;
-  margin-bottom: -1px;
-  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-  transition: var(--transition-fast);
-  &:hover {
-    color: var(--text-primary);
-    background: var(--bg-hover);
-  }
-`;
-
-const TabWithClose = styled.div`
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  margin-bottom: -1px;
-`;
-
-const CloseBtn = styled.button`
-  padding: 2px 6px;
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  font-size: 1.125rem;
-  line-height: 1;
-  border-radius: var(--radius-sm);
-  &:hover {
-    color: var(--error);
-    background: var(--bg-hover);
-  }
-`;
-
-const AddBtn = styled.button`
-  padding: var(--radius-md) var(--radius-lg);
-  margin-bottom: -1px;
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-  font-size: 1.25rem;
-  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-  &:hover {
-    color: var(--accent);
-    background: var(--bg-hover);
-  }
-`;
 
 export interface TabItem {
   id: string;
@@ -79,36 +16,38 @@ export interface TabsProps {
 
 export function Tabs({ tabs, activeId, onChange, onRemove, onAdd }: TabsProps) {
   return (
-    <TabBar role="tablist">
+    <div className="flex border-b border-slate-800 gap-1" role="tablist">
       {tabs.map((tab) => (
-        <TabWithClose key={tab.id}>
-          <Tab
+        <div key={tab.id} className="inline-flex items-center gap-0.5 -mb-px">
+          <button
             role="tab"
             aria-selected={tab.id === activeId}
-            $active={tab.id === activeId}
             onClick={() => onChange(tab.id)}
+            className={`px-4 py-2 text-sm border-b-2 transition cursor-pointer ${
+              tab.id === activeId
+                ? 'font-semibold text-cyan-400 border-cyan-400'
+                : 'text-slate-400 hover:text-slate-200 border-transparent hover:border-slate-600'
+            }`}
           >
             {tab.label}
-          </Tab>
+          </button>
           {onRemove && (
-            <CloseBtn
+            <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onRemove(tab.id);
-              }}
+              onClick={(e) => { e.stopPropagation(); onRemove(tab.id); }}
+              className="px-1.5 py-0.5 text-xs text-slate-500 hover:text-red-400 hover:bg-slate-800 rounded cursor-pointer"
               aria-label={`Remove ${tab.label}`}
             >
               ×
-            </CloseBtn>
+            </button>
           )}
-        </TabWithClose>
+        </div>
       ))}
       {onAdd && (
-        <AddBtn type="button" onClick={onAdd} aria-label="Add tab">
+        <button type="button" onClick={onAdd} className="px-3 py-2 text-lg text-slate-500 hover:text-cyan-400 -mb-px cursor-pointer" aria-label="Add tab">
           +
-        </AddBtn>
+        </button>
       )}
-    </TabBar>
+    </div>
   );
 }

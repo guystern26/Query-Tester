@@ -4,7 +4,7 @@
 
 import type { EntityId, TestDefinition, FieldGenerationRule } from '../../types';
 import { genId } from '../../constants/defaults';
-import { MAX_FIELD_CONDITIONS } from '../../constants/limits';
+import { MAX_GENERATOR_RULES } from '../../constants/limits';
 import { findTest, findScenario, findInput } from './helpers';
 
 type SetState = (recipe: (draft: { tests: TestDefinition[] }) => void) => void;
@@ -37,7 +37,7 @@ export function generatorSlice(set: SetState) {
         const t = findTest(draft.tests, testId);
         const s = t && findScenario(t, scenarioId);
         const input = s && findInput(s, inputId);
-        if (!input || input.generatorConfig.rules.length >= MAX_FIELD_CONDITIONS) return;
+        if (!input || input.generatorConfig.rules.length >= MAX_GENERATOR_RULES) return;
         input.generatorConfig.rules.push({ ...rule, id: genId() });
       }),
 

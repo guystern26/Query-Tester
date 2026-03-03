@@ -1,21 +1,15 @@
 import React from 'react';
-import styled from 'styled-components';
 // TODO: Replace with @splunk/react-ui
-
-const StyledCard = styled.div`
-  background-color: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 16px;
-  color: var(--text-primary);
-  box-shadow: var(--shadow-card);
-  transition: var(--transition-fast);
-`;
 
 export interface CardProps {
   children: React.ReactNode;
+  className?: string;
 }
 
-export function Card({ children }: CardProps) {
-  return <StyledCard>{children}</StyledCard>;
+export function Card({ children, className = '' }: CardProps) {
+  return (
+    <div className={`bg-slate-800 rounded-lg border border-slate-700 p-4 shadow-sm transition hover:border-slate-600 ${className}`}>
+      {children}
+    </div>
+  );
 }

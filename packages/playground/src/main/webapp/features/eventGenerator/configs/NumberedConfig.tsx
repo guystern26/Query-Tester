@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTestStore } from 'core/store/testStore';
-import type { EntityId, FieldGenerationRule } from 'core/types';
+import type { EntityId, FieldGenerationRule, NumberedGeneratorConfig } from 'core/types';
+import { VHelper } from './VariantRow';
 
 export interface NumberedConfigProps {
   testId: EntityId;
@@ -9,119 +10,56 @@ export interface NumberedConfigProps {
   rule: FieldGenerationRule;
 }
 
-export function NumberedConfig({
-  testId,
-  scenarioId,
-  inputId,
-  rule,
-}: NumberedConfigProps) {
+function getCfg(rule: FieldGenerationRule): NumberedGeneratorConfig {
+  const c = rule.config as any;
+  return {
+    pattern: String(c?.pattern ?? ''),
+    rangeStart: typeof c?.rangeStart === 'number' ? c.rangeStart : 1,
+    rangeEnd: typeof c?.rangeEnd === 'number' ? c.rangeEnd : 10,
+    padLength: typeof c?.padLength === 'number' ? c.padLength : 0,
+  };
+}
+
+const inputCls =
+  'px-2 py-1.5 text-xs bg-slate-950 border border-slate-800 rounded text-slate-300 placeholder-slate-600 focus:outline-none focus:border-cyan-500 transition';
+const labelCls = 'text-[10px] text-slate-500 uppercase shrink-0';
+
+export function NumberedConfig({ testId, scenarioId, inputId, rule }: NumberedConfigProps) {
   const store = useTestStore();
-  const cfg = (rule.config ?? {}) as any;
+  const cfg = getCfg(rule);
 
-  const prefix = typeof cfg.prefix === 'string' ? cfg.prefix : '';
-  const suffix = typeof cfg.suffix === 'string' ? cfg.suffix : '';
-  const start = typeof cfg.start === 'number' ? cfg.start : 1;
-
-  const updateConfig = (patch: Partial<{ prefix: string; suffix: string; start: number }>) => {
+  const save = (patch: Partial<NumberedGeneratorConfig>) => {
     store.updateGeneratorRule(testId, scenarioId, inputId, rule.id, {
-      config: {
-        ...cfg,
-        ...patch,
-      } as any,
+      config: { ...cfg, ...patch } as any,
     });
   };
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: 'var(--radius-md)',
-        marginTop: '4px',
-      }}
-    >
-      <div style={{ minWidth: 140 }}>
-        <label
-          style={{
-            display: 'block',
-            marginBottom: 4,
-            fontSize: '0.8125rem',
-            color: 'var(--text-secondary)',
-          }}
-        >
-          Prefix
-        </label>
+    <div className="space-y-2 mt-2">
+      <div className="flex items-center gap-2">
+        <span className={labelCls}>Pattern</span>
         <input
-          type="text"
-          value={prefix}
-          onChange={(e) => updateConfig({ prefix: e.target.value })}
-          style={{
-            width: '100%',
-            padding: '4px 8px',
-            background: 'var(--bg-input)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-sm)',
-            color: 'var(--text-primary)',
-            fontSize: '0.875rem',
-          }}
+          className={`${inputCls} flex-1 font-mono`}
+          value={cfg.pattern}
+          onChange={(e) => save({ pattern: e.target.value })}
+          placeholder="e.g. server-###"
         />
       </div>
-      <div style={{ minWidth: 140 }}>
-        <label
-          style={{
-            display: 'block',
-            marginBottom: 4,
-            fontSize: '0.8125rem',
-            color: 'var(--text-secondary)',
-          }}
-        >
-          Suffix
-        </label>
-        <input
-          type="text"
-          value={suffix}
-          onChange={(e) => updateConfig({ suffix: e.target.value })}
-          style={{
-            width: '100%',
-            padding: '4px 8px',
-            background: 'var(--bg-input)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-sm)',
-            color: 'var(--text-primary)',
-            fontSize: '0.875rem',
-          }}
-        />
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5">
+          <span className={labelCls}>Start</span>
+          <input type="number" className={`${inputCls} w-16`} value={cfg.rangeStart} onChange={(e) => save({ rangeStart: Number(e.target.value) || 0 })} />
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className={labelCls}>End</span>
+          <input type="number" className={`${inputCls} w-16`} value={cfg.rangeEnd} onChange={(e) => save({ rangeEnd: Number(e.target.value) || 0 })} />
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className={labelCls}>Pad</span>
+          <input type="number" min={0} max={10} className={`${inputCls} w-12`} value={cfg.padLength} onChange={(e) => save({ padLength: Math.min(Number(e.target.value) || 0, 10) })} />
+        </div>
       </div>
-      <div style={{ minWidth: 100 }}>
-        <label
-          style={{
-            display: 'block',
-            marginBottom: 4,
-            fontSize: '0.8125rem',
-            color: 'var(--text-secondary)',
-          }}
-        >
-          Start at
-        </label>
-        <input
-          type="number"
-          value={start}
-          onChange={(e) => {
-            const n = Number(e.target.value);
-            if (!Number.isNaN(n)) updateConfig({ start: n });
-          }}
-          style={{
-            width: '100%',
-            padding: '4px 8px',
-            background: 'var(--bg-input)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-sm)',
-            color: 'var(--text-primary)',
-            fontSize: '0.875rem',
-          }}
-        />
-      </div>
+      <VHelper>Example: server-001, server-002...</VHelper>
     </div>
   );
 }
-

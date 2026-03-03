@@ -1,45 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import styled from 'styled-components';
 // TODO: Replace with @splunk/react-ui
 
 type MessageType = 'info' | 'warning' | 'error' | 'success';
 
-const typeColors: Record<MessageType, string> = {
-  info: 'var(--accent)',
-  warning: 'var(--warning)',
-  error: 'var(--error)',
-  success: 'var(--success)',
+const typeStyles: Record<MessageType, string> = {
+  info: 'bg-blue-900/20 border-blue-800 text-blue-300',
+  warning: 'bg-amber-900/20 border-amber-800 text-amber-300',
+  error: 'bg-red-900/20 border-red-800 text-red-300',
+  success: 'bg-green-900/20 border-green-800 text-green-300',
 };
-
-const Banner = styled.div<{ $type: MessageType }>`
-  padding: var(--radius-md) var(--radius-lg);
-  border-radius: var(--radius-md);
-  border-left: 4px solid ${(p) => typeColors[p.$type]};
-  background-color: var(--bg-card);
-  color: var(--text-primary);
-  display: flex;
-  align-items: flex-start;
-  gap: var(--radius-md);
-  box-shadow: var(--shadow-card);
-  transition: var(--transition-fast);
-`;
-
-const Content = styled.div`
-  flex: 1;
-`;
-
-const DismissBtn = styled.button`
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  padding: 0 4px;
-  font-size: 1.25rem;
-  line-height: 1;
-  &:hover {
-    color: var(--text-primary);
-  }
-`;
 
 export interface MessageProps {
   type: MessageType;
@@ -49,13 +18,7 @@ export interface MessageProps {
   autoHideMs?: number;
 }
 
-export function Message({
-  type,
-  children,
-  dismissible = false,
-  onDismiss,
-  autoHideMs,
-}: MessageProps) {
+export function Message({ type, children, dismissible = false, onDismiss, autoHideMs }: MessageProps) {
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
@@ -72,13 +35,18 @@ export function Message({
   if (!visible) return null;
 
   return (
-    <Banner $type={type}>
-      <Content>{children}</Content>
+    <div className={`flex items-start gap-2 p-3 border rounded-lg text-xs ${typeStyles[type]}`}>
+      <div className="flex-1">{children}</div>
       {dismissible && (
-        <DismissBtn type="button" onClick={handleDismiss} aria-label="Dismiss">
+        <button
+          type="button"
+          onClick={handleDismiss}
+          className="text-slate-400 hover:text-slate-200 text-lg leading-none cursor-pointer"
+          aria-label="Dismiss"
+        >
           ×
-        </DismissBtn>
+        </button>
       )}
-    </Banner>
+    </div>
   );
 }

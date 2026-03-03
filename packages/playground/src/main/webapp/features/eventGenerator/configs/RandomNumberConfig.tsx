@@ -1,6 +1,8 @@
 import React from 'react';
 import { useTestStore } from 'core/store/testStore';
-import type { EntityId, FieldGenerationRule } from 'core/types';
+import type { EntityId, FieldGenerationRule, RandomNumberVariant } from 'core/types';
+import { normalizeWeights, genId } from '../utils/normalizeWeights';
+import { VHeader, VRow, VWeight, VDelBtn, VAddBtn, VHelper, vInputCls, vHeaderCls } from './VariantRow';
 
 export interface RandomNumberConfigProps {
   testId: EntityId;
@@ -9,132 +11,75 @@ export interface RandomNumberConfigProps {
   rule: FieldGenerationRule;
 }
 
-export function RandomNumberConfig({
-  testId,
-  scenarioId,
-  inputId,
-  rule,
-}: RandomNumberConfigProps) {
+function getVariants(rule: FieldGenerationRule): RandomNumberVariant[] {
+  const c = rule.config as any;
+  const raw = Array.isArray(c?.variants) ? c.variants : [];
+  return raw.map((v: any, i: number) => ({
+    id: String(v.id ?? i),
+    min: typeof v.min === 'number' ? v.min : 0,
+    max: typeof v.max === 'number' ? v.max : 100,
+    decimals: typeof v.decimals === 'number' ? v.decimals : 0,
+    prefix: String(v.prefix ?? ''),
+    suffix: String(v.suffix ?? ''),
+    weight: typeof v.weight === 'number' ? v.weight : 1,
+  }));
+}
+
+export function RandomNumberConfig({ testId, scenarioId, inputId, rule }: RandomNumberConfigProps) {
   const store = useTestStore();
-  const cfg = (rule.config ?? {}) as any;
+  const variants = getVariants(rule);
 
-  const min = typeof cfg.min === 'number' ? cfg.min : 0;
-  const max = typeof cfg.max === 'number' ? cfg.max : 100;
-  const decimals = typeof cfg.decimals === 'number' ? cfg.decimals : 0;
-
-  const updateConfig = (patch: Partial<{ min: number; max: number; decimals: number }>) => {
+  const save = (next: RandomNumberVariant[]) => {
     store.updateGeneratorRule(testId, scenarioId, inputId, rule.id, {
-      config: {
-        ...cfg,
-        ...patch,
-      } as any,
+      config: { ...rule.config, variants: next } as any,
     });
   };
 
-  const handleMinChange = (raw: string) => {
-    const n = Number(raw);
-    if (!Number.isNaN(n)) updateConfig({ min: n });
+  const update = (id: string, patch: Partial<RandomNumberVariant>) => {
+    save(variants.map((v) => (v.id === id ? { ...v, ...patch } : v)));
   };
 
-  const handleMaxChange = (raw: string) => {
+  const handleWeight = (id: string, raw: string) => {
     const n = Number(raw);
-    if (!Number.isNaN(n)) updateConfig({ max: n });
+    if (Number.isNaN(n) || n < 0) return;
+    save(normalizeWeights(variants.map((v) => (v.id === id ? { ...v, weight: n } : v))));
   };
 
-  const handleDecimalsChange = (raw: string) => {
-    const n = Number(raw);
-    if (!Number.isNaN(n) && n >= 0 && Number.isInteger(n)) updateConfig({ decimals: n });
+  const handleAdd = () => {
+    save(normalizeWeights([...variants, { id: genId(), min: 0, max: 100, decimals: 0, prefix: '', suffix: '', weight: 1 }]));
+  };
+
+  const handleRemove = (id: string) => {
+    const next = variants.filter((v) => v.id !== id);
+    save(next.length > 0 ? normalizeWeights(next) : next);
   };
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: 'var(--radius-md)',
-        marginTop: '4px',
-      }}
-    >
-      <div style={{ minWidth: 120 }}>
-        <label
-          style={{
-            display: 'block',
-            marginBottom: 4,
-            fontSize: '0.8125rem',
-            color: 'var(--text-secondary)',
-          }}
-        >
-          Min
-        </label>
-        <input
-          type="number"
-          value={min}
-          onChange={(e) => handleMinChange(e.target.value)}
-          style={{
-            width: '100%',
-            padding: '4px 8px',
-            background: 'var(--bg-input)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-sm)',
-            color: 'var(--text-primary)',
-            fontSize: '0.875rem',
-          }}
-        />
-      </div>
-      <div style={{ minWidth: 120 }}>
-        <label
-          style={{
-            display: 'block',
-            marginBottom: 4,
-            fontSize: '0.8125rem',
-            color: 'var(--text-secondary)',
-          }}
-        >
-          Max
-        </label>
-        <input
-          type="number"
-          value={max}
-          onChange={(e) => handleMaxChange(e.target.value)}
-          style={{
-            width: '100%',
-            padding: '4px 8px',
-            background: 'var(--bg-input)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-sm)',
-            color: 'var(--text-primary)',
-            fontSize: '0.875rem',
-          }}
-        />
-      </div>
-      <div style={{ minWidth: 120 }}>
-        <label
-          style={{
-            display: 'block',
-            marginBottom: 4,
-            fontSize: '0.8125rem',
-            color: 'var(--text-secondary)',
-          }}
-        >
-          Decimals
-        </label>
-        <input
-          type="number"
-          min={0}
-          value={decimals}
-          onChange={(e) => handleDecimalsChange(e.target.value)}
-          style={{
-            width: '100%',
-            padding: '4px 8px',
-            background: 'var(--bg-input)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-sm)',
-            color: 'var(--text-primary)',
-            fontSize: '0.875rem',
-          }}
-        />
-      </div>
+    <div className="mt-2">
+      {variants.length > 0 && (
+        <VHeader>
+          <span className={`${vHeaderCls} w-14`}>Min</span>
+          <span className={`${vHeaderCls} w-14`}>Max</span>
+          <span className={`${vHeaderCls} w-10`}>Dec</span>
+          <span className={`${vHeaderCls} w-14`}>Prefix</span>
+          <span className={`${vHeaderCls} w-14`}>Suffix</span>
+          <span className={`${vHeaderCls} w-14`}>Weight</span>
+          <span className="w-5" />
+        </VHeader>
+      )}
+      {variants.map((v) => (
+        <VRow key={v.id}>
+          <input type="number" className={`${vInputCls} w-14`} value={v.min} onChange={(e) => update(v.id, { min: Number(e.target.value) || 0 })} placeholder="0" />
+          <input type="number" className={`${vInputCls} w-14`} value={v.max} onChange={(e) => update(v.id, { max: Number(e.target.value) || 0 })} placeholder="100" />
+          <input type="number" className={`${vInputCls} w-10`} min={0} max={10} value={v.decimals} onChange={(e) => update(v.id, { decimals: Math.min(Number(e.target.value) || 0, 10) })} placeholder="0" />
+          <input className={`${vInputCls} w-14`} value={v.prefix} onChange={(e) => update(v.id, { prefix: e.target.value })} placeholder="$" />
+          <input className={`${vInputCls} w-14`} value={v.suffix} onChange={(e) => update(v.id, { suffix: e.target.value })} placeholder="USD" />
+          <VWeight value={v.weight} onChange={(raw) => handleWeight(v.id, raw)} />
+          <VDelBtn disabled={variants.length <= 1} onClick={() => handleRemove(v.id)} />
+        </VRow>
+      ))}
+      <VAddBtn onClick={handleAdd} label="Add Variant" />
+      <VHelper>Example: prefix=&quot;$&quot; suffix=&quot;USD&quot; → $542USD</VHelper>
     </div>
   );
 }
-

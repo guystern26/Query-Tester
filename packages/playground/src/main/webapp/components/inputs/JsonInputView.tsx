@@ -11,6 +11,26 @@ export interface JsonInputViewProps {
   inputId: EntityId;
 }
 
+const FileIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+    <polyline points="14 2 14 8 20 8" />
+  </svg>
+);
+
+const UploadIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
+  </svg>
+);
+
+const AlertIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+  </svg>
+);
+
 export function JsonInputView({ testId, scenarioId, inputId }: JsonInputViewProps) {
   const store = useTestStore();
   const { updateInputJson, setInputFileRef } = store;
@@ -23,185 +43,86 @@ export function JsonInputView({ testId, scenarioId, inputId }: JsonInputViewProp
   const [fileError, setFileError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Sync from store when external value changes
-  useEffect(() => {
-    setValue(storeValue);
-    setError(null);
-    setFileError(null);
-  }, [storeValue]);
+  useEffect(() => { setValue(storeValue); setError(null); setFileError(null); }, [storeValue]);
 
   const debouncedUpdate = useMemo(
-    () =>
-      debounce((next: string) => {
-        updateInputJson(testId, scenarioId, inputId, next);
-      }, 300),
+    () => debounce((next: string) => { updateInputJson(testId, scenarioId, inputId, next); }, 300),
     [updateInputJson, testId, scenarioId, inputId]
   );
 
-  useEffect(() => {
-    return () => {
-      debouncedUpdate.cancel();
-    };
-  }, [debouncedUpdate]);
+  useEffect(() => () => { debouncedUpdate.cancel(); }, [debouncedUpdate]);
 
   const handleChange = (next: string) => {
     setValue(next);
-    if (next.trim() === '') {
-      setError(null);
-    } else {
-      try {
-        JSON.parse(next);
-        setError(null);
-      } catch {
-        setError('Invalid JSON');
-      }
-    }
+    if (next.trim() === '') { setError(null); }
+    else { try { JSON.parse(next); setError(null); } catch { setError('Invalid JSON'); } }
     debouncedUpdate(next);
-  };
-
-  const handleUploadClick = () => {
-    fileInputRef.current?.click();
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = () => {
       const text = String(reader.result ?? '');
-      try {
-        JSON.parse(text);
-      } catch {
-        setFileError('Uploaded file does not contain valid JSON.');
-        e.target.value = '';
-        return;
-      }
+      try { JSON.parse(text); } catch { setFileError('Uploaded file does not contain valid JSON.'); e.target.value = ''; return; }
       setFileError(null);
       handleChange(text);
-      // store metadata only
-      setInputFileRef(
-        testId,
-        scenarioId,
-        inputId,
-        {
-          name: file.name,
-          size: file.size,
-        } as any
-      );
+      setInputFileRef(testId, scenarioId, inputId, { name: file.name, size: file.size } as any);
       e.target.value = '';
     };
-    reader.onerror = () => {
-      setFileError('Failed to read file.');
-      e.target.value = '';
-    };
+    reader.onerror = () => { setFileError('Failed to read file.'); e.target.value = ''; };
     reader.readAsText(file);
   };
 
-  const handleClearFile = () => {
-    setInputFileRef(testId, scenarioId, inputId, null);
-  };
-
-  const formattedSize =
-    fileRef && typeof fileRef.size === 'number'
-      ? `${(fileRef.size / 1024).toFixed(1)} KB`
-      : null;
+  const formattedSize = fileRef && typeof fileRef.size === 'number' ? `${(fileRef.size / 1024).toFixed(1)} KB` : null;
 
   return (
     <div>
-      <TextArea
-        value={value}
-        onChange={handleChange}
-        placeholder="Paste your JSON data here..."
-        rows={8}
-        style={{
-          fontFamily: 'var(--font-mono, monospace)',
-          borderColor: error ? 'var(--error)' : undefined,
-        }}
-      />
+      <TextArea value={value} onChange={handleChange} placeholder="Paste your JSON data here..." rows={10} className="font-mono" style={error ? { borderColor: '#ef4444' } : undefined} />
+
       {error && (
-        <div style={{ marginTop: '4px' }}>
+        <div className="mt-1.5 flex items-center gap-1.5 text-red-400 text-[13px]">
+          <AlertIcon />
           <Message type="error">{error}</Message>
         </div>
       )}
 
-      <div style={{ marginTop: 'var(--radius-md)' }}>
-        <ButtonRow onClick={handleUploadClick} />
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".json,.csv"
-          style={{ display: 'none' }}
-          onChange={handleFileChange}
-        />
+      <div className="mt-3">
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-slate-700 bg-slate-800 text-slate-200 text-[13px] font-semibold hover:border-cyan-500 hover:text-cyan-400 transition cursor-pointer"
+        >
+          <UploadIcon />
+          Upload JSON File
+        </button>
+        <input ref={fileInputRef} type="file" accept=".json,.csv" className="hidden" onChange={handleFileChange} />
       </div>
 
       {fileRef && (
-        <div
-          style={{
-            marginTop: '4px',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '2px 8px',
-            borderRadius: '999px',
-            background: 'var(--bg-hover)',
-            color: 'var(--text-secondary)',
-            fontSize: '0.8125rem',
-          }}
-        >
-          <span>
-            Loaded: {fileRef.name}
-            {formattedSize ? ` (${formattedSize})` : ''}
-          </span>
+        <div className="mt-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800 border border-slate-700/60 text-slate-300 text-[13px]">
+          <FileIcon />
+          <span>{fileRef.name}{formattedSize ? ` (${formattedSize})` : ''}</span>
           <button
             type="button"
-            onClick={handleClearFile}
-            style={{
-              border: 'none',
-              background: 'transparent',
-              color: 'var(--text-secondary)',
-              cursor: 'pointer',
-              padding: 0,
-              fontSize: '0.875rem',
-            }}
+            onClick={() => setInputFileRef(testId, scenarioId, inputId, null)}
+            className="p-0.5 text-slate-400 hover:text-red-400 hover:bg-red-900/20 rounded transition cursor-pointer"
             aria-label="Clear file"
           >
-            ×
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
           </button>
         </div>
       )}
 
       {fileError && (
-        <div style={{ marginTop: '4px' }}>
+        <div className="mt-1.5 flex items-center gap-1.5 text-red-400 text-[13px]">
+          <AlertIcon />
           <Message type="error">{fileError}</Message>
         </div>
       )}
     </div>
   );
 }
-
-interface ButtonRowProps {
-  onClick: () => void;
-}
-
-function ButtonRow({ onClick }: ButtonRowProps) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        padding: '6px 12px',
-        borderRadius: 'var(--radius-md)',
-        border: '1px solid var(--border)',
-        background: 'var(--bg-hover)',
-        color: 'var(--text-primary)',
-        fontSize: '0.875rem',
-        cursor: 'pointer',
-      }}
-    >
-      Upload JSON File
-    </button>
-  );
-}
-

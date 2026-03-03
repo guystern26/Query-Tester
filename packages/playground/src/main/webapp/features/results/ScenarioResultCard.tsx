@@ -1,64 +1,13 @@
-import React from 'react';
-import styled from 'styled-components';
+import React, { useState } from 'react';
 import type { ScenarioResult, FieldValidationResult } from 'core/types';
-import { Card } from '../../common';
 
-const HeaderRow = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-`;
-
-const Name = styled.div`
-  font-weight: 600;
-  font-size: 0.9375rem;
-`;
-
-const Badge = styled.span<{ $passed: boolean }>`
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  background: ${(p) => (p.$passed ? 'rgba(34,197,94,0.16)' : 'rgba(248,113,113,0.16)')};
-  color: ${(p) => (p.$passed ? '#4ade80' : '#fca5a5')};
-`;
-
-const InputBlock = styled.div`
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-`;
-
-const EventBlock = styled.div`
-  padding: 6px 8px;
-  border-radius: var(--radius-md);
-  background: rgba(15, 52, 96, 0.6);
-`;
-
-const FieldRow = styled.div<{ $passed: boolean }>`
-  font-size: 0.8125rem;
-  color: ${(p) => (p.$passed ? '#4ade80' : '#fca5a5')};
-  margin-bottom: 2px;
-`;
-
-const Label = styled.span`
-  color: var(--text-secondary);
-`;
-
-function renderValues(label: string, value?: string) {
+function MultiValue({ label, value }: { label: string; value?: string }) {
   if (!value) return null;
-  const parts = value.split('\n');
+  const lines = value.split('\n');
   return (
     <div>
-      <Label>{label}: </Label>
-      {parts.map((p, idx) => (
-        <div key={idx}>{p}</div>
-      ))}
+      <span className="text-slate-400">{label}: </span>
+      {lines.map((l, i) => <div key={i}>{l}</div>)}
     </div>
   );
 }
@@ -68,52 +17,62 @@ export interface ScenarioResultCardProps {
 }
 
 export function ScenarioResultCard({ result }: ScenarioResultCardProps) {
-  return (
-    <Card>
-      <HeaderRow>
-        <Name>{result.scenarioName || 'Unnamed scenario'}</Name>
-        <Badge $passed={result.passed}>{result.passed ? 'Passed' : 'Failed'}</Badge>
-      </HeaderRow>
+  const [open, setOpen] = useState(!result.passed);
 
-      {result.inputResults.map((inputResult, inputIndex) => (
-        <InputBlock key={inputResult.inputId}>
-          <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
-            Input {inputIndex + 1} ·{' '}
-            <span style={{ color: inputResult.passed ? '#4ade80' : '#fca5a5' }}>
-              {inputResult.passed ? 'Passed' : 'Failed'}
-            </span>
-          </div>
-          {inputResult.eventResults.map((eventResult) => (
-            <EventBlock key={eventResult.eventIndex}>
-              <div
-                style={{
-                  fontSize: '0.8125rem',
-                  marginBottom: 4,
-                  color: eventResult.passed ? '#4ade80' : '#fca5a5',
-                }}
-              >
-                Event {eventResult.eventIndex + 1}{' '}
-                {eventResult.error && (
-                  <span style={{ color: '#fca5a5' }}>— {eventResult.error}</span>
-                )}
+  return (
+    <div className="bg-slate-800 border border-slate-700 rounded-lg overflow-hidden">
+      {/* Header */}
+      <div
+        className="flex justify-between items-center px-4 py-2.5 cursor-pointer transition-colors hover:bg-slate-700/50"
+        onClick={() => setOpen(!open)}
+      >
+        <span className="font-semibold text-sm flex items-center gap-2 text-slate-200">
+          {result.scenarioName || 'Unnamed scenario'}
+          <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wide ${
+            result.passed
+              ? 'bg-green-400/15 text-green-400'
+              : 'bg-red-500/15 text-red-300'
+          }`}>
+            {result.passed ? 'PASS' : 'FAIL'}
+          </span>
+        </span>
+        <span className={`text-slate-400 text-xs transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>
+          &#9660;
+        </span>
+      </div>
+
+      {/* Body */}
+      {open && (
+        <div className="px-4 pb-3 flex flex-col gap-2">
+          {result.inputResults.map((ir, idx) => (
+            <div key={ir.inputId} className="pt-2 border-t border-slate-700 flex flex-col gap-1.5">
+              <div className="text-[13px] text-slate-400">
+                Input {idx + 1} &middot; <span className={ir.passed ? 'text-green-400' : 'text-red-300'}>{ir.passed ? 'Passed' : 'Failed'}</span>
               </div>
-              {eventResult.fieldValidations.map((fv: FieldValidationResult) => (
-                <FieldRow key={fv.field} $passed={fv.passed}>
-                  <strong>{fv.field}</strong>{' '}
-                  {fv.message && <span>— {fv.message}</span>}
-                  {!fv.passed && (
-                    <div style={{ marginLeft: 8 }}>
-                      {renderValues('Expected', fv.expected)}
-                      {renderValues('Actual', fv.actual)}
+              {ir.eventResults.map((er) => (
+                <div key={er.eventIndex} className="p-2 rounded-md bg-slate-900/60">
+                  <div className={`text-[13px] mb-1 ${er.passed ? 'text-green-400' : 'text-red-300'}`}>
+                    Event {er.eventIndex + 1}
+                    {er.error && <span className="text-red-300"> &mdash; {er.error}</span>}
+                  </div>
+                  {er.fieldValidations.map((fv: FieldValidationResult) => (
+                    <div key={fv.field} className={`text-[13px] mb-0.5 ${fv.passed ? 'text-green-400' : 'text-red-300'}`}>
+                      <strong>{fv.field}</strong>
+                      {fv.message && <span> &mdash; {fv.message}</span>}
+                      {!fv.passed && (
+                        <div className="ml-2">
+                          <MultiValue label="Expected" value={fv.expected} />
+                          <MultiValue label="Actual" value={fv.actual} />
+                        </div>
+                      )}
                     </div>
-                  )}
-                </FieldRow>
+                  ))}
+                </div>
               ))}
-            </EventBlock>
+            </div>
           ))}
-        </InputBlock>
-      ))}
-    </Card>
+        </div>
+      )}
+    </div>
   );
 }
-

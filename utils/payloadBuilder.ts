@@ -44,6 +44,9 @@ export interface ApiPayload {
       value: string;
       scenarioScope: 'all' | string[];
     }> | null;
+    fieldLogic: 'and' | 'or';
+    validationScope: string;
+    scopeN: number | null;
     resultCount: TestDefinition['validation']['resultCount'] | null;
   };
 }
@@ -82,13 +85,18 @@ export function buildPayload(test: TestDefinition): ApiPayload {
           : null,
       fieldConditions:
         test.validation.approach === 'field_conditions'
-          ? test.validation.fieldConditions.map((fc) => ({
-              field: fc.field,
-              operator: fc.operator,
-              value: fc.value,
-              scenarioScope: fc.scenarioScope,
-            }))
+          ? test.validation.fieldGroups.flatMap((g) =>
+              g.conditions.map((c) => ({
+                field: g.field,
+                operator: c.operator,
+                value: c.value,
+                scenarioScope: g.scenarioScope,
+              }))
+            )
           : null,
+      fieldLogic: test.validation.fieldLogic,
+      validationScope: test.validation.validationScope,
+      scopeN: test.validation.scopeN,
       resultCount: test.validation.resultCount.enabled
         ? test.validation.resultCount
         : null,

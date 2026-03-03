@@ -13,6 +13,8 @@ import type {
   ValidationConfig,
   ResultCountRule,
   GeneratorConfig,
+  SingleCondition,
+  FieldConditionGroup,
 } from '../types';
 
 /** Generates a new EntityId (crypto.randomUUID()). Node 18 fallback via require('crypto').randomUUID(). */
@@ -35,7 +37,7 @@ export function genId(): EntityId {
 export function createDefaultEvent(): InputEvent {
   return {
     id: genId(),
-    fieldValues: [],
+    fieldValues: [{ id: genId(), field: '', value: '' }],
   };
 }
 
@@ -75,13 +77,30 @@ function createDefaultResultCountRule(): ResultCountRule {
   };
 }
 
+export function createDefaultSingleCondition(): SingleCondition {
+  return { id: genId(), operator: 'is_not_empty', value: '' };
+}
+
+export function createDefaultFieldGroup(): FieldConditionGroup {
+  return {
+    id: genId(),
+    field: '',
+    conditions: [createDefaultSingleCondition()],
+    conditionLogic: 'and',
+    scenarioScope: 'all',
+  };
+}
+
 export function createDefaultValidationConfig(): ValidationConfig {
   return {
     validationType: 'standard',
     approach: 'field_conditions',
     expectedResultJson: '',
     expectedResultFileRef: null,
-    fieldConditions: [],
+    fieldGroups: [],
+    fieldLogic: 'and',
+    validationScope: 'all_events',
+    scopeN: null,
     resultCount: createDefaultResultCountRule(),
   };
 }

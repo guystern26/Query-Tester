@@ -1,27 +1,9 @@
 import React from 'react';
-import styled from 'styled-components';
 import { useTestStore } from 'core/store/testStore';
 import { selectTestResponse, selectErrors, selectWarnings } from 'core/store/selectors';
-import type { ScenarioResult, TestResponse } from 'core/types';
+import type { ScenarioResult } from 'core/types';
 import { Message } from '../../common';
 import { ScenarioResultCard } from './ScenarioResultCard';
-
-const ResultsRoot = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-`;
-
-const SummaryBar = styled.div`
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-`;
-
-const ScenarioList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-`;
 
 export function ResultsPanel() {
   const state = useTestStore();
@@ -31,7 +13,7 @@ export function ResultsPanel() {
 
   if (!response) {
     return (
-      <SummaryBar>No results yet. Run the test to see validation details.</SummaryBar>
+      <div className="text-sm text-slate-400">No results yet. Run the test to see validation details.</div>
     );
   }
 
@@ -47,8 +29,8 @@ export function ResultsPanel() {
   }
 
   return (
-    <ResultsRoot>
-      <SummaryBar>{summaryText}</SummaryBar>
+    <div className="flex flex-col gap-3">
+      <div className="text-sm text-slate-400">{summaryText}</div>
 
       {errors.map((err) => (
         <Message key={err.code} type="error">
@@ -62,12 +44,11 @@ export function ResultsPanel() {
         </Message>
       ))}
 
-      <ScenarioList>
+      <div className="flex flex-col gap-3">
         {response.scenarioResults.map((sr: ScenarioResult) => (
           <ScenarioResultCard key={sr.scenarioId} result={sr} />
         ))}
-      </ScenarioList>
-    </ResultsRoot>
+      </div>
+    </div>
   );
 }
-

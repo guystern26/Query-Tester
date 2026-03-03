@@ -11,11 +11,7 @@ export interface FieldValueEditorProps {
 }
 
 const inputStyle: React.CSSProperties = {
-  padding: 'var(--radius-sm) var(--radius-md)',
-  background: 'var(--bg-input)',
-  border: '1px solid var(--border)',
-  borderRadius: 'var(--radius-md)',
-  color: 'var(--text-primary)',
+  padding: '6px 8px',
   fontSize: '0.875rem',
   width: '100%',
   minWidth: 0,
@@ -40,14 +36,14 @@ export function FieldValueEditor({ testId, scenarioId, inputId, events }: FieldV
         <div
           key={event.id}
           style={{
-            padding: 'var(--radius-md)',
-            background: 'var(--bg-hover)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-md)',
+            padding: 8,
+            background: '#243555',
+            border: '1px solid #2a2a4a',
+            borderRadius: 6,
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--radius-sm)' }}>
-            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#a0a0b0' }}>
               Event {eventIndex + 1}
             </span>
             <Button
@@ -58,9 +54,9 @@ export function FieldValueEditor({ testId, scenarioId, inputId, events }: FieldV
               Remove event
             </Button>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--radius-sm)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {event.fieldValues.map((fv, fieldIndex) => (
-              <div key={fv.id} style={{ display: 'flex', gap: 'var(--radius-sm)', alignItems: 'center', flexWrap: 'wrap' }}>
+              <div key={fv.id} style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
                 <input
                   type="text"
                   value={fv.field}
@@ -85,10 +81,11 @@ export function FieldValueEditor({ testId, scenarioId, inputId, events }: FieldV
                   style={{
                     border: 'none',
                     background: 'transparent',
-                    color: 'var(--text-secondary)',
+                    color: '#a0a0b0',
                     cursor: 'pointer',
-                    padding: 0,
+                    padding: '2px 4px',
                     fontSize: '0.875rem',
+                    borderRadius: 4,
                   }}
                   aria-label="Remove this field from all events"
                 >

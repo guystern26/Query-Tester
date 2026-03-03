@@ -1,243 +1,73 @@
 import React from 'react';
-import styled from 'styled-components';
 import { useTestStore } from 'core/store/testStore';
 import { selectActiveTest } from 'core/store/selectors';
-import type { ConditionOperator, EntityId, ResultCountOperator } from 'core/types';
-import { MAX_FIELD_CONDITIONS } from 'core/constants/limits';
-import { Button, Select, Switch, Message } from '../../common';
-
-const GridRoot = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-`;
-
-const Row = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-`;
-
-const FieldInput = styled.input`
-  flex: 1 1 140px;
-  min-width: 0;
-  padding: 6px 10px;
-  background: var(--bg-input);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  font-size: 0.875rem;
-  box-sizing: border-box;
-  transition: var(--transition-fast);
-  &:focus {
-    outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 1px var(--accent);
-  }
-`;
-
-const ValueInput = styled(FieldInput)`
-  flex: 1 1 160px;
-`;
-
-const SectionTitle = styled.div`
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--text-secondary);
-`;
-
-const ResultCountBox = styled.div`
-  margin-top: 4px;
-  padding-top: 8px;
-  border-top: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-`;
-
-const SmallLabel = styled.span`
-  font-size: 0.8125rem;
-  color: var(--text-secondary);
-`;
+import { MAX_FIELD_GROUPS } from 'core/constants/limits';
+import { Message } from '../../common';
+import { ValidationScopeSelector } from './ValidationScope';
+import { FieldGroupCard } from './FieldGroupCard';
 
 export function FieldConditionsGrid() {
-  const state = useTestStore();
-  const test = selectActiveTest(state);
+  const store = useTestStore();
+  const test = selectActiveTest(store);
   if (!test) return null;
 
-  const conditions = test.validation.fieldConditions;
+  const groups = test.validation.fieldGroups;
+  const fieldLogic = test.validation.fieldLogic;
   const scenarios = test.scenarios;
-  const resultCount = test.validation.resultCount;
+  const atLimit = groups.length >= MAX_FIELD_GROUPS;
 
-  const operatorOptions: { value: ConditionOperator; label: string }[] = [
-    { value: 'equals', label: 'Equals' },
-    { value: 'contains', label: 'Contains' },
-    { value: 'regex', label: 'Regex' },
-    { value: 'not_empty', label: 'Is not empty' },
-  ];
-
-  const resultOperatorOptions: { value: ResultCountOperator; label: string }[] = [
-    { value: 'equals', label: 'Equals' },
-    { value: 'greater_than', label: 'Greater than' },
-    { value: 'less_than', label: 'Less than' },
-  ];
-
-  const scenarioOptions = [
-    { value: 'all', label: 'All scenarios' },
-    ...scenarios.map((s) => ({ value: s.id, label: s.name || 'Untitled scenario' })),
-  ];
-
-  const handleAddCondition = () => {
-    if (conditions.length >= MAX_FIELD_CONDITIONS) return;
-    state.addFieldCondition(test.id);
-  };
-
-  const handleDeleteCondition = (id: EntityId) => {
-    state.removeFieldCondition(test.id, id);
-  };
-
-  const handleFieldChange = (id: EntityId, field: string) => {
-    state.updateFieldCondition(test.id, id, { field });
-  };
-
-  const handleOperatorChange = (id: EntityId, op: ConditionOperator) => {
-    state.updateFieldCondition(test.id, id, { operator: op });
-  };
-
-  const handleValueChange = (id: EntityId, value: string) => {
-    state.updateFieldCondition(test.id, id, { value });
-  };
-
-  const handleScopeChange = (id: EntityId, scope: string) => {
-    if (scope === 'all') {
-      state.updateFieldCondition(test.id, id, { scenarioScope: 'all' });
-    } else {
-      state.updateFieldCondition(test.id, id, { scenarioScope: [scope] as EntityId[] });
-    }
-  };
-
-  const handleResultToggle = (enabled: boolean) => {
-    state.updateResultCount(test.id, { enabled });
-  };
-
-  const handleResultOperatorChange = (op: ResultCountOperator) => {
-    state.updateResultCount(test.id, { operator: op });
-  };
-
-  const handleResultValueChange = (raw: string) => {
-    const n = Number(raw);
-    if (!Number.isNaN(n)) {
-      state.updateResultCount(test.id, { value: n });
-    }
-  };
+  const toggleFieldLogic = () => store.updateFieldLogic(test.id, fieldLogic === 'and' ? 'or' : 'and');
 
   return (
-    <GridRoot>
-      <SectionTitle>Field conditions</SectionTitle>
-      {conditions.length === 0 && (
-        <Message type="info">Add conditions to validate individual fields.</Message>
+    <div className="flex flex-col gap-3">
+      <ValidationScopeSelector
+        testId={test.id}
+        scope={test.validation.validationScope}
+        scopeN={test.validation.scopeN}
+      />
+
+      <div className="text-[10px] uppercase tracking-[1.5px] text-slate-500">Field Conditions</div>
+
+      {groups.length === 0 && (
+        <Message type="info">Add a field to start defining validation conditions.</Message>
       )}
-      {conditions.map((cond) => {
-        const scopeValue =
-          cond.scenarioScope === 'all'
-            ? 'all'
-            : cond.scenarioScope.length > 0
-            ? cond.scenarioScope[0]
-            : 'all';
-        const showValue = cond.operator !== 'not_empty';
 
-        return (
-          <Row key={cond.id}>
-            <FieldInput
-              type="text"
-              value={cond.field}
-              onChange={(e) => handleFieldChange(cond.id, e.target.value)}
-              placeholder="e.g., count, src_ip, status"
-            />
-            <Select
-              value={cond.operator}
-              options={operatorOptions.map((o) => ({ value: o.value, label: o.label }))}
-              onChange={(v) => handleOperatorChange(cond.id, v as ConditionOperator)}
-            />
-            {showValue && (
-              <ValueInput
-                type="text"
-                value={cond.value}
-                onChange={(e) => handleValueChange(cond.id, e.target.value)}
-                placeholder="expected value"
-              />
-            )}
-            <Select
-              value={scopeValue}
-              options={scenarioOptions}
-              onChange={(v) => handleScopeChange(cond.id, v)}
-            />
-            <button
-              type="button"
-              onClick={() => handleDeleteCondition(cond.id)}
-              style={{
-                border: 'none',
-                background: 'transparent',
-                color: 'var(--text-secondary)',
-                cursor: 'pointer',
-                padding: 0,
-                fontSize: '0.875rem',
-              }}
-              aria-label="Delete condition"
-            >
-              ×
-            </button>
-          </Row>
-        );
-      })}
-      <div>
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={handleAddCondition}
-          disabled={conditions.length >= MAX_FIELD_CONDITIONS}
-        >
-          Add Condition
-        </Button>
-      </div>
-
-      <ResultCountBox>
-        <SectionTitle>Result count</SectionTitle>
-        <Row>
-          <Switch
-            checked={resultCount.enabled}
-            onChange={handleResultToggle}
-            label="Enable result count check"
+      {groups.map((g, i) => (
+        <div key={g.id}>
+          {i > 0 && (
+            <div className="flex items-center gap-3 my-2">
+              <div className="flex-1 border-t border-slate-600/50" />
+              <button
+                className={`font-bold px-4 py-1.5 rounded-lg text-sm shadow transition cursor-pointer ${
+                  fieldLogic === 'or'
+                    ? 'bg-orange-600 text-white hover:bg-orange-700'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
+                onClick={toggleFieldLogic}
+              >
+                {fieldLogic.toUpperCase()}
+              </button>
+              <div className="flex-1 border-t border-slate-600/50" />
+            </div>
+          )}
+          <FieldGroupCard
+            testId={test.id}
+            group={g}
+            index={i + 1}
+            scenarios={scenarios}
+            isOnly={groups.length <= 1}
           />
-        </Row>
-        {resultCount.enabled && (
-          <Row>
-            <div>
-              <SmallLabel>Operator</SmallLabel>
-              <Select
-                value={resultCount.operator}
-                options={resultOperatorOptions.map((o) => ({
-                  value: o.value,
-                  label: o.label,
-                }))}
-                onChange={(v) => handleResultOperatorChange(v as ResultCountOperator)}
-              />
-            </div>
-            <div>
-              <SmallLabel>Value</SmallLabel>
-              <FieldInput
-                type="number"
-                value={resultCount.value}
-                onChange={(e) => handleResultValueChange(e.target.value)}
-                placeholder="expected value"
-              />
-            </div>
-          </Row>
-        )}
-      </ResultCountBox>
-    </GridRoot>
+        </div>
+      ))}
+
+      <button
+        className="w-full py-2.5 border border-dashed border-slate-700 rounded-lg text-sm text-slate-400 hover:text-cyan-400 hover:border-cyan-500 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+        onClick={() => store.addFieldGroup(test.id)}
+        disabled={atLimit}
+      >
+        + Add Field
+      </button>
+
+    </div>
   );
 }
-

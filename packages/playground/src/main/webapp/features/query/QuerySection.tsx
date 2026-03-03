@@ -3,94 +3,66 @@ import { useTestStore } from 'core/store/testStore';
 import { selectActiveTest } from 'core/store/selectors';
 import { getSavedSearchSpl } from '../../api/splunkApi';
 import { useSavedSearches } from '../../hooks/useSavedSearches';
-import { TextArea, Select, Message } from '../../common';
+import { Select, Message } from '../../common';
 
-const APP_CHANGE_MESSAGE =
-  'You changed the app. Some lookups and saved searches may not be available.';
+const APP_CHANGE_MSG = 'You changed the app. Some lookups and saved searches may not be available.';
 
 export function QuerySection() {
   const state = useTestStore();
-  const activeTest = selectActiveTest(state);
-  const app = activeTest?.app ?? '';
-  const spl = activeTest?.query.spl ?? '';
-  const savedSearchOrigin = activeTest?.query.savedSearchOrigin ?? '';
+  const test = selectActiveTest(state);
+  const app = test?.app ?? '';
+  const spl = test?.query.spl ?? '';
+  const origin = test?.query.savedSearchOrigin ?? '';
 
-  const { savedSearches, loading, error, refetch } = useSavedSearches(app);
+  const { savedSearches, loading, error } = useSavedSearches(app);
 
-  const prevAppRef = useRef(app);
-  const [showAppChangeMessage, setShowAppChangeMessage] = useState(false);
+  const prevApp = useRef(app);
+  const [appChanged, setAppChanged] = useState(false);
 
   useEffect(() => {
-    if (app !== prevAppRef.current && prevAppRef.current !== '') {
-      setShowAppChangeMessage(true);
-    }
-    prevAppRef.current = app;
+    if (app !== prevApp.current && prevApp.current !== '') setAppChanged(true);
+    prevApp.current = app;
   }, [app]);
 
-  const savedSearchOptions = [
-    { value: '', label: '— Select saved search —' },
+  const options = [
+    { value: '', label: 'Select a saved search...' },
     ...savedSearches.map((s) => ({ value: s.name, label: s.name })),
   ];
 
-  const handleSplChange = (value: string) => {
-    if (activeTest) state.loadSavedSearchSpl(activeTest.id, value, null);
+  const handleSavedSearch = async (value: string) => {
+    if (!test || !app || !value) return;
+    try {
+      const content = await getSavedSearchSpl(app, value);
+      state.loadSavedSearchSpl(test.id, content, value);
+    } catch { /* leave SPL unchanged */ }
   };
 
-  const handleSavedSearchChange = async (value: string) => {
-    if (!activeTest || !app || !value) return;
-    try {
-      const splContent = await getSavedSearchSpl(app, value);
-      state.loadSavedSearchSpl(activeTest.id, splContent, value);
-    } catch {
-      // leave SPL unchanged on fetch error
-    }
+  const handleSplChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    if (test) state.loadSavedSearchSpl(test.id, e.target.value, null);
   };
 
   return (
-    <div
-      style={{
-        padding: 'var(--radius-lg)',
-        background: 'var(--bg-card)',
-        border: '1px solid var(--border)',
-        borderRadius: 'var(--radius-lg)',
-      }}
-    >
-      {showAppChangeMessage && (
-        <div style={{ marginBottom: 'var(--radius-md)' }}>
-          <Message type="warning" dismissible onDismiss={() => setShowAppChangeMessage(false)}>
-            {APP_CHANGE_MESSAGE}
-          </Message>
-        </div>
+    <div className="flex flex-col gap-3">
+      {appChanged && (
+        <Message type="warning" dismissible onDismiss={() => setAppChanged(false)}>
+          {APP_CHANGE_MSG}
+        </Message>
       )}
 
-      <div style={{ marginBottom: 'var(--radius-md)' }}>
-        <label style={{ display: 'block', marginBottom: 'var(--radius-sm)', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-          Saved search
-        </label>
-        <Select
-          value={savedSearchOrigin}
-          options={savedSearchOptions}
-          onChange={handleSavedSearchChange}
-          disabled={loading}
-        />
-        {error && (
-          <div style={{ marginTop: 'var(--radius-sm)', fontSize: '0.875rem', color: 'var(--error)' }}>
-            {error}
-          </div>
-        )}
+      <div>
+        <label className="block mb-1 text-slate-400 text-[13px]">Load from saved search</label>
+        <Select value={origin} options={options} onChange={handleSavedSearch} disabled={loading} />
+        {error && <div className="mt-1 text-[13px] text-red-400">{error}</div>}
       </div>
 
-      <div>
-        <label style={{ display: 'block', marginBottom: 'var(--radius-sm)', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-          SPL query
-        </label>
-        <TextArea
+      <div className="relative">
+        <textarea
           value={spl}
           onChange={handleSplChange}
-          placeholder="Enter SPL query..."
-          rows={6}
-          style={{ fontFamily: 'var(--font-mono, monospace)' }}
+          placeholder="index=main sourcetype=access_combined | stats count by src_ip"
+          className="w-full min-h-[200px] px-3 py-3 text-[13px] leading-relaxed bg-slate-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 font-mono focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/30 transition resize-y"
         />
+        <span className="absolute right-3 bottom-2 text-[11px] text-slate-500 pointer-events-none">{spl.length} chars</span>
       </div>
     </div>
   );

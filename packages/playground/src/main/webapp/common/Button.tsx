@@ -1,61 +1,21 @@
 import React from 'react';
-import styled from 'styled-components';
 // TODO: Replace with @splunk/react-ui
 
-type ButtonVariant = 'primary' | 'secondary' | 'danger';
+type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost';
 type ButtonSize = 'sm' | 'md' | 'lg';
 
-const sizeMap = {
-  sm: { padding: '6px 12px', fontSize: '0.875rem' },
-  md: { padding: '8px 16px', fontSize: '1rem' },
-  lg: { padding: '10px 20px', fontSize: '1.125rem' },
+const variantStyles: Record<ButtonVariant, string> = {
+  primary: 'bg-cyan-600 hover:bg-cyan-500 text-white shadow-sm shadow-cyan-900/50',
+  secondary: 'bg-transparent border border-slate-600 text-slate-300 hover:border-cyan-500 hover:text-cyan-400',
+  danger: 'bg-red-600 hover:bg-red-500 text-white',
+  ghost: 'text-slate-400 hover:text-cyan-400 hover:bg-slate-800',
 };
 
-const StyledButton = styled.button<{
-  $variant: ButtonVariant;
-  $size: ButtonSize;
-}>`
-  padding: ${(p) => sizeMap[p.$size].padding};
-  font-size: ${(p) => sizeMap[p.$size].fontSize};
-  border: 1px solid transparent;
-  border-radius: var(--radius-md);
-  cursor: ${(p) => (p.disabled ? 'not-allowed' : 'pointer')};
-  opacity: ${(p) => (p.disabled ? 0.6 : 1)};
-  transition: var(--transition-fast);
-
-  ${(p) =>
-    p.$variant === 'primary' &&
-    `
-    background-color: var(--accent);
-    color: var(--bg-primary);
-    border-color: var(--accent);
-    box-shadow: var(--shadow-card);
-    &:hover:not(:disabled) {
-      background-color: var(--accent-hover);
-      border-color: var(--accent-hover);
-    }
-  `}
-  ${(p) =>
-    p.$variant === 'secondary' &&
-    `
-    background-color: transparent;
-    color: var(--accent);
-    border-color: var(--accent);
-    &:hover:not(:disabled) {
-      background-color: rgba(0, 212, 255, 0.08);
-    }
-  `}
-  ${(p) =>
-    p.$variant === 'danger' &&
-    `
-    background-color: var(--error);
-    color: white;
-    border-color: var(--error);
-    &:hover:not(:disabled) {
-      filter: brightness(1.1);
-    }
-  `}
-`;
+const sizeStyles: Record<ButtonSize, string> = {
+  sm: 'px-3 py-1.5 text-xs',
+  md: 'px-4 py-2 text-sm',
+  lg: 'px-5 py-2.5 text-base',
+};
 
 export interface ButtonProps {
   variant?: ButtonVariant;
@@ -63,6 +23,7 @@ export interface ButtonProps {
   disabled?: boolean;
   onClick?: () => void;
   children: React.ReactNode;
+  className?: string;
 }
 
 export function Button({
@@ -71,16 +32,16 @@ export function Button({
   disabled = false,
   onClick,
   children,
+  className = '',
 }: ButtonProps) {
   return (
-    <StyledButton
+    <button
       type="button"
-      $variant={variant}
-      $size={size}
       disabled={disabled}
       onClick={onClick}
+      className={`font-semibold rounded-lg transition ${sizeStyles[size]} ${variantStyles[variant]} ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${className}`}
     >
       {children}
-    </StyledButton>
+    </button>
   );
 }

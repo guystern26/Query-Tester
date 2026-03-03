@@ -40,66 +40,36 @@ export function TestNavigation() {
     if (activeTestId) state.updateTestName(activeTestId, e.target.value);
   };
 
-  const handleNew = () => state.addTest();
-  const handleDuplicate = () => activeTestId && state.duplicateTest(activeTestId);
-
-  const openDeleteModal = () => setDeleteModalOpen(true);
-  const closeDeleteModal = () => setDeleteModalOpen(false);
-  const confirmDelete = () => {
-    if (activeTestId) state.deleteTest(activeTestId);
-    closeDeleteModal();
-  };
-
   const displayIndex = activeIndex >= 0 ? activeIndex + 1 : 0;
   const counterText = count > 0 ? `(${displayIndex} of ${count})` : '(0 of 0)';
 
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--radius-md)', flexWrap: 'wrap' }}>
-        <Button variant="secondary" size="sm" onClick={goPrev} disabled={!canGoPrev}>
-          ‹ Prev
-        </Button>
-        <Button variant="secondary" size="sm" onClick={goNext} disabled={!canGoNext}>
-          Next ›
-        </Button>
+      <div className="flex items-center gap-2 flex-wrap">
+        <Button variant="secondary" size="sm" onClick={goPrev} disabled={!canGoPrev}>‹ Prev</Button>
+        <Button variant="secondary" size="sm" onClick={goNext} disabled={!canGoNext}>Next ›</Button>
         <input
           type="text"
           value={activeTest?.name ?? ''}
           onChange={handleNameChange}
           placeholder="Put your test name here..."
-          style={{
-            padding: 'var(--radius-sm) var(--radius-md)',
-            background: 'var(--bg-input)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-md)',
-            color: 'var(--text-primary)',
-            minWidth: 160,
-            fontSize: '1rem',
-          }}
+          className="min-w-[160px] px-3 py-1.5 text-sm bg-slate-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/30 transition"
         />
-        <span style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>{counterText}</span>
-        <Button variant="primary" size="sm" onClick={handleNew} disabled={!canAdd}>
-          New
-        </Button>
-        <Button variant="secondary" size="sm" onClick={handleDuplicate} disabled={!activeTestId}>
-          Duplicate
-        </Button>
-        <Button variant="danger" size="sm" onClick={openDeleteModal} disabled={!canDelete}>
-          Delete
-        </Button>
+        <span className="text-[13px] text-slate-400">{counterText}</span>
+        <Button variant="primary" size="sm" onClick={() => state.addTest()} disabled={!canAdd}>New</Button>
+        <Button variant="secondary" size="sm" onClick={() => activeTestId && state.duplicateTest(activeTestId)} disabled={!activeTestId}>Duplicate</Button>
+        <Button variant="danger" size="sm" onClick={() => setDeleteModalOpen(true)} disabled={!canDelete}>Delete</Button>
       </div>
 
       <Modal
         open={deleteModalOpen}
         title="Delete test?"
-        onClose={closeDeleteModal}
+        onClose={() => setDeleteModalOpen(false)}
         confirmLabel="Delete"
-        onConfirm={confirmDelete}
+        onConfirm={() => { if (activeTestId) state.deleteTest(activeTestId); setDeleteModalOpen(false); }}
         variant="danger"
       >
-        <p style={{ margin: 0 }}>
-          Delete &quot;{activeTest?.name ?? 'this test'}&quot;? This cannot be undone.
-        </p>
+        <p className="m-0">Delete &quot;{activeTest?.name ?? 'this test'}&quot;? This cannot be undone.</p>
       </Modal>
     </>
   );
