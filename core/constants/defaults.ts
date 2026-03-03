@@ -1,0 +1,106 @@
+/**
+ * Factory functions for empty/default entities. Empty values only — no default names or data.
+ * Spec 2.5: ID via crypto.randomUUID().
+ */
+
+import type {
+  EntityId,
+  TestDefinition,
+  Scenario,
+  TestInput,
+  InputEvent,
+  QueryConfig,
+  ValidationConfig,
+  ResultCountRule,
+  GeneratorConfig,
+} from '../types';
+
+/** Generates a new EntityId (crypto.randomUUID()). Node 18 fallback via require('crypto').randomUUID(). */
+export function genId(): EntityId {
+  if (typeof globalThis.crypto !== 'undefined' && typeof globalThis.crypto.randomUUID === 'function') {
+    return globalThis.crypto.randomUUID();
+  }
+  // Node 18 (e.g. tests)
+  try {
+    const nodeCrypto = require('crypto') as { randomUUID?: () => string };
+    if (typeof nodeCrypto.randomUUID === 'function') {
+      return nodeCrypto.randomUUID();
+    }
+  } catch {
+    // ignore
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+}
+
+export function createDefaultEvent(): InputEvent {
+  return {
+    id: genId(),
+    fieldValues: [],
+  };
+}
+
+export function createDefaultInput(): TestInput {
+  return {
+    id: genId(),
+    rowIdentifier: '',
+    inputMode: 'fields',
+    jsonContent: '',
+    events: [createDefaultEvent()],
+    fileRef: null,
+    generatorConfig: createDefaultGeneratorConfig(),
+  };
+}
+
+export function createDefaultScenario(): Scenario {
+  return {
+    id: genId(),
+    name: '',
+    description: '',
+    inputs: [createDefaultInput()],
+  };
+}
+
+export function createDefaultQueryConfig(): QueryConfig {
+  return {
+    spl: '',
+    savedSearchOrigin: null,
+  };
+}
+
+function createDefaultResultCountRule(): ResultCountRule {
+  return {
+    enabled: false,
+    operator: 'equals',
+    value: 0,
+  };
+}
+
+export function createDefaultValidationConfig(): ValidationConfig {
+  return {
+    validationType: 'standard',
+    approach: 'field_conditions',
+    expectedResultJson: '',
+    expectedResultFileRef: null,
+    fieldConditions: [],
+    resultCount: createDefaultResultCountRule(),
+  };
+}
+
+function createDefaultGeneratorConfig(): GeneratorConfig {
+  return {
+    enabled: false,
+    rules: [],
+  };
+}
+
+export function createDefaultTest(): TestDefinition {
+  return {
+    id: genId(),
+    name: '',
+    app: '',
+    testType: 'standard',
+    scenarios: [createDefaultScenario()],
+    query: createDefaultQueryConfig(),
+    validation: createDefaultValidationConfig(),
+  };
+}

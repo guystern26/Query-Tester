@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react",
+    "strict": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "core/*": ["core/*"],
+      "@/*": ["packages/playground/src/main/webapp/*"],
+      "@types/*": ["packages/playground/src/main/webapp/core/types/*"],
+      "@constants/*": ["packages/playground/src/main/webapp/core/constants/*"],
+      "@store/*": ["packages/playground/src/main/webapp/core/store/*"],
+      "@api/*": ["packages/playground/src/main/webapp/api/*"],
+      "@hooks/*": ["packages/playground/src/main/webapp/hooks/*"],
+      "@utils/*": ["packages/playground/src/main/webapp/utils/*"],
+      "@common/*": ["packages/playground/src/main/webapp/common/*"],
+      "@components/*": ["packages/playground/src/main/webapp/components/*"],
+      "@features/*": ["packages/playground/src/main/webapp/features/*"]
+    }
+  },
+  "include": ["packages/playground/src/main/webapp/**/*"]
+}

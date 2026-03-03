@@ -1,0 +1,51 @@
+# Splunk Query Tester - Cursor Rules
+
+## HARD CONSTRAINTS (never violate)
+- React 16.13.1. NOT React 17 or 18.
+- Use ReactDOM.render(), NEVER createRoot().
+- Zustand v4.5.x with default import: import create from 'zustand'
+- NEVER use: useId, useDeferredValue, useTransition, startTransition, Suspense for data
+- NEVER use MUI (@mui/*). Use @splunk/react-ui + @splunk/themes + styled-components v5.
+- NEVER use Tailwind CSS in components. Splunk bundling strips it. Use CSS Modules or styled-components.
+- Node.js 18.12. Vite 4.5.x. Closed network - no CDN imports at runtime.
+- IDs: crypto.randomUUID()
+- Entry point: ReactDOM.render() wrapped in SplunkThemeProvider.
+
+## Architecture
+- State: Single Zustand store (testStore.ts) with Immer middleware.
+- Only separate hook: useSavedSearches (async data fetching).
+- Data hierarchy: Test -> Scenario[] -> TestInput[] -> InputEvent[] -> FieldValue[]
+- rowIdentifier at INPUT level (not event level).
+- testType: standard | query_only. ValidationType: standard | ijump_alert.
+- Each scenario runs independently (no cartesian product).
+- TestInput uses inputMode (not inputType), jsonContent as string.
+- fileRef stores metadata only (not File object).
+- TestDefinition has app field. QueryConfig has spl + savedSearchOrigin (no mode toggle).
+
+## UI Components
+- Use @splunk/react-ui for Button, Card, ControlGroup, Select, TextArea, Message, Modal, Switch, Tabs.
+- Wrap app in SplunkThemeProvider family=enterprise colorScheme=dark density=comfortable.
+- Dark mode. CSS custom properties for colors.
+- Progressive horizontal flow: App -> Query -> Data -> Validation -> Results.
+- Placeholders on ALL inputs. NO pre-filled default values in UI.
+- Payload builder applies fallbacks at submission time only.
+
+## File Organization
+- core/types/index.ts - all interfaces and enums
+- core/constants/defaults.ts - factory functions (createDefaultTest etc)
+- core/constants/limits.ts - MAX_TESTS=20, MAX_SCENARIOS=10, MAX_INPUTS=10, MAX_EVENTS=50, MAX_FIELDS=30
+- core/store/testStore.ts - single Zustand v4 store with Immer
+- core/store/selectors.ts - memoized selectors
+- features/{scenarios,query,validation,results,eventGenerator}/ - feature components
+- common/ - shared wrapper components
+- api/ - splunkApi.ts, testApi.ts
+- hooks/useSavedSearches.ts
+
+## Key Patterns
+- addEvent inherits field names from previous event with empty values
+- addFieldToAllEvents adds field to every event in an input simultaneously
+- JSON editor: debounced store update (300ms) with local state for instant feedback
+- Run button: AbortController for cancel, 120s timeout
+- Multivalue results: split on newline, render each value on own line
+- Pre-flight validation: 8 checks before API call
+- Confirmation dialogs: delete test, delete non-empty scenario, clear validation

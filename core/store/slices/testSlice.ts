@@ -1,0 +1,74 @@
+/**
+ * Test CRUD slice: add, delete, duplicate, rename, setActive, updateType, updateApp, setFieldExtraction.
+ */
+
+import type { EntityId, TestType, ExtractedDataSource, TestDefinition } from '../../types';
+import { genId, createDefaultTest } from '../../constants/defaults';
+import { MAX_TESTS_PER_SESSION } from '../../constants/limits';
+import { findTest, deepCloneTestWithNewIds } from './helpers';
+
+type SetState = (recipe: (draft: { tests: TestDefinition[]; activeTestId: EntityId | null }) => void) => void;
+type GetState = () => { tests: TestDefinition[]; activeTestId: EntityId | null };
+
+export function testSlice(set: SetState, _get: GetState) {
+  return {
+    addTest: () =>
+      set((draft) => {
+        if (draft.tests.length >= MAX_TESTS_PER_SESSION) return;
+        const newTest = createDefaultTest();
+        newTest.id = genId();
+        draft.tests.push(newTest);
+        draft.activeTestId = newTest.id;
+      }),
+
+    deleteTest: (testId: EntityId) =>
+      set((draft) => {
+        if (draft.tests.length <= 1) return;
+        const idx = draft.tests.findIndex((t) => t.id === testId);
+        if (idx === -1) return;
+        draft.tests.splice(idx, 1);
+        if (draft.activeTestId === testId) {
+          draft.activeTestId = draft.tests[Math.max(0, idx - 1)]?.id ?? null;
+        }
+      }),
+
+    duplicateTest: (testId: EntityId) =>
+      set((draft) => {
+        if (draft.tests.length >= MAX_TESTS_PER_SESSION) return;
+        const test = draft.tests.find((t) => t.id === testId);
+        if (!test) return;
+        const copy = deepCloneTestWithNewIds(test);
+        draft.tests.push(copy);
+        draft.activeTestId = copy.id;
+      }),
+
+    updateTestName: (testId: EntityId, name: string) =>
+      set((draft) => {
+        const t = findTest(draft.tests, testId);
+        if (t) t.name = name;
+      }),
+
+    setActiveTest: (testId: EntityId | null) =>
+      set((draft) => {
+        draft.activeTestId = testId;
+      }),
+
+    updateTestType: (testId: EntityId, testType: TestType) =>
+      set((draft) => {
+        const t = findTest(draft.tests, testId);
+        if (t) t.testType = testType;
+      }),
+
+    updateApp: (testId: EntityId, app: string) =>
+      set((draft) => {
+        const t = findTest(draft.tests, testId);
+        if (t) t.app = app;
+      }),
+
+    setFieldExtraction: (testId: EntityId, sources: ExtractedDataSource[]) =>
+      set((draft) => {
+        const t = findTest(draft.tests, testId);
+        if (t) t.fieldExtraction = { sources, timestamp: new Date().toISOString() };
+      }),
+  };
+}
