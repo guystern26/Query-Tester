@@ -9,3 +9,6 @@ licenses.json
 functional-temp
 splunktional-temp
 .playwright-mcp
+dist/
+packages/*/stage/
+packages/*/types/
