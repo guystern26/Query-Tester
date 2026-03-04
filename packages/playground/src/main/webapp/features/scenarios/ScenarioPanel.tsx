@@ -5,7 +5,7 @@ import { MAX_SCENARIOS_PER_TEST, MAX_INPUTS_PER_SCENARIO } from 'core/constants/
 import type { Scenario } from 'core/types';
 import { Button, Modal } from '../../common';
 import { InputCard } from './InputCard';
-import { SCENARIO_COLORS, type ScenarioColor } from './scenarioColors';
+import { getScenarioColor, type ScenarioColor } from './scenarioColors';
 
 function hasData(s: Scenario): boolean {
   return s.inputs.some((inp) => {
@@ -91,14 +91,14 @@ export function ScenarioPanel() {
 
   const delName = scenarios.find((s) => s.id === delTarget)?.name?.trim() || 'this scenario';
   const selIndex = scenarios.findIndex((s) => s.id === selId);
-  const selColor = selIndex >= 0 ? SCENARIO_COLORS[selIndex % SCENARIO_COLORS.length] : SCENARIO_COLORS[0];
+  const selColor = getScenarioColor(selIndex >= 0 ? selIndex : 0);
 
   return (
     <>
       {/* Tab row */}
       <div className="flex items-center border-b border-slate-800 mb-4">
         {scenarios.map((s, i) => {
-          const sc = SCENARIO_COLORS[i % SCENARIO_COLORS.length];
+          const sc = getScenarioColor(i);
           return (
           <div key={s.id} className="relative group">
             <button

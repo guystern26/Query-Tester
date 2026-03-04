@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTestStore } from 'core/store/testStore';
 import { selectInput } from 'core/store/selectors';
 import type { EntityId } from 'core/types';
 import { MAX_GENERATOR_RULES } from 'core/constants/limits';
+import { EmptyState } from '../../common';
 import { GeneratorRule } from './GeneratorRule';
 
 export interface GeneratorPanelProps {
@@ -21,16 +22,19 @@ export function GeneratorPanel({ testId, scenarioId, inputId, fieldNames }: Gene
   const cfg = input.generatorConfig;
   const rules = cfg.rules;
 
+  const events = input.events;
+
   // Use provided fieldNames (JSON mode) or collect from events table (fields mode)
-  const allFieldNames: string[] = fieldNames ?? (() => {
+  const allFieldNames = useMemo(() => {
+    if (fieldNames) return fieldNames;
     const names: string[] = [];
-    if (input.events.length > 0) {
-      for (const fv of input.events[0].fieldValues) {
+    if (events.length > 0) {
+      for (const fv of events[0].fieldValues) {
         if (fv.field.trim() && !names.includes(fv.field)) names.push(fv.field);
       }
     }
     return names;
-  })();
+  }, [fieldNames, events]);
 
   const hasFields = allFieldNames.length > 0;
   const usedFieldSet = new Set(rules.map((r) => r.field).filter(Boolean));
@@ -50,23 +54,14 @@ export function GeneratorPanel({ testId, scenarioId, inputId, fieldNames }: Gene
       )}
 
       {hasFields && rules.length === 0 && (
-        <div className="flex flex-col items-center gap-3 py-6">
-          <div className="w-10 h-10 rounded-full bg-yellow-900/30 flex items-center justify-center">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#eab308" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-            </svg>
-          </div>
-          <div className="text-center">
-            <p className="text-sm text-slate-300 font-medium m-0">No generation rules yet</p>
-            <p className="text-xs text-slate-500 mt-1 m-0">Add a rule to auto-generate field values for events.</p>
-          </div>
-          <button
-            className="px-4 py-2 rounded-lg text-sm font-semibold bg-accent-500 text-white hover:bg-accent-400 transition cursor-pointer"
-            onClick={handleAddRule}
-          >
-            + Add First Rule
-          </button>
-        </div>
+        <EmptyState
+          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#eab308" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>}
+          iconBg="bg-yellow-900/30"
+          title="No generation rules yet"
+          subtitle="Add a rule to auto-generate field values for events."
+          actionLabel="+ Add First Rule"
+          onAction={handleAddRule}
+        />
       )}
 
       {hasFields && rules.length > 0 && (

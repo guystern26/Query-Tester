@@ -18,7 +18,7 @@ export function Modal({ open, title, children, onClose, confirmLabel, onConfirm,
 
   const confirmCls = variant === 'danger'
     ? 'bg-red-600 hover:bg-red-500 text-white border border-transparent'
-    : 'bg-accent-400 hover:bg-accent-500 text-white border border-transparent';
+    : 'bg-btnprimary hover:bg-btnprimary-hover text-white border border-transparent';
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center" onClick={onClose} role="dialog" aria-modal="true">

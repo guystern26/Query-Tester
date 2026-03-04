@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTestStore } from 'core/store/testStore';
 import type { EntityId, FieldGenerationRule, PickListItem } from 'core/types';
+import { EmptyState } from '../../../common';
 import { normalizeWeights, genId } from '../utils/normalizeWeights';
 import { VHeader, VRow, VWeight, VDelBtn, VAddBtn, vInputCls, vHeaderCls } from './VariantRow';
 
@@ -51,24 +52,14 @@ export function PickListConfig({ testId, scenarioId, inputId, rule }: PickListCo
   return (
     <div className="mt-2">
       {items.length === 0 && (
-        <div className="flex flex-col items-center gap-3 py-6">
-          <div className="w-10 h-10 rounded-full bg-blue-900/30 flex items-center justify-center">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" />
-              <line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" />
-            </svg>
-          </div>
-          <div className="text-center">
-            <p className="text-sm text-slate-300 font-medium m-0">No values yet</p>
-            <p className="text-xs text-slate-500 mt-1 m-0">Add your first value to the pick list.</p>
-          </div>
-          <button
-            className="px-4 py-2 rounded-lg text-sm font-semibold bg-btnprimary text-white hover:brightness-110 transition cursor-pointer"
-            onClick={handleAdd}
-          >
-            + Add First Value
-          </button>
-        </div>
+        <EmptyState
+          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" /></svg>}
+          iconBg="bg-blue-900/30"
+          title="No values yet"
+          subtitle="Add your first value to the pick list."
+          actionLabel="+ Add First Value"
+          onAction={handleAdd}
+        />
       )}
       {items.length > 0 && (
         <>

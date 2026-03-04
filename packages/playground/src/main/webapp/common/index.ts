@@ -12,6 +12,8 @@ export type { TextAreaProps } from './TextArea';
 export { Switch } from './Switch';
 export type { SwitchProps } from './Switch';
 export { Message } from './Message';
+export { EmptyState } from './EmptyState';
+export type { EmptyStateProps } from './EmptyState';
 export type { MessageProps } from './Message';
 export { Tabs } from './Tabs';
 export type { TabsProps, TabItem } from './Tabs';

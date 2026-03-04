@@ -42,14 +42,17 @@ export function JsonInputView({ testId, scenarioId, inputId }: JsonInputViewProp
   const [error, setError] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const localEdit = useRef(false);
+  const lastSentValue = useRef(storeValue);
 
   useEffect(() => {
-    // Only sync from store when value was NOT set locally (e.g. external reset)
-    if (!localEdit.current) {
+    // Only sync from store when the value differs from what we last sent
+    // (i.e. an external reset happened, not our own debounced write echoing back)
+    if (storeValue !== lastSentValue.current) {
       setValue(storeValue);
+      lastSentValue.current = storeValue;
+      if (storeValue.trim() === '') setError(null);
+      else { try { JSON.parse(storeValue); setError(null); } catch { setError('Invalid JSON'); } }
     }
-    localEdit.current = false;
   }, [storeValue]);
 
   const debouncedUpdate = useMemo(
@@ -60,8 +63,8 @@ export function JsonInputView({ testId, scenarioId, inputId }: JsonInputViewProp
   useEffect(() => () => { debouncedUpdate.cancel(); }, [debouncedUpdate]);
 
   const handleChange = (next: string) => {
-    localEdit.current = true;
     setValue(next);
+    lastSentValue.current = next;
     if (next.trim() === '') { setError(null); }
     else { try { JSON.parse(next); setError(null); } catch { setError('Invalid JSON'); } }
     debouncedUpdate(next);

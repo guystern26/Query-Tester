@@ -85,7 +85,7 @@ function Pipe({ leftComplete, rightActive, isRunning }: { leftComplete: boolean;
 
 export function StepPipeline({ steps, activeIndex, allComplete, isRunning, onStepClick }: StepPipelineProps) {
   return (
-    <div className="flex items-start px-8 py-3">
+    <div className="flex items-start px-8 py-3 mx-auto w-full max-w-[90rem]">
       {steps.map((step, i) => (
         <React.Fragment key={step.id}>
           <StepNode step={step} onClick={() => onStepClick(step.id)} />

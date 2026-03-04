@@ -62,9 +62,9 @@ export function InputCard({ testId, scenarioId, input, index, isOpen = true, onT
   const fieldCount = input.events.length === 0 ? 0 : Math.max(0, ...input.events.map((e) => e.fieldValues.length));
   const hasNamedFields = input.events.length > 0 && input.events[0].fieldValues.some((fv) => fv.field.trim() !== '');
 
-  // Extract field names from JSON content
-  const jsonFieldNames = useMemo<string[]>(() => {
-    if (!input.jsonContent?.trim()) return [];
+  // Extract field names + validity from JSON (single parse)
+  const { jsonFieldNames, jsonIsValid } = useMemo(() => {
+    if (!input.jsonContent?.trim()) return { jsonFieldNames: [] as string[], jsonIsValid: false };
     try {
       const parsed = JSON.parse(input.jsonContent);
       const items = Array.isArray(parsed) ? parsed : [parsed];
@@ -74,13 +74,8 @@ export function InputCard({ testId, scenarioId, input, index, isOpen = true, onT
           Object.keys(item).forEach((k) => keys.add(k));
         }
       }
-      return Array.from(keys);
-    } catch { return []; }
-  }, [input.jsonContent]);
-
-  const jsonIsValid = useMemo(() => {
-    if (!input.jsonContent?.trim()) return false;
-    try { JSON.parse(input.jsonContent); return true; } catch { return false; }
+      return { jsonFieldNames: Array.from(keys), jsonIsValid: true };
+    } catch { return { jsonFieldNames: [] as string[], jsonIsValid: false }; }
   }, [input.jsonContent]);
 
   // Generator is available when: fields mode + has named fields, OR json mode + valid JSON

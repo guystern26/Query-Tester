@@ -32,16 +32,16 @@ export function usePipelineState(): PipelineState {
   const validationDone = (test?.validation.fieldGroups.length ?? 0) > 0;
 
   const completions = isQueryOnly
-    ? [setupDone, queryDone, validationDone]
-    : [setupDone, queryDone, dataDone, validationDone];
+    ? [queryDone, validationDone]
+    : [queryDone, dataDone, validationDone];
 
   const labels = isQueryOnly
-    ? ['Setup', 'Query', 'Validation']
-    : ['Setup', 'Query', 'Data', 'Validation'];
+    ? ['Query', 'Validation']
+    : ['Query', 'Data', 'Validation'];
 
   const ids = isQueryOnly
-    ? ['setup', 'query', 'validation']
-    : ['setup', 'query', 'data', 'validation'];
+    ? ['query', 'validation']
+    : ['query', 'data', 'validation'];
 
   const activeIndex = completions.findIndex((c) => !c);
 
