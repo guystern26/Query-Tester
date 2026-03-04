@@ -42,8 +42,15 @@ export function JsonInputView({ testId, scenarioId, inputId }: JsonInputViewProp
   const [error, setError] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const localEdit = useRef(false);
 
-  useEffect(() => { setValue(storeValue); setError(null); setFileError(null); }, [storeValue]);
+  useEffect(() => {
+    // Only sync from store when value was NOT set locally (e.g. external reset)
+    if (!localEdit.current) {
+      setValue(storeValue);
+    }
+    localEdit.current = false;
+  }, [storeValue]);
 
   const debouncedUpdate = useMemo(
     () => debounce((next: string) => { updateInputJson(testId, scenarioId, inputId, next); }, 300),
@@ -53,6 +60,7 @@ export function JsonInputView({ testId, scenarioId, inputId }: JsonInputViewProp
   useEffect(() => () => { debouncedUpdate.cancel(); }, [debouncedUpdate]);
 
   const handleChange = (next: string) => {
+    localEdit.current = true;
     setValue(next);
     if (next.trim() === '') { setError(null); }
     else { try { JSON.parse(next); setError(null); } catch { setError('Invalid JSON'); } }
@@ -79,12 +87,23 @@ export function JsonInputView({ testId, scenarioId, inputId }: JsonInputViewProp
 
   return (
     <div>
-      <TextArea value={value} onChange={handleChange} placeholder="Paste your JSON data here..." rows={10} className="font-mono" style={error ? { borderColor: '#ef4444' } : undefined} />
+      <TextArea value={value} onChange={handleChange} placeholder="Paste your JSON data here..." rows={10} className={`font-mono ${error ? 'border-red-500 focus:border-red-500' : ''}`} />
 
-      {error && (
-        <div className="mt-1.5 flex items-center gap-1.5 text-red-400 text-[13px]">
-          <AlertIcon />
-          <Message type="error">{error}</Message>
+      {value.trim() !== '' && (
+        <div className={`mt-1.5 flex items-center gap-1.5 text-[13px] ${error ? 'text-red-400' : 'text-green-400'}`}>
+          {error ? (
+            <>
+              <AlertIcon />
+              <span>{error}</span>
+            </>
+          ) : (
+            <>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              <span>Valid JSON</span>
+            </>
+          )}
         </div>
       )}
 
@@ -92,7 +111,7 @@ export function JsonInputView({ testId, scenarioId, inputId }: JsonInputViewProp
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-slate-700 bg-slate-800 text-slate-200 text-[13px] font-semibold hover:border-cyan-500 hover:text-cyan-400 transition cursor-pointer"
+          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-slate-700 bg-navy-800 text-slate-200 text-[13px] font-semibold hover:border-accent-600 hover:text-accent-300 transition-all duration-200 cursor-pointer"
         >
           <UploadIcon />
           Upload JSON File
@@ -101,13 +120,13 @@ export function JsonInputView({ testId, scenarioId, inputId }: JsonInputViewProp
       </div>
 
       {fileRef && (
-        <div className="mt-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800 border border-slate-700/60 text-slate-300 text-[13px]">
+        <div className="mt-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-navy-800 border border-slate-700/60 text-slate-300 text-[13px]">
           <FileIcon />
           <span>{fileRef.name}{formattedSize ? ` (${formattedSize})` : ''}</span>
           <button
             type="button"
             onClick={() => setInputFileRef(testId, scenarioId, inputId, null)}
-            className="p-0.5 text-slate-400 hover:text-red-400 hover:bg-red-900/20 rounded transition cursor-pointer"
+            className="p-0.5 text-slate-400 hover:text-red-400 hover:bg-red-900/20 rounded transition-colors duration-200 cursor-pointer"
             aria-label="Clear file"
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">

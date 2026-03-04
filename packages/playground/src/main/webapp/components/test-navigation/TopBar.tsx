@@ -28,7 +28,7 @@ export function TopBar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 h-14 bg-slate-900 border-b border-slate-800 px-5 flex items-center justify-between shrink-0 shadow-lg shadow-black/20">
+    <header className="sticky top-0 z-50 h-14 bg-navy-900 border-b border-slate-800 px-5 flex items-center justify-between shrink-0 shadow-lg shadow-black/20">
       <div className="flex items-center gap-2">
         <Button variant="secondary" size="sm" onClick={handleSave}>Save</Button>
         <Button variant="secondary" size="sm" onClick={handleLoadClick}>Load</Button>

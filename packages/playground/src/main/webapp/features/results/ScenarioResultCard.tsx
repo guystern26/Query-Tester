@@ -20,10 +20,10 @@ export function ScenarioResultCard({ result }: ScenarioResultCardProps) {
   const [open, setOpen] = useState(!result.passed);
 
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded-lg overflow-hidden">
+    <div className="bg-navy-800 border border-slate-700 rounded-lg overflow-hidden">
       {/* Header */}
       <div
-        className="flex justify-between items-center px-4 py-2.5 cursor-pointer transition-colors hover:bg-slate-700/50"
+        className="flex justify-between items-center px-4 py-2.5 cursor-pointer transition-colors hover:bg-navy-700/50"
         onClick={() => setOpen(!open)}
       >
         <span className="font-semibold text-sm flex items-center gap-2 text-slate-200">
@@ -50,7 +50,7 @@ export function ScenarioResultCard({ result }: ScenarioResultCardProps) {
                 Input {idx + 1} &middot; <span className={ir.passed ? 'text-green-400' : 'text-red-300'}>{ir.passed ? 'Passed' : 'Failed'}</span>
               </div>
               {ir.eventResults.map((er) => (
-                <div key={er.eventIndex} className="p-2 rounded-md bg-slate-900/60">
+                <div key={er.eventIndex} className="p-2 rounded-md bg-navy-900/60">
                   <div className={`text-[13px] mb-1 ${er.passed ? 'text-green-400' : 'text-red-300'}`}>
                     Event {er.eventIndex + 1}
                     {er.error && <span className="text-red-300"> &mdash; {er.error}</span>}

@@ -141,24 +141,6 @@ export function validationSlice(set: SetState) {
         t.validation.fieldGroups = [];
       }),
 
-    setValidationApproach: (testId: EntityId, approach: 'expected_result' | 'field_conditions') =>
-      set((draft) => {
-        const t = findTest(draft.tests, testId);
-        if (t) t.validation.approach = approach;
-      }),
-
-    setExpectedResultJson: (testId: EntityId, json: string) =>
-      set((draft) => {
-        const t = findTest(draft.tests, testId);
-        if (t) t.validation.expectedResultJson = json;
-      }),
-
-    setExpectedResultFileRef: (testId: EntityId, fileRef: { name: string; size: number } | null) =>
-      set((draft) => {
-        const t = findTest(draft.tests, testId);
-        if (t) t.validation.expectedResultFileRef = fileRef;
-      }),
-
     updateResultCount: (
       testId: EntityId,
       patch: Partial<{ enabled: boolean; operator: ResultCountOperator; value: number }>,

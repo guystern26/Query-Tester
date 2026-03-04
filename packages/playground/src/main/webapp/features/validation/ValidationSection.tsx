@@ -18,16 +18,11 @@ export function ValidationSection() {
 
   const handleClearAll = () => {
     state.replaceAllFieldGroups(test.id, []);
-    state.setExpectedResultJson(test.id, '');
-    state.setExpectedResultFileRef(test.id, null);
     state.updateResultCount(test.id, { enabled: false, value: 0 });
     setClearOpen(false);
   };
 
-  const hasSomething =
-    test.validation.fieldGroups.length > 0 ||
-    (test.validation.expectedResultJson ?? '').trim() !== '' ||
-    !!test.validation.expectedResultFileRef;
+  const hasSomething = test.validation.fieldGroups.length > 0;
 
   const segBase = 'px-3.5 py-1.5 text-[13px] font-semibold transition cursor-pointer';
 
@@ -35,15 +30,15 @@ export function ValidationSection() {
     <div className="flex flex-col gap-3">
       <ResultCountSection testId={test.id} resultCount={test.validation.resultCount} />
 
-      <div className="flex bg-slate-950 rounded-lg p-1 border border-slate-700 w-fit">
+      <div className="flex bg-navy-950 rounded-lg p-1 border border-slate-700 w-fit">
         <button
-          className={`${segBase} rounded-md ${type === 'standard' ? 'bg-cyan-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
+          className={`${segBase} rounded-md ${type === 'standard' ? 'bg-accent-900 text-accent-300' : 'text-slate-400 hover:text-slate-200'}`}
           onClick={() => state.setValidationType(test.id, 'standard')}
         >
           Standard
         </button>
         <button
-          className={`${segBase} rounded-md ${type === 'ijump_alert' ? 'bg-cyan-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
+          className={`${segBase} rounded-md ${type === 'ijump_alert' ? 'bg-accent-900 text-accent-300' : 'text-slate-400 hover:text-slate-200'}`}
           onClick={() => state.setValidationType(test.id, 'ijump_alert')}
         >
           iJump Alert

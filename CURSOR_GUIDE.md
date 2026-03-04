@@ -227,8 +227,8 @@ CSS custom properties for dark mode theme:
   --text-primary: #e8e8e8
   --text-secondary: #a0a0b0
   --text-muted: #6b7280
-  --accent: #00d4ff
-  --accent-hover: #00b8d9
+  --accent: #b3d9ff
+  --accent-hover: #cce6ff
   --success: #4ade80
   --error: #ef4444
   --warning: #f59e0b
@@ -250,7 +250,7 @@ A wrapper component that:
 - Later this will be replaced with SplunkThemeProvider
 - Export as default
 
-4. packages/playground/src/main/webapp/common/Button.tsx — styled-components Button with variants: primary (cyan accent), secondary (gray), danger (red). Props: variant, size, disabled, onClick, children.
+4. packages/playground/src/main/webapp/common/Button.tsx — styled-components Button with variants: primary (sky accent), secondary (gray), danger (red). Props: variant, size, disabled, onClick, children.
 
 5. packages/playground/src/main/webapp/common/Card.tsx — dark card with --bg-card background, --border border, --radius-md radius, padding.
 

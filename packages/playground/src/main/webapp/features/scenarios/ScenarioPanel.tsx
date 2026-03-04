@@ -5,6 +5,7 @@ import { MAX_SCENARIOS_PER_TEST, MAX_INPUTS_PER_SCENARIO } from 'core/constants/
 import type { Scenario } from 'core/types';
 import { Button, Modal } from '../../common';
 import { InputCard } from './InputCard';
+import { SCENARIO_COLORS, type ScenarioColor } from './scenarioColors';
 
 function hasData(s: Scenario): boolean {
   return s.inputs.some((inp) => {
@@ -89,36 +90,41 @@ export function ScenarioPanel() {
   };
 
   const delName = scenarios.find((s) => s.id === delTarget)?.name?.trim() || 'this scenario';
+  const selIndex = scenarios.findIndex((s) => s.id === selId);
+  const selColor = selIndex >= 0 ? SCENARIO_COLORS[selIndex % SCENARIO_COLORS.length] : SCENARIO_COLORS[0];
 
   return (
     <>
       {/* Tab row */}
       <div className="flex items-center border-b border-slate-800 mb-4">
-        {scenarios.map((s, i) => (
+        {scenarios.map((s, i) => {
+          const sc = SCENARIO_COLORS[i % SCENARIO_COLORS.length];
+          return (
           <div key={s.id} className="relative group">
             <button
-              className={`px-4 py-2 text-[13px] -mb-px border-b-2 transition cursor-pointer flex items-center gap-1.5 ${
+              className={`px-4 py-2 text-[13px] -mb-px border-b-2 transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
                 s.id === selId
-                  ? 'font-semibold text-cyan-400 border-cyan-400'
-                  : 'text-slate-400 hover:text-slate-200 border-transparent hover:bg-slate-800'
+                  ? `font-semibold ${sc.text} ${sc.border}`
+                  : 'text-slate-400 hover:text-slate-200 border-transparent hover:bg-navy-800'
               }`}
               onClick={() => setSelId(s.id)}
             >
               {s.name.trim() || `Scenario ${i + 1}`}
-              {hasData(s) && <span className="w-1.5 h-1.5 rounded-full bg-green-400" />}
+              {hasData(s) && <span className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />}
             </button>
             {scenarios.length > 1 && (
               <button
-                className="absolute right-0.5 top-0.5 w-4 h-4 rounded-full text-[11px] text-slate-500 hover:text-red-400 hover:bg-red-900/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition cursor-pointer"
+                className="absolute right-0.5 top-0.5 w-4 h-4 rounded-full text-[11px] text-slate-500 hover:text-red-400 hover:bg-red-900/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all duration-200 cursor-pointer"
                 onClick={() => handleRemoveTab(s.id)}
               >
                 ×
               </button>
             )}
           </div>
-        ))}
+          );
+        })}
         <button
-          className="w-6 h-6 rounded-full bg-slate-800 text-slate-400 text-sm ml-2 -mb-px flex items-center justify-center hover:text-cyan-400 hover:bg-slate-700 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-6 h-6 rounded-full bg-navy-800 text-slate-400 text-sm ml-2 -mb-px flex items-center justify-center hover:text-accent-300 hover:bg-navy-700 transition-all duration-200 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
           onClick={() => state.addScenario(test.id)}
           disabled={!canAddScenario}
         >
@@ -133,14 +139,14 @@ export function ScenarioPanel() {
             value={sel.name}
             onChange={(e) => state.updateScenarioName(test.id, sel.id, e.target.value)}
             placeholder="e.g., Normal user activity..."
-            className="w-full bg-transparent border-0 border-b border-slate-700 rounded-none px-0 py-1.5 text-[13px] font-medium text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition mb-1"
+            className="w-full bg-transparent border-0 border-b border-slate-700 rounded-none px-0 py-1.5 text-[13px] font-medium text-slate-100 placeholder-slate-500 focus:outline-none focus:border-accent-600 transition-colors duration-200 mb-1"
           />
           <input
             type="text"
             value={sel.description}
             onChange={(e) => state.updateScenarioDescription(test.id, sel.id, e.target.value)}
             placeholder="Describe this scenario..."
-            className="w-full bg-transparent border-0 border-b border-slate-700 rounded-none px-0 py-1.5 text-[13px] text-slate-400 placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:text-slate-200 transition"
+            className="w-full bg-transparent border-0 border-b border-slate-700 rounded-none px-0 py-1.5 text-[13px] text-slate-400 placeholder-slate-500 focus:outline-none focus:border-accent-600 focus:text-slate-200 transition-colors duration-200"
           />
 
           {sel.inputs.length === 0 ? (
@@ -156,7 +162,7 @@ export function ScenarioPanel() {
             </div>
           ) : (
             <>
-              <div className="flex flex-col gap-3 mt-3">
+              <div className={`flex flex-col gap-3 mt-3 rounded-lg p-2 -mx-2 transition-colors duration-300 ${selColor.tint}`}>
                 {sel.inputs.map((inp, i) => (
                   <InputCard
                     key={inp.id}
@@ -166,11 +172,12 @@ export function ScenarioPanel() {
                     index={i + 1}
                     isOpen={openInputId === inp.id}
                     onToggle={() => setOpenInputId(openInputId === inp.id ? null : inp.id)}
+                    accentBorder={selColor.cardBorder}
                   />
                 ))}
               </div>
               <button
-                className="w-full py-2.5 mt-3 border border-dashed border-slate-700 rounded-lg text-sm text-slate-400 hover:text-cyan-400 hover:border-cyan-500 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                className="w-full py-2.5 mt-3 border border-dashed border-slate-700 rounded-lg text-sm text-slate-400 hover:text-accent-300 hover:border-accent-600 transition-all duration-200 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                 onClick={() => state.addInput(test.id, sel.id)}
                 disabled={!canAddInput}
               >

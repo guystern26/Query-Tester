@@ -12,10 +12,8 @@ export interface GeneralFieldConfigProps {
 }
 
 const COMP_OPTIONS: { value: GeneralComponentType; label: string }[] = [
-  { value: 'alphanumeric', label: 'Alphanumeric (aB3x)' },
+  { value: 'alphanumeric', label: 'String (aB3x)' },
   { value: 'numeric', label: 'Numeric (1234)' },
-  { value: 'alpha', label: 'Alpha (aBcD)' },
-  { value: 'hex', label: 'Hex (a1f3)' },
 ];
 
 function getVariants(rule: FieldGenerationRule): GeneralFieldVariant[] {

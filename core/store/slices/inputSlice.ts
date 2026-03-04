@@ -35,7 +35,11 @@ export function inputSlice(set: SetState) {
         const t = findTest(draft.tests, testId);
         const s = t && findScenario(t, scenarioId);
         const input = s && findInput(s, inputId);
-        if (input) input.inputMode = mode;
+        if (input && input.inputMode !== mode) {
+          input.inputMode = mode;
+          // Reset generator when switching modes — fields and JSON are independent
+          input.generatorConfig = { enabled: false, rules: [], eventCount: input.generatorConfig.eventCount };
+        }
       }),
 
     updateRowIdentifier: (testId: EntityId, scenarioId: EntityId, inputId: EntityId, rowIdentifier: string) =>

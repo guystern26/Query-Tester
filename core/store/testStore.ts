@@ -36,6 +36,7 @@ export interface TestStoreState {
   activeTestId: EntityId | null;
   isRunning: boolean;
   testResponse: TestResponse | null;
+  resultsBarExpanded: boolean;
 
   addTest: () => void;
   deleteTest: (testId: EntityId) => void;
@@ -99,9 +100,6 @@ export interface TestStoreState {
   updateValidationScope: (testId: EntityId, scope: ValidationScope, scopeN?: number | null) => void;
   replaceAllFieldGroups: (testId: EntityId, groups: FieldConditionGroup[]) => void;
   setValidationType: (testId: EntityId, validationType: ValidationType) => void;
-  setValidationApproach: (testId: EntityId, approach: 'expected_result' | 'field_conditions') => void;
-  setExpectedResultJson: (testId: EntityId, json: string) => void;
-  setExpectedResultFileRef: (testId: EntityId, fileRef: { name: string; size: number } | null) => void;
   updateResultCount: (testId: EntityId, patch: Partial<{ enabled: boolean; operator: ResultCountOperator; value: number }>) => void;
 
   setGeneratorEnabled: (testId: EntityId, scenarioId: EntityId, inputId: EntityId, enabled: boolean) => void;
@@ -116,10 +114,12 @@ export interface TestStoreState {
     patch: Partial<Pick<FieldGenerationRule, 'field' | 'type' | 'config'>>
   ) => void;
 
-  runTest: (options?: { endpoint?: string }) => Promise<void>;
+  runTest: () => Promise<void>;
   cancelTest: () => void;
   setTestResponse: (response: TestResponse | null) => void;
   clearResults: () => void;
+  toggleResultsBar: () => void;
+  setResultsBarExpanded: (expanded: boolean) => void;
 
   saveToFile: () => void;
   loadFromFile: (content: string) => { success: boolean; error?: string };
@@ -137,6 +137,7 @@ export const useTestStore = create<TestStoreState>()(
     activeTestId: initialTest.id,
     isRunning: false,
     testResponse: null,
+    resultsBarExpanded: false,
 
     ...testSlice(set, get),
     ...scenarioSlice(set),

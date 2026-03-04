@@ -20,7 +20,7 @@ export function TextArea({ value, onChange, placeholder, disabled, rows = 4, sty
       disabled={disabled}
       rows={rows}
       style={style}
-      className={`w-full px-3 py-2 text-sm bg-slate-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/30 transition resize-y disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
+      className={`w-full px-3 py-2 text-sm bg-navy-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-500/30 transition-all duration-200 resize-y disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
     />
   );
 }

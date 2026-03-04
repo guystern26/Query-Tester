@@ -99,9 +99,6 @@ export interface ResultCountRule {
 
 export interface ValidationConfig {
   validationType: ValidationType;
-  approach: 'expected_result' | 'field_conditions';
-  expectedResultJson: string;
-  expectedResultFileRef: { name: string; size: number } | null;
   fieldGroups: FieldConditionGroup[];
   fieldLogic: 'and' | 'or';
   validationScope: ValidationScope;

@@ -19,10 +19,10 @@ export function Switch({ checked, onChange, disabled, label }: SwitchProps) {
         className="sr-only"
       />
       <span
-        className={`relative w-10 h-[22px] rounded-full transition-colors ${checked ? 'bg-cyan-500' : 'bg-slate-600'}`}
+        className={`relative w-10 h-[22px] rounded-full transition-colors duration-200 ${checked ? 'bg-accent-600' : 'bg-slate-600'}`}
       >
         <span
-          className={`absolute top-[2px] w-[18px] h-[18px] rounded-full bg-slate-100 shadow transition-[left] ${checked ? 'left-5' : 'left-[2px]'}`}
+          className={`absolute top-[2px] w-[18px] h-[18px] rounded-full bg-slate-100 shadow transition-[left] duration-200 ${checked ? 'left-5' : 'left-[2px]'}`}
         />
       </span>
       {label != null && <span className="text-sm text-slate-200">{label}</span>}

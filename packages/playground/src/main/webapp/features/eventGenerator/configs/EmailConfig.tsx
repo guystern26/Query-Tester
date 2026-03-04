@@ -76,7 +76,7 @@ export function EmailConfig({ testId, scenarioId, inputId, rule }: EmailConfigPr
           </select>
           <input type="number" min={1} max={20} className={`${vInputCls} w-10`} value={v.componentLength} onChange={(e) => update(v.id, { componentLength: Math.min(Number(e.target.value) || 1, 20) })} />
           <input className={`${vInputCls} w-16`} value={v.localPart} onChange={(e) => update(v.id, { localPart: e.target.value })} placeholder="user" />
-          <span className="text-cyan-400 font-bold text-sm w-3 text-center flex-shrink-0">@</span>
+          <span className="text-accent-400 font-bold text-sm w-3 text-center flex-shrink-0">@</span>
           <input className={`${vInputCls} flex-1`} value={v.domain} onChange={(e) => update(v.id, { domain: e.target.value })} placeholder="example.com" />
           <VWeight value={v.weight} onChange={(raw) => handleWeight(v.id, raw)} />
           <VDelBtn disabled={variants.length <= 1} onClick={() => handleRemove(v.id)} />

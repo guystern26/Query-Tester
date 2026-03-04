@@ -3,8 +3,8 @@ import { useTestStore } from 'core/store/testStore';
 import type { EntityId, SingleCondition, ConditionOperator } from 'core/types';
 import { OP_GROUPS, VALUELESS_OPS } from './utils/operatorConstants';
 
-const inputCls = 'px-2.5 py-1.5 text-[13px] bg-slate-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/30 transition';
-const selectCls = 'px-2 py-1.5 text-[13px] bg-slate-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-cyan-500 cursor-pointer';
+const inputCls = 'px-2.5 py-1.5 text-[13px] bg-navy-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-500/30 transition';
+const selectCls = 'px-2 py-1.5 text-[13px] bg-navy-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-accent-600 cursor-pointer';
 
 export interface ConditionRowProps {
   testId: EntityId;

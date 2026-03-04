@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import type { TestInput, InputMode, EntityId } from 'core/types';
 import { useTestStore } from 'core/store/testStore';
 import { Card } from '../../common';
@@ -13,6 +13,7 @@ export interface InputCardProps {
   index?: number;
   isOpen?: boolean;
   onToggle?: () => void;
+  accentBorder?: string;
 }
 
 const GridIcon = () => (
@@ -48,17 +49,48 @@ const modes: { key: InputMode; label: string; Icon: React.FC }[] = [
   { key: 'no_events', label: 'No Events', Icon: NoEventsIcon },
 ];
 
-export function InputCard({ testId, scenarioId, input, index, isOpen = true, onToggle }: InputCardProps) {
+export function InputCard({ testId, scenarioId, input, index, isOpen = true, onToggle, accentBorder = '' }: InputCardProps) {
   const state = useTestStore();
   const [genOpen, setGenOpen] = useState(false);
   const num = index ?? 1;
 
   const setMode = (mode: InputMode) => {
     state.setInputMode(testId, scenarioId, input.id, mode);
+    setGenOpen(false);
   };
 
   const fieldCount = input.events.length === 0 ? 0 : Math.max(0, ...input.events.map((e) => e.fieldValues.length));
   const hasNamedFields = input.events.length > 0 && input.events[0].fieldValues.some((fv) => fv.field.trim() !== '');
+
+  // Extract field names from JSON content
+  const jsonFieldNames = useMemo<string[]>(() => {
+    if (!input.jsonContent?.trim()) return [];
+    try {
+      const parsed = JSON.parse(input.jsonContent);
+      const items = Array.isArray(parsed) ? parsed : [parsed];
+      const keys = new Set<string>();
+      for (const item of items) {
+        if (item && typeof item === 'object' && !Array.isArray(item)) {
+          Object.keys(item).forEach((k) => keys.add(k));
+        }
+      }
+      return Array.from(keys);
+    } catch { return []; }
+  }, [input.jsonContent]);
+
+  const jsonIsValid = useMemo(() => {
+    if (!input.jsonContent?.trim()) return false;
+    try { JSON.parse(input.jsonContent); return true; } catch { return false; }
+  }, [input.jsonContent]);
+
+  // Generator is available when: fields mode + has named fields, OR json mode + valid JSON
+  const generatorAvailable = input.inputMode === 'fields' ? hasNamedFields
+    : input.inputMode === 'json' ? jsonIsValid
+    : false;
+
+  // Field names for the generator depend on current mode
+  const generatorFieldNames = input.inputMode === 'json' ? jsonFieldNames : undefined;
+
   const summary = input.rowIdentifier.trim()
     ? input.rowIdentifier.trim()
     : `${input.events.length} event${input.events.length !== 1 ? 's' : ''}, ${fieldCount} field${fieldCount !== 1 ? 's' : ''}`;
@@ -67,19 +99,19 @@ export function InputCard({ testId, scenarioId, input, index, isOpen = true, onT
   if (!isOpen) {
     return (
       <div
-        className="flex items-center gap-3 px-4 py-2.5 bg-slate-800 rounded-lg border border-slate-700 cursor-pointer hover:border-slate-600 transition select-none"
+        className={`flex items-center gap-3 px-4 py-2.5 bg-navy-800 rounded-lg border border-slate-700 border-l-2 ${accentBorder || 'border-l-slate-700'} cursor-pointer hover:border-slate-600 transition-all duration-200 select-none`}
         onClick={onToggle}
       >
         <ChevronIcon open={false} />
         <span className="font-semibold text-sm text-slate-200">Input {num}</span>
         <span className="text-xs text-slate-500 truncate flex-1">{summary}</span>
-        <span className="text-[10px] uppercase tracking-wider text-slate-500 bg-slate-900 px-2 py-0.5 rounded-full shrink-0">
+        <span className="text-[10px] uppercase tracking-wider text-slate-500 bg-navy-900 px-2 py-0.5 rounded-full shrink-0">
           {MODE_LABELS[input.inputMode]}
         </span>
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); state.deleteInput(testId, scenarioId, input.id); }}
-          className="w-6 h-6 rounded-md text-slate-500 flex items-center justify-center hover:bg-red-900/30 hover:text-red-400 transition cursor-pointer"
+          className="w-6 h-6 rounded-md text-slate-500 flex items-center justify-center hover:bg-red-900/30 hover:text-red-400 transition-all duration-200 cursor-pointer"
           aria-label="Delete input"
         >
           ×
@@ -90,7 +122,7 @@ export function InputCard({ testId, scenarioId, input, index, isOpen = true, onT
 
   // Expanded state — full card
   return (
-    <Card>
+    <Card className={accentBorder ? `border-l-2 ${accentBorder}` : ''}>
       <div className="flex justify-between items-center mb-3">
         <div className="flex items-center gap-2 cursor-pointer select-none" onClick={onToggle}>
           <ChevronIcon open={true} />
@@ -99,7 +131,7 @@ export function InputCard({ testId, scenarioId, input, index, isOpen = true, onT
         <button
           type="button"
           onClick={() => state.deleteInput(testId, scenarioId, input.id)}
-          className="w-7 h-7 rounded-md border border-slate-700 text-slate-400 flex items-center justify-center hover:bg-red-900/30 hover:border-red-500 hover:text-red-400 transition cursor-pointer"
+          className="w-7 h-7 rounded-md border border-slate-700 text-slate-400 flex items-center justify-center hover:bg-red-900/30 hover:border-red-500 hover:text-red-400 transition-all duration-200 cursor-pointer"
           aria-label="Delete input"
         >
           ×
@@ -111,10 +143,10 @@ export function InputCard({ testId, scenarioId, input, index, isOpen = true, onT
         value={input.rowIdentifier}
         onChange={(e) => state.updateRowIdentifier(testId, scenarioId, input.id, e.target.value)}
         placeholder="e.g., index=main sourcetype=access_combined"
-        className="w-full mb-4 px-3 py-2 text-sm bg-slate-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/30 transition"
+        className="w-full mb-4 px-3 py-2 text-sm bg-navy-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-500/30 transition-all duration-200"
       />
 
-      <div className="flex bg-slate-950/80 rounded-xl p-1 border border-slate-700/60 w-fit mb-4 gap-0.5">
+      <div className="flex bg-navy-950/80 rounded-xl p-1 border border-slate-700/60 w-fit mb-4 gap-0.5">
         {modes.map(({ key, label, Icon }) => {
           const active = input.inputMode === key;
           return (
@@ -122,8 +154,8 @@ export function InputCard({ testId, scenarioId, input, index, isOpen = true, onT
               key={key}
               className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 cursor-pointer ${
                 active
-                  ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/20'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  ? 'bg-accent-900 text-accent-300 border border-accent-700/50'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-navy-800/60'
               }`}
               onClick={() => setMode(key)}
             >
@@ -136,42 +168,112 @@ export function InputCard({ testId, scenarioId, input, index, isOpen = true, onT
 
       <div>
         {input.inputMode === 'fields' && (
-          <>
-            <FieldValueEditor testId={testId} scenarioId={scenarioId} inputId={input.id} events={input.events} />
-            <button
-              className={`flex items-center gap-2 w-full px-3 py-2.5 mt-4 rounded-lg text-[13px] font-medium transition-all duration-200 border ${
-                !hasNamedFields
-                  ? 'opacity-40 cursor-not-allowed bg-transparent border-slate-700/60 text-slate-500'
-                  : genOpen
-                    ? 'bg-slate-800/80 border-slate-600 text-slate-200 cursor-pointer'
-                    : 'bg-transparent border-slate-700/60 text-slate-400 hover:text-slate-200 hover:border-slate-600 cursor-pointer'
-              }`}
-              onClick={() => hasNamedFields && setGenOpen(!genOpen)}
-              disabled={!hasNamedFields}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform duration-200 ${genOpen ? 'rotate-90' : ''}`}>
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-              <span>Event Generator</span>
-              {input.generatorConfig.enabled && (
-                <span className="w-2 h-2 rounded-full bg-green-400 shadow-sm shadow-green-400/50 shrink-0" />
-              )}
-            </button>
-            <div className={`overflow-hidden transition-all duration-300 ${genOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'}`}>
-              <div className={`mt-1 rounded-lg transition-colors duration-200 ${genOpen ? 'bg-slate-800/30 border border-slate-700/40 p-3' : ''}`}>
-                <GeneratorPanel testId={testId} scenarioId={scenarioId} inputId={input.id} />
-              </div>
-            </div>
-          </>
+          <FieldValueEditor testId={testId} scenarioId={scenarioId} inputId={input.id} events={input.events} />
         )}
         {input.inputMode === 'json' && (
           <JsonInputView testId={testId} scenarioId={scenarioId} inputId={input.id} />
         )}
         {input.inputMode === 'no_events' && (
-          <div className="flex items-center gap-2 py-4 px-3 rounded-lg bg-slate-800/30 border border-slate-700/40">
+          <div className="flex items-center gap-2 py-4 px-3 rounded-lg bg-navy-800/30 border border-slate-700/40">
             <NoEventsIcon />
             <p className="m-0 text-[13px] text-slate-400">No event data. This input will contribute zero events to the test.</p>
           </div>
+        )}
+
+        {/* Event Generator — available for fields and json modes */}
+        {input.inputMode !== 'no_events' && (
+          <>
+            <div
+              className={`flex items-center gap-2.5 w-full px-3 py-2.5 mt-4 rounded-lg text-[13px] font-medium transition-all duration-200 border select-none ${
+                !generatorAvailable
+                  ? 'opacity-40 cursor-not-allowed bg-transparent border-slate-700/60 text-slate-500'
+                  : input.generatorConfig.enabled
+                    ? 'bg-navy-800/80 border-slate-600 text-slate-200 cursor-pointer'
+                    : 'bg-transparent border-slate-700/60 text-slate-400 hover:text-slate-200 hover:border-slate-600 cursor-pointer animate-generatorGlow'
+              }`}
+              onClick={() => {
+                if (!generatorAvailable) return;
+                if (!input.generatorConfig.enabled) {
+                  state.setGeneratorEnabled(testId, scenarioId, input.id, true);
+                  setGenOpen(true);
+                } else {
+                  setGenOpen(!genOpen);
+                }
+              }}
+            >
+              {/* Zap icon */}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+              </svg>
+              <span>Event Generator</span>
+
+              {/* Chevron — only when enabled */}
+              {input.generatorConfig.enabled && (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform duration-200 shrink-0 ${genOpen ? 'rotate-90' : ''}`}>
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              )}
+
+              <div className="flex-1" />
+
+              {/* Event count — presets + free input when enabled */}
+              {input.generatorConfig.enabled && (
+                <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                  {[100, 1000, 5000, 10000].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      className={`px-2 py-0.5 text-[11px] rounded-md font-medium transition-all duration-150 cursor-pointer ${
+                        input.generatorConfig.eventCount === n
+                          ? 'bg-green-600 text-white'
+                          : 'bg-navy-950 text-slate-400 border border-slate-700 hover:text-slate-200 hover:border-slate-500'
+                      }`}
+                      onClick={() => state.updateGeneratorEventCount(testId, scenarioId, input.id, n)}
+                    >
+                      {n >= 1000 ? `${n / 1000}k` : n}
+                    </button>
+                  ))}
+                  <input
+                    type="number"
+                    min={0}
+                    max={10000}
+                    value={input.generatorConfig.eventCount || ''}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      if (raw.trim() === '') { state.updateGeneratorEventCount(testId, scenarioId, input.id, 0); return; }
+                      const n = Number(raw);
+                      if (!Number.isNaN(n) && n >= 0) state.updateGeneratorEventCount(testId, scenarioId, input.id, Math.min(n, 10000));
+                    }}
+                    placeholder="# events"
+                    className="w-[80px] px-2 py-0.5 text-[11px] bg-navy-950 border border-slate-700 rounded-md text-slate-200 placeholder-slate-500 focus:outline-none focus:border-accent-600 transition text-center"
+                  />
+                </div>
+              )}
+
+              {/* Toggle switch */}
+              <button
+                type="button"
+                className={`relative w-9 h-5 rounded-full transition-colors duration-200 shrink-0 ${
+                  input.generatorConfig.enabled ? 'bg-green-600' : 'bg-slate-700'
+                } cursor-pointer`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!generatorAvailable) return;
+                  const next = !input.generatorConfig.enabled;
+                  state.setGeneratorEnabled(testId, scenarioId, input.id, next);
+                  if (!next) setGenOpen(false);
+                  else setGenOpen(true);
+                }}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${input.generatorConfig.enabled ? 'translate-x-4' : ''}`} />
+              </button>
+            </div>
+            <div className={`overflow-hidden transition-all duration-300 ${genOpen && input.generatorConfig.enabled ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+              <div className={`mt-1 rounded-lg transition-colors duration-200 ${genOpen && input.generatorConfig.enabled ? 'bg-navy-800/30 border border-slate-700/40 p-3' : ''}`}>
+                <GeneratorPanel testId={testId} scenarioId={scenarioId} inputId={input.id} fieldNames={generatorFieldNames} />
+              </div>
+            </div>
+          </>
         )}
       </div>
     </Card>

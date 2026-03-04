@@ -68,15 +68,15 @@ export function IjumpValidation() {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex bg-slate-950 rounded-xl p-1 border border-slate-700 w-fit gap-0.5">
+      <div className="flex bg-navy-950 rounded-xl p-1 border border-slate-700 w-fit gap-0.5">
         <button
-          className={`${segBase} ${subMode === 'jumping' ? 'bg-orange-600 text-white shadow-sm shadow-orange-600/20' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'}`}
+          className={`${segBase} ${subMode === 'jumping' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:text-slate-200 hover:bg-navy-800/60'}`}
           onClick={() => handleSubModeChange('jumping')}
         >
           <ZapIcon /> Jumping Alert
         </button>
         <button
-          className={`${segBase} ${subMode === 'monitoring' ? 'bg-green-600 text-white shadow-sm shadow-green-600/20' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'}`}
+          className={`${segBase} ${subMode === 'monitoring' ? 'bg-emerald-500 text-white' : 'text-slate-400 hover:text-slate-200 hover:bg-navy-800/60'}`}
           onClick={() => handleSubModeChange('monitoring')}
         >
           <MonitorIcon /> Monitoring Alert

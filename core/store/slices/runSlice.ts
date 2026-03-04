@@ -3,67 +3,57 @@
  */
 
 import type { EntityId, TestDefinition, TestResponse } from '../../types';
-import { buildPayload } from '../../../utils/payloadBuilder';
+import { mockRunTest } from '@utils/mockResults';
 
-const RUN_TEST_TIMEOUT_MS = 120_000;
+// TODO: Replace mockRunTest with real API call: testApi.runTest(buildPayload(test))
 
 let abortController: AbortController | null = null;
-let timeoutId: ReturnType<typeof setTimeout> | null = null;
-let runAbortedByTimeout = false;
 
 type SetState = (recipe: (draft: {
   tests: TestDefinition[];
   activeTestId: EntityId | null;
   isRunning: boolean;
   testResponse: TestResponse | null;
+  resultsBarExpanded: boolean;
 }) => void) => void;
 type GetState = () => {
   tests: TestDefinition[];
   activeTestId: EntityId | null;
   isRunning: boolean;
   testResponse: TestResponse | null;
+  resultsBarExpanded: boolean;
 };
 
 export function runSlice(set: SetState, get: GetState) {
   return {
-    runTest: async (options?: { endpoint?: string }) => {
+    runTest: async () => {
       const { tests, activeTestId } = get();
       const test = activeTestId ? tests.find((t) => t.id === activeTestId) : null;
       if (!test) return;
 
-      runAbortedByTimeout = false;
       abortController = new AbortController();
-      timeoutId = setTimeout(() => {
-        runAbortedByTimeout = true;
-        abortController?.abort();
-      }, RUN_TEST_TIMEOUT_MS);
 
       set((draft) => {
         draft.isRunning = true;
+        draft.testResponse = null;
       });
 
       try {
-        const payload = buildPayload(test);
-        const endpoint = options?.endpoint ?? '/servicesNS/nobody/search/search/run_test';
-        const res = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-          signal: abortController.signal,
-        });
-        const data = (await res.json()) as TestResponse;
+        const response = await mockRunTest(test, abortController.signal);
         set((draft) => {
-          draft.testResponse = data;
+          draft.testResponse = response;
           draft.isRunning = false;
+          draft.resultsBarExpanded = true;
         });
       } catch (e) {
         const err = e as { name?: string };
         if (err.name === 'AbortError') {
+          // Cancel: do NOT auto-expand — just show "Cancelled" inline
           set((draft) => {
             draft.isRunning = false;
             draft.testResponse = {
               status: 'error',
-              message: runAbortedByTimeout ? 'Test timed out after 2 minutes.' : 'Test cancelled by user.',
+              message: 'Test cancelled by user.',
               testName: test.name,
               testType: test.testType,
               timestamp: new Date().toISOString(),
@@ -78,6 +68,7 @@ export function runSlice(set: SetState, get: GetState) {
         } else {
           set((draft) => {
             draft.isRunning = false;
+            draft.resultsBarExpanded = true;
             draft.testResponse = {
               status: 'error',
               message: err instanceof Error ? err.message : 'Run failed',
@@ -94,8 +85,6 @@ export function runSlice(set: SetState, get: GetState) {
           });
         }
       } finally {
-        if (timeoutId) clearTimeout(timeoutId);
-        timeoutId = null;
         abortController = null;
       }
     },
@@ -108,11 +97,24 @@ export function runSlice(set: SetState, get: GetState) {
       set((draft) => {
         draft.testResponse = response;
         draft.isRunning = false;
+        if (response !== null) {
+          draft.resultsBarExpanded = true;
+        }
       }),
 
     clearResults: () =>
       set((draft) => {
         draft.testResponse = null;
+      }),
+
+    toggleResultsBar: () =>
+      set((draft) => {
+        draft.resultsBarExpanded = !draft.resultsBarExpanded;
+      }),
+
+    setResultsBarExpanded: (expanded: boolean) =>
+      set((draft) => {
+        draft.resultsBarExpanded = expanded;
       }),
   };
 }

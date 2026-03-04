@@ -53,7 +53,7 @@ export function TestNavigation() {
           value={activeTest?.name ?? ''}
           onChange={handleNameChange}
           placeholder="Put your test name here..."
-          className="min-w-[160px] px-3 py-1.5 text-sm bg-slate-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/30 transition"
+          className="min-w-[160px] px-3 py-1.5 text-sm bg-navy-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-500/30 transition-all duration-200"
         />
         <span className="text-[13px] text-slate-400">{counterText}</span>
         <Button variant="primary" size="sm" onClick={() => state.addTest()} disabled={!canAdd}>New</Button>

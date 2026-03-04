@@ -26,10 +26,10 @@ const ChevronIcon = ({ open }: { open: boolean }) => (
 
 /* ── shared styles ─────────────────────────────────────────── */
 
-const inputCls = 'px-2 py-1.5 text-[13px] bg-slate-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/30 transition';
-const selectCls = 'px-2 py-1.5 text-[13px] bg-slate-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-cyan-500 cursor-pointer';
-const badgeCls = 'text-xs font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono';
-const disabledCls = 'px-2 py-1.5 text-[13px] bg-slate-950 border border-slate-700 rounded-lg text-slate-500 cursor-not-allowed';
+const inputCls = 'px-2 py-1.5 text-[13px] bg-navy-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-500/30 transition';
+const selectCls = 'px-2 py-1.5 text-[13px] bg-navy-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-accent-600 cursor-pointer';
+const badgeCls = 'text-xs font-bold px-2 py-0.5 rounded bg-navy-800 text-slate-400 font-mono';
+const disabledCls = 'px-2 py-1.5 text-[13px] bg-navy-950 border border-slate-700 rounded-lg text-slate-500 cursor-not-allowed';
 
 const lockHeader = (
   <div className="flex items-center gap-2 mb-2">
@@ -43,7 +43,7 @@ const lockHeader = (
 export function AndDivider() {
   return (
     <div className="flex justify-center">
-      <span className="bg-slate-800 text-slate-500 text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded">AND</span>
+      <span className="bg-navy-800 text-slate-500 text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded">AND</span>
     </div>
   );
 }
@@ -52,7 +52,7 @@ export function AndDivider() {
 
 export function TimeCard() {
   return (
-    <div className="bg-slate-900 border border-slate-700 rounded-lg p-3">
+    <div className="bg-navy-900 border border-slate-700 rounded-lg p-3">
       {lockHeader}
       <div className="flex items-center gap-2">
         <span className={badgeCls}>_time</span>
@@ -72,7 +72,7 @@ export function ReasonCard({ testId, group }: { testId: string; group: FieldCond
   const additionalConds = group ? group.conditions.filter((c) => c.operator !== 'is_not_empty') : [];
 
   return (
-    <div className="bg-slate-900 border border-slate-700 rounded-lg p-3">
+    <div className="bg-navy-900 border border-slate-700 rounded-lg p-3">
       {lockHeader}
       <div className="flex items-center gap-2">
         <span className={badgeCls}>reason</span>
@@ -107,7 +107,7 @@ export function ReasonCard({ testId, group }: { testId: string; group: FieldCond
               </div>
             );
           })}
-          <button className="text-xs text-slate-400 hover:text-cyan-400 transition cursor-pointer py-1"
+          <button className="text-xs text-slate-400 hover:text-accent-300 transition cursor-pointer py-1"
             onClick={() => store.addConditionToGroup(testId, group.id, { operator: 'equals' as ConditionOperator, value: '' })}>
             + Add Condition
           </button>
@@ -122,17 +122,17 @@ export function ReasonCard({ testId, group }: { testId: string; group: FieldCond
 export function StatusCard({ subMode }: { subMode: IjumpSubMode }) {
   const isJumping = subMode === 'jumping';
   const values = isJumping ? JUMPING_STATUS_VALUES : MONITORING_STATUS_VALUES;
-  const borderCls = isJumping ? 'border-orange-800' : 'border-green-800';
-  const accentCls = isJumping ? 'text-orange-400 font-bold' : 'text-green-400 font-bold';
+  const borderCls = isJumping ? 'border-orange-800' : 'border-emerald-800';
+  const accentCls = isJumping ? 'text-orange-400 font-bold' : 'text-emerald-400 font-bold';
   const pillCls = isJumping
     ? 'border border-orange-800 bg-orange-900/30 text-orange-400'
-    : 'border border-green-800 bg-green-900/30 text-green-400';
+    : 'border border-emerald-800 bg-emerald-900/30 text-emerald-400';
   const info = isJumping
     ? "Validates _time and reason are not empty, and status equals 'jumping' or 'idle'"
     : "Validates _time and reason are not empty, and status equals 'valid', 'warning', or 'error'";
 
   return (
-    <div className={`bg-slate-900 border ${borderCls} rounded-lg p-3`}>
+    <div className={`bg-navy-900 border ${borderCls} rounded-lg p-3`}>
       {lockHeader}
       <div className="flex flex-col gap-1.5">
         {values.map((val, i) => (

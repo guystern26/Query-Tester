@@ -30,7 +30,7 @@ const CONFIG_MAP: Record<GeneratorType, React.FC<any>> = {
 };
 
 const inputCls =
-  'px-2 py-1.5 text-[13px] bg-slate-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/30 transition';
+  'px-2 py-1.5 text-[13px] bg-navy-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-500/30 transition';
 
 export interface GeneratorRuleProps {
   testId: EntityId;
@@ -65,7 +65,7 @@ export function GeneratorRule({ testId, scenarioId, inputId, rule, availableFiel
   const ConfigComponent = rule.type ? CONFIG_MAP[rule.type] : null;
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-lg p-3 mb-2">
+    <div className="bg-navy-900 border border-slate-800 rounded-lg p-3 mb-2">
       <div className="flex items-center gap-2">
         {hasDropdownOptions ? (
           <select

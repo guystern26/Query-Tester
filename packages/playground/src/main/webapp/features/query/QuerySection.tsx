@@ -60,7 +60,7 @@ export function QuerySection() {
           value={spl}
           onChange={handleSplChange}
           placeholder="index=main sourcetype=access_combined | stats count by src_ip"
-          className="w-full min-h-[200px] px-3 py-3 text-[13px] leading-relaxed bg-slate-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 font-mono focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/30 transition resize-y"
+          className="w-full min-h-[200px] px-3 py-3 text-[13px] leading-relaxed bg-navy-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 font-mono focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-500/30 transition resize-y"
         />
         <span className="absolute right-3 bottom-2 text-[11px] text-slate-500 pointer-events-none">{spl.length} chars</span>
       </div>

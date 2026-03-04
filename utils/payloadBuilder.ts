@@ -36,14 +36,12 @@ export interface ApiPayload {
   }>;
   validation: {
     validationType: TestDefinition['validation']['validationType'];
-    approach: TestDefinition['validation']['approach'];
-    expectedResult: unknown;
     fieldConditions: Array<{
       field: string;
       operator: string;
       value: string;
       scenarioScope: 'all' | string[];
-    }> | null;
+    }>;
     fieldLogic: 'and' | 'or';
     validationScope: string;
     scopeN: number | null;
@@ -72,28 +70,14 @@ export function buildPayload(test: TestDefinition): ApiPayload {
           })),
     validation: {
       validationType: test.validation.validationType,
-      approach: test.validation.approach,
-      expectedResult:
-        test.validation.approach === 'expected_result'
-          ? (() => {
-              try {
-                return JSON.parse(test.validation.expectedResultJson || 'null');
-              } catch {
-                return null;
-              }
-            })()
-          : null,
-      fieldConditions:
-        test.validation.approach === 'field_conditions'
-          ? test.validation.fieldGroups.flatMap((g) =>
-              g.conditions.map((c) => ({
-                field: g.field,
-                operator: c.operator,
-                value: c.value,
-                scenarioScope: g.scenarioScope,
-              }))
-            )
-          : null,
+      fieldConditions: test.validation.fieldGroups.flatMap((g) =>
+        g.conditions.map((c) => ({
+          field: g.field,
+          operator: c.operator,
+          value: c.value,
+          scenarioScope: g.scenarioScope,
+        }))
+      ),
       fieldLogic: test.validation.fieldLogic,
       validationScope: test.validation.validationScope,
       scopeN: test.validation.scopeN,

@@ -22,10 +22,11 @@ export function genId(): EntityId {
   if (typeof globalThis.crypto !== 'undefined' && typeof globalThis.crypto.randomUUID === 'function') {
     return globalThis.crypto.randomUUID();
   }
-  // Node 18 (e.g. tests)
+  // Node 18 fallback (e.g. tests)
   try {
-    const nodeCrypto = require('crypto') as { randomUUID?: () => string };
-    if (typeof nodeCrypto.randomUUID === 'function') {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const nodeCrypto = (globalThis as any).require?.('crypto') as { randomUUID?: () => string } | undefined;
+    if (nodeCrypto && typeof nodeCrypto.randomUUID === 'function') {
       return nodeCrypto.randomUUID();
     }
   } catch {
@@ -94,9 +95,6 @@ export function createDefaultFieldGroup(): FieldConditionGroup {
 export function createDefaultValidationConfig(): ValidationConfig {
   return {
     validationType: 'standard',
-    approach: 'field_conditions',
-    expectedResultJson: '',
-    expectedResultFileRef: null,
     fieldGroups: [],
     fieldLogic: 'and',
     validationScope: 'all_events',

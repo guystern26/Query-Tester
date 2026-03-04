@@ -23,9 +23,9 @@ export function Tabs({ tabs, activeId, onChange, onRemove, onAdd }: TabsProps) {
             role="tab"
             aria-selected={tab.id === activeId}
             onClick={() => onChange(tab.id)}
-            className={`px-4 py-2 text-sm border-b-2 transition cursor-pointer ${
+            className={`px-4 py-2 text-sm border-b-2 transition-all duration-200 cursor-pointer ${
               tab.id === activeId
-                ? 'font-semibold text-cyan-400 border-cyan-400'
+                ? 'font-semibold text-accent-400 border-accent-600'
                 : 'text-slate-400 hover:text-slate-200 border-transparent hover:border-slate-600'
             }`}
           >
@@ -35,7 +35,7 @@ export function Tabs({ tabs, activeId, onChange, onRemove, onAdd }: TabsProps) {
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onRemove(tab.id); }}
-              className="px-1.5 py-0.5 text-xs text-slate-500 hover:text-red-400 hover:bg-slate-800 rounded cursor-pointer"
+              className="px-1.5 py-0.5 text-xs text-slate-500 hover:text-red-400 hover:bg-navy-800 rounded cursor-pointer"
               aria-label={`Remove ${tab.label}`}
             >
               ×
@@ -44,7 +44,7 @@ export function Tabs({ tabs, activeId, onChange, onRemove, onAdd }: TabsProps) {
         </div>
       ))}
       {onAdd && (
-        <button type="button" onClick={onAdd} className="px-3 py-2 text-lg text-slate-500 hover:text-cyan-400 -mb-px cursor-pointer" aria-label="Add tab">
+        <button type="button" onClick={onAdd} className="px-3 py-2 text-lg text-slate-500 hover:text-accent-300 -mb-px cursor-pointer" aria-label="Add tab">
           +
         </button>
       )}

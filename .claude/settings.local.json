@@ -1,6 +1,7 @@
 {
   "permissions": {
     "allow": [
+      "mcp__playwright",
       "Bash(npx tsc:*)",
       "Bash(npx vite:*)",
       "Bash(npm run:*)",
@@ -11,7 +12,8 @@
       "Bash(npm:*)",
       "Bash(node:*)",
       "Bash(rm:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(find .:*)"
     ]
   }
 }
