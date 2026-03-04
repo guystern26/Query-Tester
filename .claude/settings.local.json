@@ -13,7 +13,17 @@
       "Bash(node:*)",
       "Bash(rm:*)",
       "Bash(grep:*)",
-      "Bash(find .:*)"
+      "Bash(find .:*)",
+      "WebSearch",
+      "Bash(cp:*)",
+      "Bash(echo exit: $?:*)",
+      "Bash(yarn install:*)",
+      "Bash(yarn workspace:*)",
+      "Bash(powershell:*)",
+      "Bash(echo:*)",
+      "WebFetch(domain:dev.splunk.com)",
+      "WebFetch(domain:docs.splunk.com)",
+      "Bash(curl:*)"
     ]
   }
 }

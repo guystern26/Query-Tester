@@ -1,0 +1,4 @@
+<?xml version="1.0"?>
+<view template="query-tester:/templates/QueryTesterApp.html" type="html">
+	<label>Query Tester App</label>
+</view>

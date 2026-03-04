@@ -1,33 +1,33 @@
 {
-  "name": "splunk-query-tester",
-  "version": "1.0.0",
-  "type": "module",
+  "name": "@splunk/splunk-create-monorepo",
+  "license": "UNLICENSED",
+  "private": true,
   "scripts": {
+    "build": "yarn workspaces run build",
     "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "immer": "^10.0.0",
-    "lodash": "^4.17.21",
-    "lucide-react": "^0.263.1",
-    "react": "16.13.1",
-    "react-dom": "16.13.1",
-    "styled-components": "^5.3.11",
-    "zustand": "^4.5.5"
+    "format": "git ls-files | grep -E \"\\.(jsx?|css)$\" | xargs prettier --write",
+    "format:verify": "git ls-files | grep -E \"\\.(jsx?|css)$\" | xargs prettier --list-different",
+    "lint": "yarn workspaces run lint",
+    "setup": "yarn && yarn build",
+    "test": "yarn workspaces run test",
+    "start": "yarn workspace @splunk/query-tester run start"
   },
   "devDependencies": {
-    "@types/lodash": "^4.14.202",
-    "@types/react": "^16.14.0",
-    "@types/react-dom": "^16.9.0",
-    "@types/styled-components": "^5.1.26",
     "@vitejs/plugin-react": "^4.0.4",
     "autoprefixer": "^10.4.27",
     "postcss": "^8.5.8",
+    "prettier": "^3.6.2",
     "tailwindcss": "^3.4.19",
     "typescript": "^5.2.2",
     "vite": "^4.5.0"
   },
+  "resolutions": {
+    "react": "16.13.1",
+    "react-dom": "16.13.1"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
   "engines": {
     "node": ">=18.12.0"
   }

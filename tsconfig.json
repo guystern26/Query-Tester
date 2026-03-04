@@ -14,18 +14,10 @@
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "core/*": ["core/*"],
-      "@/*": ["packages/playground/src/main/webapp/*"],
-      "@types/*": ["packages/playground/src/main/webapp/core/types/*"],
-      "@constants/*": ["packages/playground/src/main/webapp/core/constants/*"],
-      "@store/*": ["packages/playground/src/main/webapp/core/store/*"],
-      "@api/*": ["packages/playground/src/main/webapp/api/*"],
-      "@hooks/*": ["packages/playground/src/main/webapp/hooks/*"],
-      "@utils/*": ["packages/playground/src/main/webapp/utils/*"],
-      "@common/*": ["packages/playground/src/main/webapp/common/*"],
-      "@components/*": ["packages/playground/src/main/webapp/components/*"],
-      "@features/*": ["packages/playground/src/main/webapp/features/*"]
+      "core/*": ["packages/query-tester-app/src/core/*"],
+      "@splunk/query-tester-app": ["packages/query-tester-app/src"],
+      "@splunk/query-tester-app/*": ["packages/query-tester-app/src/*"]
     }
   },
-  "include": ["packages/playground/src/main/webapp/**/*"]
+  "include": ["packages/query-tester-app/src/**/*"]
 }

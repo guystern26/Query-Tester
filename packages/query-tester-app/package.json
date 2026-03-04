@@ -1,0 +1,73 @@
+{
+  "name": "@splunk/query-tester-app",
+  "version": "0.0.1",
+  "license": "UNLICENSED",
+  "scripts": {
+    "build": "node bin/build.js build && yarn types:build",
+    "eslint": "eslint src --ext \".ts,.tsx,.js,.jsx\"",
+    "eslint:ci": "yarn run eslint -f junit -o test-reports/lint-results.xml",
+    "eslint:fix": "eslint src --ext \".ts,.tsx,.js,.jsx\" --fix",
+    "link:app": "node bin/build.js link",
+    "lint": "yarn run eslint && yarn run stylelint",
+    "lint:ci": "yarn run eslint:ci && yarn run stylelint",
+    "start:app": "webpack --watch --config demo/webpack.splunkapp.config.js",
+    "start:demo": "node bin/build.js demo",
+    "stylelint": "stylelint \"src/**/*.{ts,tsx,js,jsx}\" --config stylelint.config.js",
+    "test": "jest",
+    "test:ci": "JEST_JUNIT_OUTPUT_DIR=./test-reports JEST_JUNIT_OUTPUT_NAME=unit-results.xml JEST_JUNIT_CLASSNAME=unit yarn run test --ci --reporters=default jest-junit --coverage --coverageDirectory=coverage_report/coverage_maps_unit --coverageReporters=cobertura",
+    "test:watch": "jest --watch",
+    "types:build": "tsc",
+    "types:start": "yarn types:build --watch"
+  },
+  "main": "src/index.ts",
+  "dependencies": {
+    "zustand": "^4.5.5",
+    "immer": "^10.0.0",
+    "lucide-react": "^0.263.1",
+    "lodash": "^4.17.21"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.28.0",
+    "@babel/eslint-parser": "^7.28.0",
+    "@splunk/babel-preset": "^4.0.0",
+    "@splunk/eslint-config": "^5.0.0",
+    "@splunk/stylelint-config": "^5.0.0",
+    "@splunk/webpack-configs": "^7.0.2",
+    "@types/lodash": "^4.14.202",
+    "@types/node": "^18.16.0",
+    "@types/react": "^16.14.0",
+    "@types/react-dom": "^16.9.0",
+    "@types/styled-components": "^5.1.0",
+    "@types/webpack-env": "^1.15.2",
+    "@typescript-eslint/eslint-plugin": "^8.29.1",
+    "@typescript-eslint/parser": "^8.29.1",
+    "babel-loader": "^8.3.0",
+    "css-loader": "^7.1.2",
+    "eslint": "^8.57.1",
+    "eslint-config-airbnb": "^19.0.4",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-import-resolver-webpack": "^0.13.4",
+    "eslint-plugin-import": "^2.30.1",
+    "eslint-plugin-jsx-a11y": "^6.10.0",
+    "eslint-plugin-react": "^7.36.1",
+    "eslint-plugin-react-hooks": "^4.6.2",
+    "html-webpack-plugin": "^5.5.3",
+    "react": "16.13.1",
+    "react-dom": "16.13.1",
+    "shelljs": "^0.8.5",
+    "styled-components": "^5.3.10",
+    "stylelint": "^15.11.0",
+    "typescript": "^5.8.3",
+    "webpack": "^5.88.2",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^5.2.2",
+    "webpack-merge": "^5.9.0"
+  },
+  "peerDependencies": {
+    "react": "^16.8.0 || ^17.0.0 || ^18.0.0",
+    "styled-components": "^5.3.10"
+  },
+  "engines": {
+    "node": ">=18.12.0"
+  }
+}
