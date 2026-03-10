@@ -10,7 +10,4 @@ functional-temp
 splunktional-temp
 .playwright-mcp
 dist/
-packages/*/stage/
-!packages/query-tester/stage/
-!packages/query-tester/stage/**
 packages/*/types/
