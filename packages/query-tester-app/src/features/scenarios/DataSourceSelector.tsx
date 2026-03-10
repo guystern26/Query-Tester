@@ -83,6 +83,13 @@ export function DataSourceSelector({ testId, scenarioId, inputId, value }: DataS
         )}
       </div>
 
+      <p className="mt-1 text-[11px] text-slate-500 leading-snug">
+        Use the full filter clause from your query (e.g.{' '}
+        <code className="text-slate-400">index=main sourcetype=access_combined</code>).
+        A partial match like <code className="text-slate-400">index=main</code> will replace
+        every occurrence in the query.
+      </p>
+
       {open && hasSources && (
         <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-navy-900 border border-slate-700 rounded-lg shadow-lg overflow-hidden">
           {sources.map((src, i) => {

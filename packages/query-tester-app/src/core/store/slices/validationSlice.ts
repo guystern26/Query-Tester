@@ -63,19 +63,22 @@ export function validationSlice(set: SetState) {
 
     updateFieldGroupField: (testId: EntityId, groupId: EntityId, field: string) =>
       set((draft) => {
-        const g = findGroup(findTest(draft.tests, testId)!, groupId);
+        const t = findTest(draft.tests, testId);
+        const g = t && findGroup(t, groupId);
         if (g) g.field = field;
       }),
 
     updateFieldGroupLogic: (testId: EntityId, groupId: EntityId, logic: 'and' | 'or') =>
       set((draft) => {
-        const g = findGroup(findTest(draft.tests, testId)!, groupId);
+        const t = findTest(draft.tests, testId);
+        const g = t && findGroup(t, groupId);
         if (g) g.conditionLogic = logic;
       }),
 
     updateFieldGroupScope: (testId: EntityId, groupId: EntityId, scope: 'all' | EntityId[]) =>
       set((draft) => {
-        const g = findGroup(findTest(draft.tests, testId)!, groupId);
+        const t = findTest(draft.tests, testId);
+        const g = t && findGroup(t, groupId);
         if (g) g.scenarioScope = scope;
       }),
 
@@ -83,7 +86,8 @@ export function validationSlice(set: SetState) {
 
     addConditionToGroup: (testId: EntityId, groupId: EntityId, initial?: Partial<SingleCondition>) =>
       set((draft) => {
-        const g = findGroup(findTest(draft.tests, testId)!, groupId);
+        const t = findTest(draft.tests, testId);
+        const g = t && findGroup(t, groupId);
         if (!g || g.conditions.length >= MAX_CONDITIONS_PER_GROUP) return;
         const c = createDefaultSingleCondition();
         if (initial?.operator) c.operator = initial.operator;
@@ -93,7 +97,8 @@ export function validationSlice(set: SetState) {
 
     removeConditionFromGroup: (testId: EntityId, groupId: EntityId, conditionId: EntityId) =>
       set((draft) => {
-        const g = findGroup(findTest(draft.tests, testId)!, groupId);
+        const t = findTest(draft.tests, testId);
+        const g = t && findGroup(t, groupId);
         if (!g) return;
         const idx = g.conditions.findIndex((c) => c.id === conditionId);
         if (idx !== -1) g.conditions.splice(idx, 1);
@@ -104,7 +109,8 @@ export function validationSlice(set: SetState) {
       patch: Partial<Pick<SingleCondition, 'operator' | 'value'>>,
     ) =>
       set((draft) => {
-        const g = findGroup(findTest(draft.tests, testId)!, groupId);
+        const t = findTest(draft.tests, testId);
+        const g = t && findGroup(t, groupId);
         const c = g?.conditions.find((x) => x.id === conditionId);
         if (!c) return;
         if (patch.operator !== undefined) c.operator = patch.operator;

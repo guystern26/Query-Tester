@@ -124,6 +124,7 @@ export function createDefaultValidationConfig(): ValidationConfig {
 function createDefaultGeneratorConfig(): GeneratorConfig {
   return {
     enabled: false,
+    eventCount: 10,
     rules: [],
   };
 }

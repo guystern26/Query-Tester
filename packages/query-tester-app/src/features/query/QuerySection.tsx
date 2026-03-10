@@ -42,7 +42,7 @@ export function QuerySection() {
   };
 
   const handleSplChange = (_e: React.SyntheticEvent, { value }: { value: string }) => {
-    if (test) state.loadSavedSearchSpl(test.id, value, null);
+    if (test) state.updateSpl(test.id, value);
   };
 
   return (

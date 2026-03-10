@@ -2,7 +2,7 @@
  * Selectors for test store. Spec 17.6.
  */
 
-import type { EntityId, TestDefinition } from '../types';
+import type { EntityId, TestDefinition, Scenario } from '../types';
 import type { TestStoreState } from './testStore';
 import type { TestResponse, ResponseMessage, SplWarning } from '../types';
 
@@ -63,4 +63,16 @@ export function selectInput(
 ) {
   const scenario = selectScenario(s, scenarioId);
   return scenario?.inputs.find((i) => i.id === inputId) ?? null;
+}
+
+/** True when at least one input across all scenarios has meaningful data configured. */
+export function inputHasData(scenarios: Scenario[]): boolean {
+  return scenarios.some((s) =>
+    s.inputs.some((i) =>
+      (i.inputMode === 'query_data' && (i.queryDataConfig?.spl ?? '').trim() !== '')
+      || i.inputMode === 'no_events'
+      || (i.inputMode === 'json' && (i.jsonContent ?? '').trim() !== '')
+      || i.events.some((e) => e.fieldValues.some((f) => f.field.trim() !== ''))
+    )
+  );
 }

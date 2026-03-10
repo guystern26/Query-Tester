@@ -64,9 +64,23 @@ export function validateBeforeRun(test: TestDefinition): string[] {
 
     for (const scenario of test.scenarios) {
       for (const input of scenario.inputs) {
+        if (input.inputMode === 'query_data' && !input.queryDataConfig.spl.trim()) {
+          errors.push('Query Data input in "' + (scenario.name || 'Scenario') + '" has an empty sub-query.');
+          break;
+        }
+      }
+    }
+
+    for (const scenario of test.scenarios) {
+      for (const input of scenario.inputs) {
         const cfg = input.generatorConfig;
-        if (cfg.enabled && cfg.rules.length === 0) {
+        if (!cfg.enabled) continue;
+        if (cfg.rules.length === 0) {
           errors.push('Event generator is enabled but has no rules configured.');
+          break;
+        }
+        if (cfg.rules.some((r) => !r.field.trim())) {
+          errors.push('One or more generator rules are missing a field name.');
           break;
         }
         if (cfg.rules.some((r) => !r.type)) {

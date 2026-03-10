@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useCallback } from 'react';
 import { useTestStore } from 'core/store/testStore';
-import { selectActiveTest } from 'core/store/selectors';
+import { selectActiveTest, inputHasData } from 'core/store/selectors';
 import { TopBar } from './components/test-navigation/TopBar';
 import { AppSelector } from './components/AppSelector';
 import { TestTypeSelector } from './features/scenarios/TestTypeSelector';
@@ -28,14 +28,7 @@ export function StartPage() {
   const hasApp = app.trim() !== '';
   const hasQuery = (activeTest?.query.spl ?? '').trim() !== '';
   const showData = hasApp && hasQuery && testType === 'standard';
-  const dataDone = (activeTest?.scenarios ?? []).some(
-    (s) => s.inputs.some((i) =>
-      (i.inputMode === 'query_data' && (i.queryDataConfig?.spl ?? '').trim() !== '')
-      || i.inputMode === 'no_events'
-      || (i.inputMode === 'json' && (i.jsonContent ?? '').trim() !== '')
-      || i.events.some((e) => e.fieldValues.some((f) => f.field.trim() !== ''))
-    )
-  );
+  const dataDone = inputHasData(activeTest?.scenarios ?? []);
   const showValidation = hasApp && hasQuery && (testType === 'query_only' || dataDone);
 
   const pipeline = usePipelineState();

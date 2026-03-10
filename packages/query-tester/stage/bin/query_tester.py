@@ -62,7 +62,7 @@ def _normalize_payload(raw_body: Any) -> Dict[str, Any]:
 def _json_response(data: Dict[str, Any], status: int = 200) -> Dict[str, Any]:
     """Build a persistent-connection response dict."""
     return {
-        "payload": json.dumps(data),
+        "payload": json.dumps(data, default=str),
         "status": status,
         "headers": {
             "Content-Type": "application/json",
@@ -124,7 +124,25 @@ class QueryTesterHandler(PersistentServerConnectionApplication):
         except Exception as exc:
             logger.error("Error handling POST: %s", str(exc), exc_info=True)
             return _json_response(
-                {"status": "error", "message": str(exc)}, 500
+                {
+                    "status": "error",
+                    "message": "Internal server error.",
+                    "testName": "",
+                    "testType": "",
+                    "timestamp": "",
+                    "totalScenarios": 0,
+                    "passedScenarios": 0,
+                    "errors": [{"code": "INTERNAL_ERROR", "message": "Internal server error.", "severity": "error"}],
+                    "warnings": [],
+                    "splAnalysis": {
+                        "unauthorizedCommands": [],
+                        "unusualCommands": [],
+                        "uniqLimitations": None,
+                        "commandsUsed": [],
+                    },
+                    "scenarioResults": [],
+                },
+                500,
             )
         finally:
             self._current_runner = None

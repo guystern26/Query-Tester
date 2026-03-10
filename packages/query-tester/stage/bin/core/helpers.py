@@ -8,12 +8,19 @@ from __future__ import annotations
 from typing import List
 
 
+_SAFE_FLOAT_SENTINEL = float("nan")
+
+
 def safe_float(value: str) -> float:
-    """Convert a string to float, returning 0.0 on failure."""
+    """Convert a string to float, returning NaN on failure.
+
+    NaN comparisons always return False, so non-numeric values
+    correctly fail all numeric conditions (>, <, >=, <=).
+    """
     try:
         return float(value)
     except (ValueError, TypeError):
-        return 0.0
+        return _SAFE_FLOAT_SENTINEL
 
 
 def normalize_weights(weights: List[float]) -> List[float]:

@@ -6,16 +6,11 @@ import type { Scenario } from 'core/types';
 import { Button, Modal } from '../../common';
 import { InputCard } from './InputCard';
 import { ExtractFieldsButton } from './ExtractFieldsButton';
-import { getScenarioColor, type ScenarioColor } from './scenarioColors';
+import { getScenarioColor } from './scenarioColors';
 
-function hasData(s: Scenario): boolean {
-  return s.inputs.some((inp) => {
-    if (inp.rowIdentifier.trim()) return true;
-    if (inp.jsonContent.trim()) return true;
-    if (inp.fileRef) return true;
-    return inp.events.some((e) => e.fieldValues.some((fv) => fv.field.trim() || fv.value.trim()));
-  });
-}
+const hasData = (s: Scenario) => s.inputs.some((inp) =>
+  inp.rowIdentifier.trim() || inp.jsonContent.trim() || inp.fileRef
+  || inp.events.some((e) => e.fieldValues.some((fv) => fv.field.trim() || fv.value.trim())));
 
 export function ScenarioPanel() {
   const state = useTestStore();
@@ -91,8 +86,7 @@ export function ScenarioPanel() {
   };
 
   const delName = scenarios.find((s) => s.id === delTarget)?.name?.trim() || 'this scenario';
-  const selIndex = scenarios.findIndex((s) => s.id === selId);
-  const selColor = getScenarioColor(selIndex >= 0 ? selIndex : 0);
+  const selColor = getScenarioColor(Math.max(0, scenarios.findIndex((s) => s.id === selId)));
 
   return (
     <>
@@ -140,6 +134,7 @@ export function ScenarioPanel() {
               type="text"
               value={sel.name}
               onChange={(e) => state.updateScenarioName(test.id, sel.id, e.target.value)}
+              maxLength={80}
               placeholder="Scenario name..."
               className="flex-1 min-w-0 bg-transparent border-0 border-b border-slate-700 rounded-none px-0 py-1.5 text-[13px] font-medium text-slate-100 placeholder-slate-500 focus:outline-none focus:border-accent-600 transition-colors duration-200"
             />
@@ -147,6 +142,7 @@ export function ScenarioPanel() {
               type="text"
               value={sel.description}
               onChange={(e) => state.updateScenarioDescription(test.id, sel.id, e.target.value)}
+              maxLength={200}
               placeholder="Description..."
               className="flex-[2] min-w-0 bg-transparent border-0 border-b border-slate-700 rounded-none px-0 py-1.5 text-[13px] text-slate-400 placeholder-slate-500 focus:outline-none focus:border-accent-600 focus:text-slate-200 transition-colors duration-200"
             />

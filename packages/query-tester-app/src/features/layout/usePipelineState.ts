@@ -1,5 +1,5 @@
 import { useTestStore } from 'core/store/testStore';
-import { selectActiveTest, selectIsRunning } from 'core/store/selectors';
+import { selectActiveTest, selectIsRunning, inputHasData } from 'core/store/selectors';
 
 export interface PipelineStep {
   id: string;
@@ -26,14 +26,7 @@ export function usePipelineState(): PipelineState {
 
   const setupDone = (test?.app ?? '').trim() !== '';
   const queryDone = (test?.query.spl ?? '').trim() !== '';
-  const dataDone = !isQueryOnly && (test?.scenarios ?? []).some(
-    (s) => s.inputs.some((i) =>
-      (i.inputMode === 'query_data' && (i.queryDataConfig?.spl ?? '').trim() !== '')
-      || i.inputMode === 'no_events'
-      || (i.inputMode === 'json' && (i.jsonContent ?? '').trim() !== '')
-      || i.events.some((e) => e.fieldValues.some((f) => f.field.trim() !== ''))
-    )
-  );
+  const dataDone = !isQueryOnly && inputHasData(test?.scenarios ?? []);
   const validationDone = (test?.validation?.fieldGroups?.length ?? 0) > 0 || test?.validation?.resultCount?.enabled === true;
 
   const completions = isQueryOnly

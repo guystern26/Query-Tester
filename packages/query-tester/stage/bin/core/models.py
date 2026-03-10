@@ -31,12 +31,23 @@ class ResultCount:
 
 
 @dataclass
+class FieldConditionGroup:
+    """A group of conditions on the same field, with intra-group logic (and/or)."""
+
+    field: str
+    conditions: List[FieldCondition]
+    condition_logic: str  # "and" or "or"
+    scenario_scope: Any  # "all" or List[str] of scenario IDs
+
+
+@dataclass
 class ValidationConfig:
     """Validation configuration shared across scenarios."""
 
     validation_type: str
     expected_result: Optional[Dict[str, Any]]
     field_conditions: Optional[List[FieldCondition]]
+    field_groups: Optional[List[FieldConditionGroup]]
     field_logic: str
     validation_scope: str
     scope_n: Optional[int]

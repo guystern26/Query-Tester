@@ -59,6 +59,12 @@ export interface ApiPayload {
       value: string;
       scenarioScope: 'all' | string[];
     }>;
+    fieldGroups: Array<{
+      field: string;
+      conditionLogic: 'and' | 'or';
+      scenarioScope: 'all' | string[];
+      conditions: Array<{ operator: string; value: string }>;
+    }>;
     fieldLogic: 'and' | 'or';
     validationScope: string;
     scopeN: number | null;
@@ -114,6 +120,12 @@ export function buildPayload(test: TestDefinition): ApiPayload {
           scenarioScope: g.scenarioScope,
         }))
       ),
+      fieldGroups: test.validation.fieldGroups.map((g) => ({
+        field: g.field,
+        conditionLogic: g.conditionLogic,
+        scenarioScope: g.scenarioScope,
+        conditions: g.conditions.map((c) => ({ operator: c.operator, value: c.value })),
+      })),
       fieldLogic: test.validation.fieldLogic,
       validationScope: test.validation.validationScope,
       scopeN: test.validation.scopeN,

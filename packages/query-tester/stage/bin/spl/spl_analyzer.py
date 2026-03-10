@@ -19,7 +19,9 @@ UNAUTHORIZED_COMMANDS = {
     "drop",
     "collect",
     "outputlookup",
+    "outputcsv",
     "sendemail",
+    "dbxquery",
     "rest",
     "script",
     "map",
@@ -60,8 +62,11 @@ def analyze(spl: str) -> SplAnalysis:
     """
     spl_clean = spl or ""
 
+    # Extract commands from outer query (for general command listing)
     commands = _extract_commands(spl_clean)
-    unauthorized = [cmd for cmd in commands if cmd in UNAUTHORIZED_COMMANDS]
+    # Also extract commands from the FULL SPL (including subsearches) for safety checks
+    all_commands = _extract_all_commands(spl_clean)
+    unauthorized = [cmd for cmd in all_commands if cmd in UNAUTHORIZED_COMMANDS]
     unusual = [cmd for cmd in commands if cmd in UNUSUAL_COMMANDS]
 
     warnings = []  # type: List[Dict[str, Any]]
@@ -134,6 +139,29 @@ def analyze(spl: str) -> SplAnalysis:
     )
 
 
+def _strip_quoted_strings(spl: str) -> str:
+    """Remove content inside single and double quotes to prevent false matches."""
+    result = []  # type: List[str]
+    i = 0
+    while i < len(spl):
+        ch = spl[i]
+        if ch in ('"', "'"):
+            quote_char = ch
+            i += 1
+            while i < len(spl):
+                if spl[i] == "\\" and i + 1 < len(spl):
+                    i += 2
+                    continue
+                if spl[i] == quote_char:
+                    break
+                i += 1
+            i += 1
+            continue
+        result.append(ch)
+        i += 1
+    return "".join(result)
+
+
 def _strip_subsearch_bodies(spl: str) -> str:
     parts = []  # type: List[str]
     depth = 0
@@ -150,7 +178,7 @@ def _strip_subsearch_bodies(spl: str) -> str:
 
 
 def _extract_commands(spl: str) -> List[str]:
-    base = _strip_subsearch_bodies(spl)
+    base = _strip_subsearch_bodies(_strip_quoted_strings(spl))
     commands = []  # type: List[str]
 
     first_pipe = base.find("|")
@@ -164,6 +192,33 @@ def _extract_commands(spl: str) -> List[str]:
             commands.append(pre.lower())
 
     for match in re.finditer(r"\|\s*([a-zA-Z_]+)", base):
+        cmd = match.group(1).lower()
+        if cmd not in commands:
+            commands.append(cmd)
+
+    return commands
+
+
+def _extract_all_commands(spl: str) -> List[str]:
+    """Extract ALL commands from the full SPL including subsearches (for safety checks)."""
+    commands = []  # type: List[str]
+
+    # Strip quoted strings first to avoid false positives on commands inside strings
+    safe = _strip_quoted_strings(spl)
+    # Strip brackets but keep the content
+    flat = safe.replace("[", " ").replace("]", " ")
+
+    first_pipe = flat.find("|")
+    if first_pipe == -1:
+        first_token = flat.strip().split(" ", 1)[0]
+        if re.match(r"^[a-zA-Z_]+$", first_token):
+            commands.append(first_token.lower())
+    else:
+        pre = flat[:first_pipe].strip().split(" ", 1)[0]
+        if re.match(r"^[a-zA-Z_]+$", pre):
+            commands.append(pre.lower())
+
+    for match in re.finditer(r"\|\s*([a-zA-Z_]+)", flat):
         cmd = match.group(1).lower()
         if cmd not in commands:
             commands.append(cmd)

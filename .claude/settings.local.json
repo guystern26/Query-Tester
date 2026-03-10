@@ -35,7 +35,25 @@
       "Bash(cmd.exe:*)",
       "Bash(./node_modules/.bin/webpack:*)",
       "Bash(python:*)",
-      "Bash(\"C:/Program Files/Splunk/bin/splunk\" cmd:*)"
+      "Bash(\"C:/Program Files/Splunk/bin/splunk\" cmd:*)",
+      "Bash(tar:*)",
+      "Bash(../../node_modules/.bin/tsc:*)",
+      "Bash(find \"C:\\\\Users\\\\guyst\\\\splunk-ui-toolkit-apps\\\\packages\\\\query-tester-app\\\\src\" -type f \\\\\\( -name \"*.ts\" -o -name \"*.tsx\" \\\\\\) -exec wc -l {} +)",
+      "Bash(where:*)",
+      "Bash(python3:*)",
+      "Bash(ls /c/Python*/python.exe)",
+      "Read(//c/Program Files/**)",
+      "Bash(\"/c/Program Files/Splunk/bin/python3.exe\":*)",
+      "Bash(do:*)",
+      "Bash(do echo:*)",
+      "Bash(node_modules/.bin/tsc:*)",
+      "Bash(yarn build:*)",
+      "Bash(yarn dev:*)",
+      "Bash(claude mcp:*)",
+      "Read(//c/Users/guyst/AppData/Local/Programs/Python/**)",
+      "Bash(py -3 --version 2>&1 || /c/Python*/python.exe --version 2>&1 || /c/Users/guyst/AppData/Local/Programs/Python/*/python.exe --version 2>&1)",
+      "Bash(cd \"C:\\\\Users\\\\guyst\\\\splunk-ui-toolkit-apps\" && py -3 test_injection.py)",
+      "Bash(SESSION_KEY=\"2wSOTtQ6MrlpjsUxlE09YWjXcwLg7qpAzGMms8l1lWgIAQf2qVkERaV2MS1WIsoIOElqPfKHLjyhjumvm_sdjB0ZcJ1oEYLJs6ryClLO\"\n\necho \"=== TEST 1: Standard injection ===\"\ncurl -sk \"https://localhost:8089/services/splunk_query_tester/query_tester?output_mode=json\" \\\\\n  -H \"Authorization: Splunk $SESSION_KEY\" \\\\\n  -H \"Content-Type: application/json\" \\\\\n  -d '{\n    \"testName\": \"Playwright Standard Test\",\n    \"app\": \"search\",\n    \"testType\": \"scenario\",\n    \"query\": \"index=main sourcetype=test_data | stats count by status\",\n    \"earliestTime\": \"-24h@h\",\n    \"latestTime\": \"now\",\n    \"scenarios\": [{\n      \"name\": \"Scenario 1\",\n      \"inputs\": [{\n        \"rowIdentifier\": \"index=main sourcetype=test_data\",\n        \"inputMode\": \"event_table\",\n        \"events\": [\n          {\"status\": \"200\"},\n          {\"status\": \"200\"},\n          {\"status\": \"404\"}\n        ]\n      }]\n    }],\n    \"validation\": {\n      \"validationType\": \"field\",\n      \"fieldConditions\": [],\n      \"fieldGroups\": [],\n      \"fieldLogic\": \"and\",\n      \"validationScope\": \"all\",\n      \"scopeN\": null,\n      \"resultCount\": null\n    }\n  }' 2>/dev/null | py -3 -m json.tool 2>/dev/null || echo \"Raw output above\")"
     ]
   }
 }

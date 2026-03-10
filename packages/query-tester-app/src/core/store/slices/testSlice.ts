@@ -7,8 +7,9 @@ import { genId, createDefaultTest } from '../../constants/defaults';
 import { MAX_TESTS_PER_SESSION } from '../../constants/limits';
 import { findTest, deepCloneTestWithNewIds } from './helpers';
 
-type SetState = (recipe: (draft: { tests: TestDefinition[]; activeTestId: EntityId | null }) => void) => void;
-type GetState = () => { tests: TestDefinition[]; activeTestId: EntityId | null };
+type SliceState = { tests: TestDefinition[]; activeTestId: EntityId | null; testResponse: unknown | null };
+type SetState = (recipe: (draft: SliceState) => void) => void;
+type GetState = () => SliceState;
 
 export function testSlice(set: SetState, _get: GetState) {
   return {
@@ -29,6 +30,7 @@ export function testSlice(set: SetState, _get: GetState) {
         draft.tests.splice(idx, 1);
         if (draft.activeTestId === testId) {
           draft.activeTestId = draft.tests[Math.max(0, idx - 1)]?.id ?? null;
+          draft.testResponse = null;
         }
       }),
 
@@ -50,6 +52,9 @@ export function testSlice(set: SetState, _get: GetState) {
 
     setActiveTest: (testId: EntityId | null) =>
       set((draft) => {
+        if (draft.activeTestId !== testId) {
+          draft.testResponse = null;
+        }
         draft.activeTestId = testId;
       }),
 
@@ -62,7 +67,15 @@ export function testSlice(set: SetState, _get: GetState) {
     updateApp: (testId: EntityId, app: string) =>
       set((draft) => {
         const t = findTest(draft.tests, testId);
-        if (t) t.app = app;
+        if (t) {
+          t.app = app;
+          t.query.savedSearchOrigin = null;
+          for (const s of t.scenarios) {
+            for (const inp of s.inputs) {
+              inp.queryDataConfig.savedSearchName = null;
+            }
+          }
+        }
       }),
 
     setFieldExtraction: (testId: EntityId, sources: ExtractedDataSource[]) =>

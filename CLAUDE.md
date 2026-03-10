@@ -1,4 +1,79 @@
-# CLAUDE.md — Add/Replace these sections
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Build & Development Commands
+
+```bash
+# Initial setup (required once)
+yarn run setup            # installs deps + builds all packages
+
+# Development (Vite dev server on port 3000, proxies /splunkd to localhost:8000)
+yarn dev
+
+# Build all packages
+yarn build
+
+# Build Splunk app bundle only (webpack)
+cd packages/query-tester && ./node_modules/.bin/webpack --mode=production
+
+# Lint
+yarn lint                                          # all packages
+yarn workspace @splunk/query-tester-app run eslint  # single package
+
+# Tests
+yarn test                                           # all packages
+yarn workspace @splunk/query-tester-app run test    # single package
+yarn workspace @splunk/query-tester-app run test:watch
+
+# Format
+yarn format               # auto-format all JS/JSX/CSS
+yarn format:verify        # check only
+
+# Deploy to Splunk (symlink for dev)
+yarn workspace @splunk/query-tester run link:app
+```
+
+## Architecture
+
+**Monorepo** with Yarn Workspaces containing two packages:
+
+### `packages/query-tester-app` — React frontend library
+- Exports Zustand store, types, components, hooks as `@splunk/query-tester-app`
+- **Entry:** `src/StartPage.tsx` (main), `src/dev-entry.tsx` (Vite dev)
+- **Store:** Single Zustand v4 store with Immer middleware at `src/core/store/testStore.ts`, composed from slices in `src/core/store/slices/`
+- **Data hierarchy:** Test -> Scenario[] -> TestInput[] -> InputEvent[] -> FieldValue[]
+- **Feature modules:** `src/features/{scenarios,query,results,validation,eventGenerator,layout}/`
+- **API layer:** `src/api/` (splunkApi.ts, testApi.ts, llmApi.ts)
+- **Config:** `src/config/env.ts` (REST_PATH, LLM_ENDPOINT — rebuild required after changes)
+
+### `packages/query-tester` — Splunk app wrapper + Python backend
+- Depends on `@splunk/query-tester-app`
+- Builds with Webpack 5 (not Vite) via `webpack.config.js`
+- **`stage/`** = the deployed Splunk app directory (symlinked or copied to `$SPLUNK_HOME/etc/apps/query-tester`)
+- Frontend bundle output: `stage/appserver/static/pages/`
+- Splunk configs: `stage/default/` (app.conf, restmap.conf, web.conf, indexes.conf)
+- Entry point: `src/main/webapp/pages/QueryTesterApp/index.tsx`
+
+### Python backend (`packages/query-tester/stage/bin/`)
+REST endpoint: `POST /splunkd/__raw/services/splunk_query_tester/query_tester`
+
+**Run loop:** parse payload -> resolve SPL -> analyze SPL -> for each scenario: generate events -> index -> inject SPL -> run query -> validate -> cleanup (in finally)
+
+Key modules and their strict boundaries:
+- `query_tester.py` — REST handler entry point (Splunk wiring only)
+- `core/test_runner.py` — orchestrator, loops scenarios
+- `core/payload_parser.py` — JSON dict -> dataclasses (camelCase -> snake_case)
+- `spl/spl_analyzer.py` — reads SPL only, never modifies
+- `spl/query_injector.py` — rewrites SPL, never runs it
+- `spl/query_executor.py` — executes SPL via splunklib
+- `data/data_indexer.py` — indexes events, cleanup
+- `generators/event_generator.py` — expands GeneratorConfig, no file I/O or Splunk calls
+- `validation/result_validator.py` — compares rows to conditions, never runs queries
+
+**Bundled `splunklib/`** — no pip installs; closed network.
+
+---
 
 ## CRITICAL CONSTRAINTS — READ BEFORE EVERY CHANGE
 
@@ -50,6 +125,13 @@ Do NOT mix styled-components and Tailwind on the same element.
 - No `import.meta.dirname` (Node 21+)
 - No top-level await in modules
 - Vite config uses `defineConfig` from 'vite'
+
+### UI Framework
+- Use `@splunk/react-ui` for Button, Card, ControlGroup, Select, TextArea, Message, Modal, Switch, Tabs
+- NEVER use MUI (`@mui/*`)
+- Wrap app in SplunkThemeProvider family=enterprise colorScheme=dark density=comfortable
+- IDs: `crypto.randomUUID()`
+
 ---
 
 ## BACKEND CONSTRAINTS — Python REST Handler
@@ -67,12 +149,14 @@ CRLF causes a 500 "can't start the script" on Linux Splunk. Configure your edito
 ### No external packages
 Only stdlib + splunklib. No pip installs — closed network.
 
-### Architecture
+### Architecture patterns
 - One query per scenario. All inputs indexed together before the query runs.
 - Cleanup always in `finally` — even when exceptions thrown.
 - Registries not if/elif: `GENERATOR_REGISTRY`, `CONDITION_HANDLERS`, `STRATEGY_HANDLERS`.
 - No `dataclasses.asdict()` — produces snake_case. Frontend reads camelCase. Use explicit `_to_dict()`.
 - `session_key` injected at construction. Never a global.
+- All validation conditions evaluated — no short-circuit on first failure.
+- Per-scenario errors don't stop the loop. Fatal errors only on parse/SPL failures.
 
 ### File responsibilities (never cross these)
 - `spl_analyzer.py` reads SPL only — never modifies it
@@ -80,8 +164,24 @@ Only stdlib + splunklib. No pip installs — closed network.
 - `result_validator.py` compares rows to conditions — never runs queries
 - `event_generator.py` expands GeneratorConfig — no file I/O, no Splunk calls
 
+### SPL data embedding — no single quotes ever
+Single quotes break silently in Splunk eval. Use JSON via `eval _raw=` with double-quote escaping.
+
 ### Splunk REST response format
 ```python
 data = response.json()
 content = data['entry'][0]['content']  # content is nested, not at root
 ```
+
+### Backend specs
+Detailed specs live in `docs/spec-00` through `spec-11`. Attach `spec-00-conventions.md` to every backend prompt. See `BACKEND.md` for the full prompt sequence and spec index.
+
+---
+
+## Deployment
+
+- **Dev:** Symlink `packages/query-tester/stage` to `$SPLUNK_HOME/etc/apps/query-tester`
+- **Python changes:** Just restart Splunk (no rebuild needed)
+- **Frontend changes:** Webpack rebuild required, then restart Splunk
+- **Config files:** `stage/bin/config.py` (backend), `src/config/env.ts` (frontend)
+- See `DEPLOYMENT.md` for full deployment guide

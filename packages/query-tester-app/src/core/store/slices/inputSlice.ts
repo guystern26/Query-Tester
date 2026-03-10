@@ -1,13 +1,8 @@
-/**
- * Input + event + field slice.
- */
-
-import type { EntityId, TestDefinition, TimeRange } from '../../types';
-import type { InputMode } from '../../types';
+/** Input + event + field slice. */
+import type { EntityId, TestDefinition, TimeRange, InputMode, ExtractedDataSource } from '../../types';
 import { genId, createDefaultInput } from '../../constants/defaults';
-import { MAX_INPUTS_PER_SCENARIO } from '../../constants/limits';
+import { MAX_INPUTS_PER_SCENARIO, MAX_EVENTS_PER_INPUT, MAX_FIELDS_PER_EVENT } from '../../constants/limits';
 import { findTest, findScenario, findInput } from './helpers';
-import type { ExtractedDataSource } from '../../types';
 
 type SetState = (recipe: (draft: { tests: TestDefinition[] }) => void) => void;
 
@@ -76,7 +71,7 @@ export function inputSlice(set: SetState) {
         const t = findTest(draft.tests, testId);
         const s = t && findScenario(t, scenarioId);
         const input = s && findInput(s, inputId);
-        if (!input) return;
+        if (!input || input.events.length >= MAX_EVENTS_PER_INPUT) return;
         const lastEvent = input.events[input.events.length - 1];
         const newFieldValues = lastEvent
           ? lastEvent.fieldValues.map((fv) => ({ id: genId(), field: fv.field, value: '' }))
@@ -89,7 +84,7 @@ export function inputSlice(set: SetState) {
         const t = findTest(draft.tests, testId);
         const s = t && findScenario(t, scenarioId);
         const input = s && findInput(s, inputId);
-        if (!input) return;
+        if (!input || input.events.length <= 1) return;
         const idx = input.events.findIndex((e) => e.id === eventId);
         if (idx !== -1) input.events.splice(idx, 1);
       }),
@@ -100,6 +95,8 @@ export function inputSlice(set: SetState) {
         const s = t && findScenario(t, scenarioId);
         const input = s && findInput(s, inputId);
         if (!input) return;
+        const maxFields = Math.max(0, ...input.events.map((e) => e.fieldValues.length));
+        if (maxFields >= MAX_FIELDS_PER_EVENT) return;
         for (const evt of input.events) {
           evt.fieldValues.push({ id: genId(), field: '', value: '' });
         }
