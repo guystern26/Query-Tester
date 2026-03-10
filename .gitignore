@@ -11,4 +11,5 @@ splunktional-temp
 .playwright-mcp
 dist/
 packages/*/stage/
+!packages/query-tester-app/stage/
 packages/*/types/
