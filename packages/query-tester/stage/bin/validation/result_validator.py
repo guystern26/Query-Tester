@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Tuple
 
 from logger import get_logger
 from core.models import (
+    FieldConditionGroup,
     ParsedScenario,
     ValidationConfig,
     ValidationDetail,
@@ -55,7 +56,37 @@ def validate(
     scope = validation.validation_scope
     scope_n = validation.scope_n
 
-    if validation.field_conditions:
+    if validation.field_groups:
+        # Structured groups: evaluate per-group with conditionLogic, then fieldLogic
+        group_results = []  # type: List[bool]
+        for group in validation.field_groups:
+            if not _scope_matches(group.scenario_scope, scenario.name):
+                continue
+            group_details = []  # type: List[ValidationDetail]
+            for condition in group.conditions:
+                detail = check_field_condition(condition, results, scope, scope_n)
+                group_details.append(detail)
+            details.extend(group_details)
+
+            if not group_details:
+                continue
+
+            if group.condition_logic == "or":
+                group_passed = any(d.passed for d in group_details)
+            else:
+                group_passed = all(d.passed for d in group_details)
+            group_results.append(group_passed)
+
+        if group_results:
+            if validation.field_logic == "or":
+                if not any(group_results):
+                    all_passed = False
+            else:
+                if not all(group_results):
+                    all_passed = False
+
+    elif validation.field_conditions:
+        # Flat conditions fallback (legacy / no groups sent)
         field_details = []  # type: List[ValidationDetail]
         for condition in validation.field_conditions:
             if not _scope_matches(condition.scenario_scope, scenario.name):

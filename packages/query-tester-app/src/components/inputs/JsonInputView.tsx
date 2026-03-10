@@ -50,8 +50,7 @@ export function JsonInputView({ testId, scenarioId, inputId }: JsonInputViewProp
     if (storeValue !== lastSentValue.current) {
       setValue(storeValue);
       lastSentValue.current = storeValue;
-      if (storeValue.trim() === '') setError(null);
-      else { try { JSON.parse(storeValue); setError(null); } catch { setError('Invalid JSON'); } }
+      validateJson(storeValue);
     }
   }, [storeValue]);
 
@@ -62,11 +61,21 @@ export function JsonInputView({ testId, scenarioId, inputId }: JsonInputViewProp
 
   useEffect(() => () => { debouncedUpdate.cancel(); }, [debouncedUpdate]);
 
+  const [emptyArrayWarning, setEmptyArrayWarning] = useState(false);
+
+  const validateJson = (text: string) => {
+    if (text.trim() === '') { setError(null); setEmptyArrayWarning(false); return; }
+    try {
+      const parsed = JSON.parse(text);
+      setError(null);
+      setEmptyArrayWarning(Array.isArray(parsed) && parsed.length === 0);
+    } catch { setError('Invalid JSON'); setEmptyArrayWarning(false); }
+  };
+
   const handleChange = (next: string) => {
     setValue(next);
     lastSentValue.current = next;
-    if (next.trim() === '') { setError(null); }
-    else { try { JSON.parse(next); setError(null); } catch { setError('Invalid JSON'); } }
+    validateJson(next);
     debouncedUpdate(next);
   };
 
@@ -79,7 +88,7 @@ export function JsonInputView({ testId, scenarioId, inputId }: JsonInputViewProp
       try { JSON.parse(text); } catch { setFileError('Uploaded file does not contain valid JSON.'); e.target.value = ''; return; }
       setFileError(null);
       handleChange(text);
-      setInputFileRef(testId, scenarioId, inputId, { name: file.name, size: file.size } as any);
+      setInputFileRef(testId, scenarioId, inputId, { name: file.name, size: file.size });
       e.target.value = '';
     };
     reader.onerror = () => { setFileError('Failed to read file.'); e.target.value = ''; };
@@ -93,11 +102,16 @@ export function JsonInputView({ testId, scenarioId, inputId }: JsonInputViewProp
       <TextArea value={value} onChange={handleChange} placeholder="Paste your JSON data here..." rows={10} className={`font-mono ${error ? 'border-red-500 focus:border-red-500' : ''}`} />
 
       {value.trim() !== '' && (
-        <div className={`mt-1.5 flex items-center gap-1.5 text-[13px] ${error ? 'text-red-400' : 'text-green-400'}`}>
+        <div className={`mt-1.5 flex items-center gap-1.5 text-[13px] ${error ? 'text-red-400' : emptyArrayWarning ? 'text-amber-400' : 'text-green-400'}`}>
           {error ? (
             <>
               <AlertIcon />
               <span>{error}</span>
+            </>
+          ) : emptyArrayWarning ? (
+            <>
+              <AlertIcon />
+              <span>Valid JSON but empty array — no events will be generated</span>
             </>
           ) : (
             <>

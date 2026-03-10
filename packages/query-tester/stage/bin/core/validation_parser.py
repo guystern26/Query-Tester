@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from logger import get_logger
-from core.models import FieldCondition, ResultCount, ValidationConfig
+from core.models import FieldCondition, FieldConditionGroup, ResultCount, ValidationConfig
 
 
 logger = get_logger(__name__)
@@ -46,7 +46,38 @@ def parse_validation(raw: Dict[str, Any]) -> ValidationConfig:
                         type(condition_obj).__name__,
                     )
                     continue
-                field_conditions.append(_parse_field_condition(condition_obj))
+                try:
+                    field_conditions.append(_parse_field_condition(condition_obj))
+                except (KeyError, ValueError) as exc:
+                    logger.warning(
+                        "Skipping malformed field condition: %s", str(exc)
+                    )
+
+    # Parse fieldGroups (structured, with per-group conditionLogic)
+    field_groups_raw = raw.get("fieldGroups")
+    field_groups = None  # type: Optional[List[FieldConditionGroup]]
+    if field_groups_raw is not None:
+        if not isinstance(field_groups_raw, list):
+            logger.warning(
+                'Expected "validation.fieldGroups" to be a list or null; '
+                "received %s. Ignoring.",
+                type(field_groups_raw).__name__,
+            )
+        else:
+            field_groups = []
+            for group_obj in field_groups_raw:
+                if not isinstance(group_obj, dict):
+                    logger.warning(
+                        "Skipping non-object field group of type %s.",
+                        type(group_obj).__name__,
+                    )
+                    continue
+                try:
+                    field_groups.append(_parse_field_group(group_obj))
+                except (KeyError, ValueError) as exc:
+                    logger.warning(
+                        "Skipping malformed field group: %s", str(exc)
+                    )
 
     field_logic = _get_str(raw, "fieldLogic", "and")
     validation_scope = _get_str(raw, "validationScope", "any_event")
@@ -81,6 +112,7 @@ def parse_validation(raw: Dict[str, Any]) -> ValidationConfig:
         validation_type=validation_type,
         expected_result=expected_result,
         field_conditions=field_conditions,
+        field_groups=field_groups,
         field_logic=field_logic,
         validation_scope=validation_scope,
         scope_n=scope_n,
@@ -89,6 +121,12 @@ def parse_validation(raw: Dict[str, Any]) -> ValidationConfig:
 
 
 def _parse_field_condition(raw: Dict[str, Any]) -> FieldCondition:
+    for key in ("field", "operator", "value"):
+        if key not in raw:
+            raise ValueError(
+                'Missing required key "{0}" in fieldCondition: {1}'.format(key, raw)
+            )
+
     field = raw["field"]
     if not isinstance(field, str):
         raise ValueError(
@@ -103,15 +141,61 @@ def _parse_field_condition(raw: Dict[str, Any]) -> FieldCondition:
         )
     value = raw["value"]
     if not isinstance(value, str):
-        raise ValueError(
-            'Expected "value" to be a string but received %s.'
-            % type(value).__name__
-        )
+        try:
+            value = str(value)
+        except Exception:
+            raise ValueError(
+                'Expected "value" to be a string but received %s.'
+                % type(value).__name__
+            )
     scenario_scope = raw.get("scenarioScope", "all")
     return FieldCondition(
         field=field,
         operator=operator,
         value=value,
+        scenario_scope=scenario_scope,
+    )
+
+
+def _parse_field_group(raw: Dict[str, Any]) -> FieldConditionGroup:
+    field_name = raw.get("field")
+    if not field_name or not isinstance(field_name, str):
+        raise ValueError(
+            'Missing or non-string "field" in fieldGroup: {0}'.format(raw)
+        )
+    condition_logic = _get_str(raw, "conditionLogic", "and")
+    scenario_scope = raw.get("scenarioScope", "all")
+
+    conditions_raw = raw.get("conditions") or []
+    if not isinstance(conditions_raw, list):
+        raise ValueError(
+            'Expected "conditions" to be a list in fieldGroup: {0}'.format(raw)
+        )
+
+    conditions = []  # type: List[FieldCondition]
+    for cond_obj in conditions_raw:
+        if not isinstance(cond_obj, dict):
+            continue
+        operator = cond_obj.get("operator")
+        if not operator or not isinstance(operator, str):
+            continue
+        value = cond_obj.get("value", "")
+        if not isinstance(value, str):
+            try:
+                value = str(value)
+            except Exception:
+                value = ""
+        conditions.append(FieldCondition(
+            field=field_name,
+            operator=operator,
+            value=value,
+            scenario_scope=scenario_scope,
+        ))
+
+    return FieldConditionGroup(
+        field=field_name,
+        conditions=conditions,
+        condition_logic=condition_logic,
         scenario_scope=scenario_scope,
     )
 

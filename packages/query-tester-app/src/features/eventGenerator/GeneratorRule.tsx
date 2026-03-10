@@ -93,11 +93,12 @@ export function GeneratorRule({ testId, scenarioId, inputId, rule, availableFiel
           />
         )}
         <select
-          className={`${inputCls} flex-1 min-w-0 cursor-pointer`}
+          className={`${inputCls} flex-1 min-w-0 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed`}
           value={rule.type || ''}
           onChange={handleTypeChange}
+          disabled={!rule.field.trim()}
         >
-          <option value="">Select type...</option>
+          <option value="">{rule.field.trim() ? 'Select type...' : 'Select a field first...'}</option>
           {TYPE_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>{o.label}</option>
           ))}
@@ -113,7 +114,9 @@ export function GeneratorRule({ testId, scenarioId, inputId, rule, availableFiel
         </button>
       </div>
 
-      {ConfigComponent ? (
+      {!rule.field.trim() ? (
+        <p className="mt-2 text-xs text-slate-600 italic m-0">Select a field first</p>
+      ) : ConfigComponent ? (
         <div className="mt-1.5 pt-1.5 border-t border-slate-800">
           <ConfigComponent testId={testId} scenarioId={scenarioId} inputId={inputId} rule={rule} />
         </div>

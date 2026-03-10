@@ -5,13 +5,7 @@
 import type { EntityId, TestDefinition, TestResponse } from '../../types';
 import { runTest, cancelTestOnBackend } from '../../../api/testApi';
 import { buildPayload } from '../../../utils/payloadBuilder';
-
-const EMPTY_SPL_ANALYSIS = {
-  unauthorizedCommands: [] as string[],
-  unusualCommands: [] as string[],
-  uniqLimitations: null,
-  commandsUsed: [] as string[],
-};
+import { EMPTY_SPL_ANALYSIS } from '../../../features/results/resultHelpers';
 
 let abortController: AbortController | null = null;
 
@@ -33,7 +27,8 @@ type GetState = () => {
 export function runSlice(set: SetState, get: GetState) {
   return {
     runTest: async () => {
-      const { tests, activeTestId } = get();
+      const { tests, activeTestId, isRunning } = get();
+      if (isRunning) return;
       const test = activeTestId ? tests.find((t) => t.id === activeTestId) : null;
       if (!test) return;
 

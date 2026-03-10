@@ -1,7 +1,4 @@
-/**
- * Paginated table of actual query result rows with per-row validation status.
- * Failed rows are sorted to the top. Each row shows inline pass/fail + explanation.
- */
+/** Paginated result rows table with per-row validation. Failed rows sorted to top. */
 import React, { useState, useMemo } from 'react';
 import type { ValidationDetail } from 'core/types';
 import { HIDDEN_SPLUNK_FIELDS, MAX_DISPLAY_ROWS, MANY_COLUMNS_THRESHOLD, PAGE_SIZE, humanizeCondition, isInjectedRunId, getRowValidation } from './resultHelpers';

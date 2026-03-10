@@ -36,6 +36,7 @@ def build_response(
         "testType": payload.test_type,
         "totalScenarios": total,
         "passedScenarios": passed_count,
+        "errors": [],
         "warnings": analysis.warnings,
         "splAnalysis": {
             "unauthorizedCommands": analysis.unauthorized_commands,

@@ -4,13 +4,7 @@
  */
 
 import type { TestResponse } from 'core/types';
-
-const EMPTY_SPL_ANALYSIS = {
-  unauthorizedCommands: [] as string[],
-  unusualCommands: [] as string[],
-  uniqLimitations: null,
-  commandsUsed: [] as string[],
-};
+import { EMPTY_SPL_ANALYSIS } from '../features/results/resultHelpers';
 
 export const MOCK_ALL_PASS: TestResponse = {
   status: 'success',

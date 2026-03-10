@@ -6,8 +6,8 @@ import {
   JUMPING_STATUS_VALUES,
   MONITORING_STATUS_VALUES,
   REASON_OPERATORS,
-  VALUELESS_OPS,
 } from './utils/ijumpHelpers';
+import { VALUELESS_OPS } from './utils/operatorConstants';
 
 /* ── icons ─────────────────────────────────────────────────── */
 

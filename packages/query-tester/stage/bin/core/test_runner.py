@@ -14,6 +14,7 @@ from core.models import ParsedScenario, ScenarioResult, TestPayload, ValidationD
 from core.payload_parser import parse
 from core.response_builder import build_response
 from spl.spl_analyzer import SplAnalysis, analyze as analyze_spl
+from spl.spl_normalizer import normalize_spl
 from spl.query_injector import detect_strategy, inject
 from spl.query_executor import QueryExecutor
 from generators.event_generator import build_events
@@ -24,6 +25,49 @@ from validation.result_validator import validate
 
 
 logger = get_logger(__name__)
+
+_EMPTY_SPL_ANALYSIS = {
+    "unauthorizedCommands": [],
+    "unusualCommands": [],
+    "uniqLimitations": None,
+    "commandsUsed": [],
+}
+
+
+def _error_response(
+    payload,       # type: Any
+    message,       # type: str
+    error_code,    # type: str
+    analysis=None, # type: Any
+):
+    # type: (...) -> Dict[str, Any]
+    """Build a TestResponse-shaped error dict with all required fields."""
+    from datetime import datetime
+
+    spl_analysis = _EMPTY_SPL_ANALYSIS  # type: Dict[str, Any]
+    warnings = []  # type: list
+    if analysis is not None:
+        spl_analysis = {
+            "unauthorizedCommands": analysis.unauthorized_commands,
+            "unusualCommands": analysis.unusual_commands,
+            "uniqLimitations": analysis.uniq_limitations,
+            "commandsUsed": analysis.commands_used,
+        }
+        warnings = analysis.warnings
+
+    return {
+        "status": "error",
+        "message": message,
+        "testName": payload.test_name if payload else "",
+        "testType": payload.test_type if payload else "",
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "totalScenarios": 0,
+        "passedScenarios": 0,
+        "errors": [{"code": error_code, "message": message, "severity": "error"}],
+        "warnings": warnings,
+        "splAnalysis": spl_analysis,
+        "scenarioResults": [],
+    }
 
 
 class TestRunner:
@@ -41,24 +85,32 @@ class TestRunner:
             payload = parse(raw_payload)
             spl = self._resolve_spl(payload)
             analysis = analyze_spl(spl)
+
+            if analysis.unauthorized_commands:
+                blocked = ", ".join(analysis.unauthorized_commands)
+                return (
+                    _error_response(
+                        payload,
+                        "Blocked commands detected: {0}".format(blocked),
+                        "BLOCKED_COMMANDS",
+                        analysis=analysis,
+                    ),
+                    400,
+                )
         except ValueError as exc:
             logger.error("Client error while preparing test: %s", str(exc), exc_info=True)
             return (
-                {
-                    "status": "error",
-                    "message": str(exc),
-                    "scenarioResults": [],
-                },
+                _error_response(None, str(exc), "VALIDATION_ERROR"),
                 400,
             )
         except Exception as exc:
             logger.error("Fatal error while preparing test: %s", str(exc), exc_info=True)
             return (
-                {
-                    "status": "error",
-                    "message": "Internal error while preparing test payload.",
-                    "scenarioResults": [],
-                },
+                _error_response(
+                    None,
+                    "Internal error while preparing test payload.",
+                    "INTERNAL_ERROR",
+                ),
                 500,
             )
 
@@ -199,8 +251,9 @@ class TestRunner:
         )
 
     def _resolve_spl(self, payload: TestPayload) -> str:
-        if payload.query and payload.query.strip():
-            return payload.query.strip()
+        normalized = normalize_spl(payload.query)
+        if normalized:
+            return normalized
         raise ValueError(
             'Payload must include a non-empty "query" field.'
         )

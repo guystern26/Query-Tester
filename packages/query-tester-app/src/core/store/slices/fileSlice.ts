@@ -2,7 +2,7 @@
  * File slice: saveToFile, loadFromFile.
  */
 
-import type { EntityId, TestDefinition } from '../../types';
+import type { EntityId, TestDefinition, TestResponse } from '../../types';
 import { buildPayload } from '../../../utils/payloadBuilder';
 import type { ApiPayload } from '../../../utils/payloadBuilder';
 import { DEFAULT_TIME_RANGE } from '../../constants/defaults';
@@ -18,8 +18,7 @@ export interface SavedState {
   payload: ApiPayload[];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type SetState = (recipe: (draft: any) => void) => void;
+type SetState = (recipe: (draft: { tests: TestDefinition[]; activeTestId: EntityId | null; testResponse: TestResponse | null }) => void) => void;
 type GetState = () => { tests: TestDefinition[]; activeTestId: EntityId | null };
 
 export function fileSlice(set: SetState, get: GetState) {

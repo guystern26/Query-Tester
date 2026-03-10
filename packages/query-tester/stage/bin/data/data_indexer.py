@@ -18,6 +18,7 @@ from logger import get_logger
 from config import (
     HEC_HOST, HEC_PORT, HEC_SCHEME, HEC_TOKEN, HEC_SSL_VERIFY,
     HEC_TIMEOUT, HEC_BATCH_SIZE, TEMP_INDEX, TEMP_SOURCETYPE,
+    SPLUNK_HOST, SPLUNK_PORT,
 )
 
 
@@ -166,6 +167,10 @@ def _send_hec_batch(
 
 def _run_spl(session_key: str, spl: str) -> None:
     """Execute SPL via splunklib — used only for cleanup deletes."""
-    service = splunk_client.connect(token=session_key)
+    service = splunk_client.connect(
+        host=SPLUNK_HOST,
+        port=SPLUNK_PORT,
+        splunkToken=session_key,
+    )
     job = service.jobs.create(spl)
     _ = job.results()

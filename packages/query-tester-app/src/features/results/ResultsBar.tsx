@@ -3,6 +3,7 @@ import { useTestStore } from 'core/store/testStore';
 import { selectActiveTest, selectTestResponse } from 'core/store/selectors';
 import { validateBeforeRun } from '../../utils/preflight';
 import { ScenarioResultCard } from './ScenarioResultCard';
+import { EMPTY_SPL_ANALYSIS } from './resultHelpers';
 
 function Chevron({ up }: { up: boolean }) {
   return (
@@ -13,13 +14,6 @@ function Chevron({ up }: { up: boolean }) {
     </svg>
   );
 }
-
-const EMPTY_SPL_ANALYSIS = {
-  unauthorizedCommands: [] as string[],
-  unusualCommands: [] as string[],
-  uniqLimitations: null,
-  commandsUsed: [] as string[],
-};
 
 export function ResultsBar() {
   const store = useTestStore();
@@ -49,7 +43,10 @@ export function ResultsBar() {
     const sr = response.scenarioResults;
     const t = sr.length;
     const p = sr.filter((s) => s.passed).length;
-    if (response.status === 'error' && t === 0) {
+    const isCancelled = response.status === 'error' && response.message === 'Test cancelled by user.';
+    if (isCancelled) {
+      status = <><span className="w-2 h-2 rounded-full bg-slate-400 shrink-0" /><span className="text-slate-400">Cancelled</span></>;
+    } else if (response.status === 'error' && t === 0) {
       status = <><span className="w-2 h-2 rounded-full bg-red-500 shrink-0" /><span className="text-red-500">{response.message}</span></>;
     } else if (p < t) {
       status = <><span className="w-2 h-2 rounded-full bg-red-500 shrink-0" /><span className="text-red-500">{t - p}/{t} scenarios failed</span></>;
@@ -151,6 +148,13 @@ export function ResultsBar() {
           <div className="px-3 py-2.5 rounded-md border-l-4 border-amber-500 bg-amber-500/10 text-[13px] text-amber-300">
             <strong>Unusual commands:</strong>{' '}
             {splAnalysis.unusualCommands.join(', ')}
+          </div>
+        )}
+
+        {/* splAnalysis: uniq limitations */}
+        {splAnalysis.uniqLimitations && (
+          <div className="px-3 py-2.5 rounded-md border-l-4 border-amber-500 bg-amber-500/10 text-[13px] text-amber-300">
+            <strong>Note:</strong> {splAnalysis.uniqLimitations}
           </div>
         )}
 

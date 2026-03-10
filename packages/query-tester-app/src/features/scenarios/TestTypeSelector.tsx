@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTestStore } from 'core/store/testStore';
-import { selectActiveTest } from 'core/store/selectors';
+import { selectActiveTest, inputHasData } from 'core/store/selectors';
 import type { TestType } from 'core/types';
 
 const NOTES: Record<TestType, string> = {
@@ -21,7 +21,12 @@ export function TestTypeSelector({ compact = false }: Props) {
   const testType: TestType = activeTest?.testType ?? 'standard';
 
   const handleSelect = (type: TestType) => {
-    if (activeTest) state.updateTestType(activeTest.id, type);
+    if (!activeTest || type === testType) return;
+    if (type === 'query_only' && inputHasData(activeTest.scenarios)) {
+      if (!window.confirm('Switching to Query Only will ignore all test data. Your data is preserved if you switch back.')) return;
+    }
+    state.updateTestType(activeTest.id, type);
+    state.clearResults();
   };
 
   if (compact) {

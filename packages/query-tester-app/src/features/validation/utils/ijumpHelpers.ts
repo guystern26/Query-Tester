@@ -19,8 +19,6 @@ export const REASON_OPERATORS: { value: ConditionOperator; label: string }[] = [
   { value: 'is_not_empty', label: 'Is not empty' },
 ];
 
-export const VALUELESS_OPS = new Set<ConditionOperator>(['is_empty', 'is_not_empty', 'is_timestamp']);
-
 export function isIJumpLockedField(fieldName: string): boolean {
   return (IJUMP_LOCKED_FIELDS as readonly string[]).includes(fieldName);
 }

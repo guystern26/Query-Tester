@@ -112,46 +112,36 @@ def _normalize_config(gen_type: str, raw: Dict[str, Any]) -> Dict[str, Any]:
         return {"variants": normalized}
 
     # numbered: frontend sends {pattern, rangeStart, rangeEnd, padLength}
-    # backend expects {prefix}
+    # backend expects {prefix, start, padding}
     if gen_type == "numbered":
         prefix = raw.get("pattern") or raw.get("prefix", "")
-        return {"prefix": prefix}
+        start = raw.get("rangeStart", raw.get("start", 1))
+        padding = raw.get("padLength", raw.get("padding", 0))
+        return {"prefix": prefix, "start": start, "padding": padding}
 
-    # random_number: frontend sends {variants: [{min, max, decimals, ...}]}
-    # backend expects {min, max, float}
+    # random_number: frontend sends {variants: [{min, max, decimals, prefix, suffix, weight}]}
+    # backend expects same shape — pass through for full variant support
     if gen_type == "random_number":
         variants = raw.get("variants") or []
-        if variants and isinstance(variants[0], dict):
-            v = variants[0]
-            return {
-                "min": v.get("min", 0),
-                "max": v.get("max", 100),
-                "float": (v.get("decimals", 0) or 0) > 0,
-            }
-        return raw
+        return {"variants": variants}
 
-    # email: frontend sends {variants: [{localPart, domain, ...}]}
-    # backend expects {domain}
+    # email: frontend sends {variants: [{localPart, domain, componentType, componentLength, weight}]}
+    # backend expects same shape — pass through for full variant support
     if gen_type == "email":
         variants = raw.get("variants") or []
-        if variants and isinstance(variants[0], dict):
-            return {"domain": variants[0].get("domain", "example.com")}
-        return raw
+        return {"variants": variants}
 
-    # ip_address: frontend sends {variants: [{ipType, ...}]}
-    # backend expects {subnet}
+    # unique_id: frontend sends {variants: [{format, prefix, suffix, length, weight}]}
+    # backend expects same shape — pass through
+    if gen_type == "unique_id":
+        variants = raw.get("variants") or []
+        return {"variants": variants}
+
+    # ip_address: frontend sends {variants: [{ipType, customOctets, prefix, suffix, weight}]}
+    # backend expects same shape — pass through for full variant support
     if gen_type == "ip_address":
         variants = raw.get("variants") or []
-        if variants and isinstance(variants[0], dict):
-            ip_type = variants[0].get("ipType", "private_c")
-            subnet_map = {
-                "private_a": "10.0.0",
-                "private_b": "172.16.0",
-                "private_c": "192.168.1",
-                "ipv4": "10.0.0",
-            }
-            return {"subnet": subnet_map.get(ip_type, "10.0.0")}
-        return raw
+        return {"variants": variants}
 
     return raw
 
