@@ -1,13 +1,10 @@
 /**
- * LLM API — extract data sources and validation fields from SPL using OpenAI ChatGPT.
+ * LLM API — extract data sources and validation fields from SPL.
+ * All endpoint/key config comes from config/env.ts.
  */
 
 import type { ExtractedDataSource } from 'core/types';
-
-const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
-const OPENAI_API_KEY = 'REDACTED';
-const MODEL = 'gpt-4o-mini';
-const MAX_TOKENS = 1024;
+import { ENV } from '../config/env';
 
 /**
  * Strip markdown fences and whitespace from LLM response text before parsing.
@@ -19,20 +16,27 @@ function cleanJsonResponse(text: string): string {
 }
 
 async function callLLM(systemPrompt: string, userMessage: string): Promise<string> {
+  if (!ENV.LLM_ENDPOINT) {
+    throw new Error('AI features are disabled. Set LLM_ENDPOINT in config/env.ts.');
+  }
+  if (!ENV.LLM_API_KEY) {
+    throw new Error('LLM API key is not configured. Set LLM_API_KEY in config/env.ts.');
+  }
+
   const body = {
-    model: MODEL,
-    max_tokens: MAX_TOKENS,
+    model: ENV.LLM_MODEL,
+    max_tokens: ENV.LLM_MAX_TOKENS,
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userMessage },
     ],
   };
 
-  const res = await fetch(OPENAI_URL, {
+  const res = await fetch(ENV.LLM_ENDPOINT, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + OPENAI_API_KEY,
+      'Authorization': 'Bearer ' + ENV.LLM_API_KEY,
     },
     body: JSON.stringify(body),
   });

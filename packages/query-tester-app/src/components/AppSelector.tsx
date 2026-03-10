@@ -4,6 +4,7 @@
  * Falls back to a text input in Vite dev mode.
  */
 import React, { useEffect, useState } from 'react';
+import { ENV } from '../config/env';
 
 export interface AppSelectorProps {
   value: string;
@@ -37,7 +38,7 @@ async function fetchApps(): Promise<string[]> {
   if (isViteDev()) return DEV_MOCK_APPS;
 
   const res = await fetch(
-    '/splunkd/__raw/services/apps/local?output_mode=json&count=0',
+    ENV.SPLUNK_SERVICES_BASE + '/apps/local?output_mode=json&count=0',
     { credentials: 'include' }
   );
   if (!res.ok) throw new Error('HTTP ' + res.status);

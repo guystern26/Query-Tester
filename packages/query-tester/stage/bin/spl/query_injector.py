@@ -9,6 +9,7 @@ import re
 from typing import Any, Callable, Dict, List
 
 from logger import get_logger
+from config import TEMP_INDEX
 from core.models import ParsedInput
 
 
@@ -69,7 +70,7 @@ def _run_id_field(run_id: str) -> str:
 
 
 def _inject_standard(spl: str, run_id: str, inputs: List[ParsedInput]) -> str:
-    replacement = "index=temp_query_tester {0}={1}".format(_run_id_field(run_id), run_id)
+    replacement = "index={0} {1}={2}".format(TEMP_INDEX, _run_id_field(run_id), run_id)
     current = spl
 
     for parsed_input in inputs:
@@ -88,7 +89,7 @@ def _inject_standard(spl: str, run_id: str, inputs: List[ParsedInput]) -> str:
 
 
 def _inject_no_index(spl: str, run_id: str, inputs: List[ParsedInput]) -> str:
-    prefix = "index=temp_query_tester {0}={1} ".format(_run_id_field(run_id), run_id)
+    prefix = "index={0} {1}={2} ".format(TEMP_INDEX, _run_id_field(run_id), run_id)
     stripped = spl.lstrip()
     leading = spl[: len(spl) - len(stripped)]
     return leading + prefix + stripped

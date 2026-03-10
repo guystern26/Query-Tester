@@ -12,4 +12,6 @@ export const MAX_FIELD_GROUPS = 20;
 export const MAX_CONDITIONS_PER_GROUP = 10;
 export const MAX_GENERATOR_RULES = 30;
 export const MAX_GENERATOR_EVENT_COUNT = 10_000;
-export const MAX_QUERY_DATA_EVENTS = 10_000;
+
+import { ENV } from '../../config/env';
+export const MAX_QUERY_DATA_EVENTS = ENV.MAX_QUERY_DATA_EVENTS;

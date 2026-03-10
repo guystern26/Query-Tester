@@ -1,0 +1,43 @@
+# -*- coding: utf-8 -*-
+"""
+config.py — Deployment Configuration
+=====================================
+EDIT THIS FILE WHEN DEPLOYING TO A NEW SPLUNK INSTANCE.
+This is the ONLY file you need to change for backend environment settings.
+No other Python file should contain hardcoded environment-specific values.
+"""
+from __future__ import annotations
+
+# ─── Splunk Instance Connection ──────────────────────────────────────────────
+
+SPLUNK_HOST = "localhost"
+SPLUNK_PORT = 8089            # splunkd management port
+SPLUNK_SCHEME = "https"
+
+# ─── HEC (HTTP Event Collector) ─────────────────────────────────────────────
+# Used for indexing synthetic test data. HEC must be enabled on this instance.
+
+HEC_HOST = "localhost"
+HEC_PORT = 8088
+HEC_SCHEME = "https"
+HEC_TOKEN = "34b745fc-b8b8-4837-84ab-82402ea18d51"  # your HEC token
+HEC_SSL_VERIFY = False        # set True if your instance uses a valid TLS cert
+HEC_TIMEOUT = 30              # seconds
+
+# ─── Temp Index ──────────────────────────────────────────────────────────────
+# The index used for injected test data. Must exist in Splunk (see indexes.conf).
+
+TEMP_INDEX = "temp_query_tester"
+TEMP_SOURCETYPE = "query_tester_input"
+
+# ─── Logging ─────────────────────────────────────────────────────────────────
+# Log file path. Falls back to $SPLUNK_HOME/var/log/splunk/query_tester.log
+# if left empty. Can also be overridden via QUERY_TESTER_LOG env var.
+
+LOG_FILE = ""                 # e.g. "/opt/splunk/var/log/splunk/query_tester.log"
+LOG_LEVEL = "INFO"            # DEBUG | INFO | WARNING | ERROR
+
+# ─── Limits ──────────────────────────────────────────────────────────────────
+
+MAX_QUERY_DATA_EVENTS = 10000  # max events from a Query Data sub-query
+HEC_BATCH_SIZE = 1000          # events per HEC POST request

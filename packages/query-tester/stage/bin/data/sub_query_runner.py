@@ -9,11 +9,10 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 from logger import get_logger
+from config import MAX_QUERY_DATA_EVENTS
 from spl.query_executor import QueryExecutor
 
 logger = get_logger(__name__)
-
-MAX_QUERY_DATA_EVENTS = 10000
 
 
 def run_sub_query(

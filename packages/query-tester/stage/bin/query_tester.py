@@ -22,9 +22,8 @@ from splunk.persistconn.application import PersistentServerConnectionApplication
 from logger import get_logger
 from core.test_runner import TestRunner
 
-# Set HEC token for data_indexer — avoids requiring OS-level env var
-if not os.environ.get("QUERY_TESTER_HEC_TOKEN"):
-    os.environ["QUERY_TESTER_HEC_TOKEN"] = "34b745fc-b8b8-4837-84ab-82402ea18d51"
+# HEC token is read from config.py (HEC_TOKEN) or QUERY_TESTER_HEC_TOKEN env var.
+# See bin/config.py to set it.
 
 logger = get_logger(__name__)
 
