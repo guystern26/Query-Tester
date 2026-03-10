@@ -12,3 +12,4 @@ splunktional-temp
 dist/
 packages/*/types/
 __pycache__
+.env.local

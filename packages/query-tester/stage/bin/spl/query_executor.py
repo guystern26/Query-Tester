@@ -13,6 +13,7 @@ import splunklib.results as splunk_results
 from splunklib.binding import HTTPError
 
 from logger import get_logger
+from config import SPLUNK_HOST, SPLUNK_PORT
 
 
 logger = get_logger(__name__)
@@ -65,8 +66,8 @@ class QueryExecutor:
         start = time.time()
         try:
             service = splunk_client.connect(
-                host="localhost",
-                port=8089,
+                host=SPLUNK_HOST,
+                port=SPLUNK_PORT,
                 splunkToken=self._session_key,
                 app=app,
             )

@@ -12,32 +12,34 @@ from typing import Any, Dict, List
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
-# Splunk's HEC uses a self-signed cert by default
-_SSL_CTX = ssl.create_default_context()
-_SSL_CTX.check_hostname = False
-_SSL_CTX.verify_mode = ssl.CERT_NONE
-
 import splunklib.client as splunk_client
 
 from logger import get_logger
+from config import (
+    HEC_HOST, HEC_PORT, HEC_SCHEME, HEC_TOKEN, HEC_SSL_VERIFY,
+    HEC_TIMEOUT, HEC_BATCH_SIZE, TEMP_INDEX, TEMP_SOURCETYPE,
+)
 
 
 logger = get_logger(__name__)
 
-BATCH_SIZE = 1000
-TEMP_INDEX = "temp_query_tester"
-TEMP_SOURCETYPE = "query_tester_input"
-HEC_URL = "https://localhost:8088/services/collector/event"
-HEC_TIMEOUT = 30
+BATCH_SIZE = HEC_BATCH_SIZE
+HEC_URL = "{0}://{1}:{2}/services/collector/event".format(HEC_SCHEME, HEC_HOST, HEC_PORT)
+
+# Build SSL context from config
+_SSL_CTX = ssl.create_default_context()
+if not HEC_SSL_VERIFY:
+    _SSL_CTX.check_hostname = False
+    _SSL_CTX.verify_mode = ssl.CERT_NONE
 
 
 def _get_hec_token() -> str:
-    """Read the HEC token from the environment."""
-    token = os.environ.get("QUERY_TESTER_HEC_TOKEN")
+    """Read the HEC token from config or environment."""
+    token = HEC_TOKEN or os.environ.get("QUERY_TESTER_HEC_TOKEN", "")
     if not token:
         raise RuntimeError(
-            "QUERY_TESTER_HEC_TOKEN environment variable is not set. "
-            "Configure HEC and export the token before running tests."
+            "HEC token is not configured. Set HEC_TOKEN in bin/config.py "
+            "or export QUERY_TESTER_HEC_TOKEN environment variable."
         )
     return token
 
@@ -143,8 +145,8 @@ def _send_hec_batch(
     except URLError as exc:
         raise RuntimeError(
             "HEC connection failed for run_id={0}: {1}. "
-            "Verify HEC is enabled on localhost:8088.".format(
-                run_id, exc.reason
+            "Verify HEC is enabled on {2}:{3}.".format(
+                run_id, exc.reason, HEC_HOST, HEC_PORT
             )
         )
 

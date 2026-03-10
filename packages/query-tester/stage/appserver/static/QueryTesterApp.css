@@ -2051,6 +2051,9 @@ video {
 .animate-generatorGlow {
     animation: generatorGlow 2.2s ease-in-out infinite;
   }
+.\[script\:\.\.\.\] {
+  script: ...;
+}
 
 /* ── CSS custom properties ────────────────────────────────── */
 

@@ -33,7 +33,9 @@
       "Bash(ls:*)",
       "Bash(xxd:*)",
       "Bash(cmd.exe:*)",
-      "Bash(./node_modules/.bin/webpack:*)"
+      "Bash(./node_modules/.bin/webpack:*)",
+      "Bash(python:*)",
+      "Bash(\"C:/Program Files/Splunk/bin/splunk\" cmd:*)"
     ]
   }
 }

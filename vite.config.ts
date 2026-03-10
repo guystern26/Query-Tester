@@ -25,11 +25,13 @@ export default defineConfig({
     global: 'globalThis',
   },
 
+  // DEV ONLY — proxy rewrites /splunkd to local Splunk instance.
+  // Override via VITE_SPLUNK_DEV_HOST in .env.local (e.g. http://my-splunk:8000)
   server: {
     port: 3000,
     proxy: {
       '/splunkd': {
-        target: 'http://localhost:8000',
+        target: process.env.VITE_SPLUNK_DEV_HOST || 'http://localhost:8000',
         changeOrigin: true,
         secure: false
       }

@@ -10,10 +10,27 @@ import os
 from typing import Optional
 
 
+# Import config values — use try/except to avoid circular import during
+# early bootstrap (config.py itself may import logger indirectly).
+try:
+    from config import LOG_FILE as _CFG_LOG_FILE
+    from config import LOG_LEVEL as _CFG_LOG_LEVEL
+except ImportError:
+    _CFG_LOG_FILE = ""
+    _CFG_LOG_LEVEL = "INFO"
+
 ENV_LOG_PATH = "QUERY_TESTER_LOG"
 
+_LOG_LEVEL_MAP = {
+    "DEBUG": logging.DEBUG,
+    "INFO": logging.INFO,
+    "WARNING": logging.WARNING,
+    "ERROR": logging.ERROR,
+}
 
-def _get_splunk_home() -> str:
+
+def _get_splunk_home():
+    # type: () -> str
     """Resolve SPLUNK_HOME from environment or common install paths."""
     home = os.environ.get("SPLUNK_HOME", "")
     if home:
@@ -26,29 +43,31 @@ def _get_splunk_home() -> str:
     return "/opt/splunk"
 
 
-def _get_log_path() -> str:
+def _get_log_path():
+    # type: () -> str
     """
-    Resolve the log file path, allowing override via environment variable.
-    Falls back to $SPLUNK_HOME/var/log/splunk/query_tester.log.
+    Resolve the log file path. Priority:
+    1. QUERY_TESTER_LOG environment variable
+    2. LOG_FILE from config.py
+    3. $SPLUNK_HOME/var/log/splunk/query_tester.log
     """
-    env_path: Optional[str] = os.environ.get(ENV_LOG_PATH)
+    env_path = os.environ.get(ENV_LOG_PATH)  # type: Optional[str]
     if env_path:
         return env_path
+    if _CFG_LOG_FILE:
+        return _CFG_LOG_FILE
     return os.path.join(_get_splunk_home(), "var", "log", "splunk", "query_tester.log")
 
 
-def get_logger(name: str) -> logging.Logger:
+def get_logger(name):
+    # type: (str) -> logging.Logger
     """
     Return a module-specific logger configured to write to the query tester log file.
-
-    The logger:
-    - Writes to /opt/splunk/var/log/splunk/query_tester.log by default
-    - Can be overridden via the QUERY_TESTER_LOG environment variable
-    - Uses a consistent text format suitable for Splunk indexing
-    - Deduplicates file handlers so it is safe to call multiple times
+    Safe to call multiple times — deduplicates file handlers.
     """
     logger = logging.getLogger(name)
-    logger.setLevel(logging.INFO)
+    level = _LOG_LEVEL_MAP.get(_CFG_LOG_LEVEL.upper(), logging.INFO)
+    logger.setLevel(level)
     logger.propagate = False
 
     log_path = _get_log_path()
@@ -71,4 +90,3 @@ def get_logger(name: str) -> logging.Logger:
         logger.addHandler(file_handler)
 
     return logger
-
