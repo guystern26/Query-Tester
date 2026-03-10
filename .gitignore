@@ -11,3 +11,4 @@ splunktional-temp
 .playwright-mcp
 dist/
 packages/*/types/
+__pycache__
