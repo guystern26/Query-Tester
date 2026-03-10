@@ -12,4 +12,5 @@ splunktional-temp
 dist/
 packages/*/stage/
 !packages/query-tester/stage/
+!packages/query-tester/stage/**
 packages/*/types/
