@@ -5,6 +5,7 @@ import { MAX_SCENARIOS_PER_TEST, MAX_INPUTS_PER_SCENARIO } from 'core/constants/
 import type { Scenario } from 'core/types';
 import { Button, Modal } from '../../common';
 import { InputCard } from './InputCard';
+import { ExtractFieldsButton } from './ExtractFieldsButton';
 import { getScenarioColor, type ScenarioColor } from './scenarioColors';
 
 function hasData(s: Scenario): boolean {
@@ -134,20 +135,22 @@ export function ScenarioPanel() {
 
       {sel && (
         <>
-          <input
-            type="text"
-            value={sel.name}
-            onChange={(e) => state.updateScenarioName(test.id, sel.id, e.target.value)}
-            placeholder="e.g., Normal user activity..."
-            className="w-full bg-transparent border-0 border-b border-slate-700 rounded-none px-0 py-1.5 text-[13px] font-medium text-slate-100 placeholder-slate-500 focus:outline-none focus:border-accent-600 transition-colors duration-200 mb-1"
-          />
-          <input
-            type="text"
-            value={sel.description}
-            onChange={(e) => state.updateScenarioDescription(test.id, sel.id, e.target.value)}
-            placeholder="Describe this scenario..."
-            className="w-full bg-transparent border-0 border-b border-slate-700 rounded-none px-0 py-1.5 text-[13px] text-slate-400 placeholder-slate-500 focus:outline-none focus:border-accent-600 focus:text-slate-200 transition-colors duration-200"
-          />
+          <div className="flex gap-3">
+            <input
+              type="text"
+              value={sel.name}
+              onChange={(e) => state.updateScenarioName(test.id, sel.id, e.target.value)}
+              placeholder="Scenario name..."
+              className="flex-1 min-w-0 bg-transparent border-0 border-b border-slate-700 rounded-none px-0 py-1.5 text-[13px] font-medium text-slate-100 placeholder-slate-500 focus:outline-none focus:border-accent-600 transition-colors duration-200"
+            />
+            <input
+              type="text"
+              value={sel.description}
+              onChange={(e) => state.updateScenarioDescription(test.id, sel.id, e.target.value)}
+              placeholder="Description..."
+              className="flex-[2] min-w-0 bg-transparent border-0 border-b border-slate-700 rounded-none px-0 py-1.5 text-[13px] text-slate-400 placeholder-slate-500 focus:outline-none focus:border-accent-600 focus:text-slate-200 transition-colors duration-200"
+            />
+          </div>
 
           {sel.inputs.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -162,7 +165,11 @@ export function ScenarioPanel() {
             </div>
           ) : (
             <>
-              <div className={`flex flex-col gap-3 mt-3 rounded-lg p-2 -mx-2 transition-colors duration-300 ${selColor.tint}`}>
+              <div className="flex justify-center items-center gap-2 mt-2 mb-1">
+                <ExtractFieldsButton testId={test.id} scenarioId={sel.id} />
+                <span className="text-[11px] text-slate-500">AI extracts data sources &amp; fields from your SPL</span>
+              </div>
+              <div className={`flex flex-col gap-3 mt-1 rounded-lg p-2 -mx-2 transition-colors duration-300 ${selColor.tint}`}>
                 {sel.inputs.map((inp, i) => (
                   <InputCard
                     key={inp.id}

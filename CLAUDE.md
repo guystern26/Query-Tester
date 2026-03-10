@@ -50,3 +50,38 @@ Do NOT mix styled-components and Tailwind on the same element.
 - No `import.meta.dirname` (Node 21+)
 - No top-level await in modules
 - Vite config uses `defineConfig` from 'vite'
+---
+
+## BACKEND CONSTRAINTS — Python REST Handler
+
+### Python 3.7 — Splunk limitation
+- `Optional[X]` not `X | None`. No walrus `:=`. No `match`. No `list[x]`/`dict[x]` built-in generics.
+- `from __future__ import annotations` — first line of every file (after docstring).
+
+### No print() — ever
+stdout corrupts Splunk REST handler responses. Use `get_logger(__name__)` from `logger.py`.
+
+### LF line endings only
+CRLF causes a 500 "can't start the script" on Linux Splunk. Configure your editor to save LF.
+
+### No external packages
+Only stdlib + splunklib. No pip installs — closed network.
+
+### Architecture
+- One query per scenario. All inputs indexed together before the query runs.
+- Cleanup always in `finally` — even when exceptions thrown.
+- Registries not if/elif: `GENERATOR_REGISTRY`, `CONDITION_HANDLERS`, `STRATEGY_HANDLERS`.
+- No `dataclasses.asdict()` — produces snake_case. Frontend reads camelCase. Use explicit `_to_dict()`.
+- `session_key` injected at construction. Never a global.
+
+### File responsibilities (never cross these)
+- `spl_analyzer.py` reads SPL only — never modifies it
+- `query_injector.py` rewrites SPL — never runs it
+- `result_validator.py` compares rows to conditions — never runs queries
+- `event_generator.py` expands GeneratorConfig — no file I/O, no Splunk calls
+
+### Splunk REST response format
+```python
+data = response.json()
+content = data['entry'][0]['content']  # content is nested, not at root
+```

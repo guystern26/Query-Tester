@@ -620,3 +620,212 @@ When deploying to closed network:
 - Replace common/ wrappers with real Splunk component imports
 - Replace mock API functions with real endpoints
 - Replace ThemeProvider with SplunkThemeProvider
+
+---
+
+---
+
+# BACKEND IMPLEMENTATION GUIDE
+# Python REST handler — packages/playground/stage/bin/
+
+## Strategy
+All backend code lives in `packages/playground/stage/bin/`.
+Spec files live in `docs/spec-00-conventions.md` through `docs/spec-11-executor-logger.md`.
+Full module map and responsibilities: `BACKEND.md`.
+
+Always attach `docs/spec-00-conventions.md` to every backend prompt — it has the Python 3.7
+conventions, registry patterns, and correct/wrong examples that prevent the most common mistakes.
+
+Use **Sonnet** for all code generation. Attach only the spec files relevant to the current phase.
+
+---
+
+## Backend Phase 1: Foundation (logger + payload parser)
+
+Attach: `docs/spec-00-conventions.md`, `docs/spec-01-overview.md`, `docs/spec-03-payload.md`
+
+Prompt:
+```
+Read the attached spec files.
+
+Create 2 files in packages/playground/stage/bin/:
+
+1. logger.py
+- get_logger(name: str) -> logging.Logger
+- Writes to /opt/splunk/var/log/splunk/query_tester.log
+- Path overridable via QUERY_TESTER_LOG env var
+- Format: %(asctime)s %(levelname)-8s [%(name)s] %(message)s
+- Deduplicates handlers — safe to call multiple times
+- No print() anywhere
+
+2. payload_parser.py
+- Dataclasses: FieldCondition, ResultCount, ValidationConfig,
+  GeneratorRule, GeneratorConfig, ParsedInput, ParsedScenario, TestPayload
+- parse(raw: dict) -> TestPayload  — main entry point
+- camelCase -> snake_case mapping exactly as in spec-03
+- RENAME: frontend "operator" -> dataclass field "condition"
+- Normalization: missing keys, null values, absent scenarios (query_only)
+- from __future__ import annotations at top of every file
+- Python 3.7: Optional[X] not X | None
+```
+
+---
+
+## Backend Phase 2: SPL Analysis + Injection
+
+Attach: `docs/spec-00-conventions.md`, `docs/spec-05-spl-injection.md`, `docs/spec-06-spl-analyzer.md`
+
+Prompt:
+```
+Read the attached spec files.
+
+Create 2 files in packages/playground/stage/bin/:
+
+1. spl_analyzer.py
+- analyze(spl: str) -> SplAnalysis dataclass
+- SplAnalysis fields: unauthorized_commands, unusual_commands, uniq_limitations, commands_used
+- Unauthorized: delete, drop, truncate, remove, clean, disable, enable, restart
+- Unusual (warn but allow): join, append, appendcols, map, sendemail, outputlookup
+- Detects uniq/dedup limitation warnings
+- Read-only — never modifies SPL
+
+2. query_injector.py
+- detect_strategy(spl: str) -> str
+  Check in order: inputlookup, tstats, lookup, standard (has index=), no_index
+- inject(spl, run_id, strategy, inputs) -> str
+- STRATEGY_HANDLERS registry dict — no if/elif chains
+- Only replaces OUTER index= (never inside subsearch brackets)
+- Replaces full rowIdentifier string first, regex fallback second
+- no_index: prepend index=temp_query_tester run_id=<run_id>
+```
+
+---
+
+## Backend Phase 3: Data Layer (event generator + indexer + lookup)
+
+Attach: `docs/spec-00-conventions.md`, `docs/spec-08-event-generator.md`, `docs/spec-09-data-indexer.md`
+
+Prompt:
+```
+Read the attached spec files.
+
+Create 3 files in packages/playground/stage/bin/:
+
+1. event_generator.py
+- build_events(inp: ParsedInput) -> List[dict]
+- If generator disabled: return inp.events filtered to non-empty
+- If generator enabled: copy inp.events[0] as template, apply rules, produce event_count events
+- GENERATOR_REGISTRY dict for all 7 types:
+  numbered, pick_list, random_number, unique_id, email, ip_address, general_field
+- Weight normalization for pick_list variants
+- No file I/O, no Splunk calls
+
+2. data_indexer.py
+- index_events(events: List[dict], run_id: str, session_key: str) -> None
+- Uses makeresults + collect approach
+- JSON via eval — NO single quotes in SPL
+- Batch 1000 events per collect call
+- cleanup(run_id: str, session_key: str) -> None — delete index=temp_query_tester run_id=<run_id>
+
+3. lookup_manager.py
+- create_temp_lookup(run_id: str, events: List[dict]) -> str  — returns CSV file path
+- delete_temp_lookup(run_id: str) -> None
+- CSV written to Splunk lookups dir: /opt/splunk/etc/apps/<app>/lookups/
+- No SPL execution — file I/O only
+```
+
+---
+
+## Backend Phase 4: Execution + Validation
+
+Attach: `docs/spec-00-conventions.md`, `docs/spec-10-result-validator.md`, `docs/spec-11-executor-logger.md`
+
+Prompt:
+```
+Read the attached spec files.
+
+Create 2 files in packages/playground/stage/bin/:
+
+1. query_executor.py
+- QueryExecutor(session_key: str)
+- run(spl: str) -> List[dict]  — executes SPL, returns list of result rows as dicts
+- Uses splunklib.client.connect / service.jobs.oneshot
+- Converts splunklib ResultsReader rows to plain dicts
+- Logs execution time
+- Raises on Splunk error — caller handles exception
+
+2. result_validator.py
+- validate(validation: ValidationConfig, scenario: ParsedScenario, results: List[dict])
+  -> Tuple[List[ValidationDetail], bool]
+- ValidationDetail dataclass: field, condition, expected, actual, passed, message
+- CONDITION_HANDLERS registry dict:
+  equals, not_equals, contains, not_contains, regex, greater_than, less_than,
+  greater_or_equal, less_or_equal, is_empty, is_not_empty, in_list
+- Run ALL conditions — no short-circuit on first failure
+- Pass condition: ANY row satisfies it (not all rows)
+- scenarioScope filtering: skip condition if scenario not in scope list
+- Empty results + no result_count check -> auto-fail
+```
+
+---
+
+## Backend Phase 5: Orchestration (test runner)
+
+Attach: `docs/spec-00-conventions.md`, `docs/spec-04-run-loop.md`, `docs/spec-07-response.md`
+
+Prompt:
+```
+Read the attached spec files.
+
+Create 1 file in packages/playground/stage/bin/:
+
+test_runner.py
+- TestRunner(session_key: str)
+- run_test(raw_payload: dict) -> Tuple[dict, int]
+- Parse payload once, resolve SPL once, analyze SPL once
+- For each scenario:
+  - run_id = uuid4().hex[:8]  (unique per scenario)
+  - build all events from inputs via EventGenerator
+  - index all events together under same run_id
+  - inject SPL with run_id
+  - run ONE query
+  - validate ALL conditions
+  - cleanup in finally block
+- _build_response() -> dict with exact camelCase keys (see spec-07)
+- No dataclasses.asdict() — explicit _to_dict() helpers
+- status: success/partial/error based on scenario pass counts
+```
+
+---
+
+## Backend Phase 6: Entry Point
+
+Attach: `docs/spec-00-conventions.md`, `docs/spec-02-entry-point.md`, `docs/spec-07-response.md`
+
+Prompt:
+```
+Read the attached spec files.
+
+Create 1 file in packages/playground/stage/bin/:
+
+query_tester.py
+- Splunk REST handler — extends splunk.rest.BaseRestHandler
+- #!/usr/bin/env python3 shebang (this file only)
+- handle_POST(confInfo): extract session_key, parse JSON body,
+  instantiate TestRunner(session_key), call run_test(payload), return JSON
+- handle_GET(confInfo): return {"status": "ok", "service": "splunk_query_tester"}
+- All errors caught and returned as {"status": "error", "message": str(e)}
+- No business logic in this file — only HTTP wiring
+- No print() anywhere
+```
+
+---
+
+## Backend verification checklist
+
+After all phases, manually verify:
+1. LF line endings on every file: `file bin/*.py` should show no CRLF
+2. Run each file directly with Splunk's Python: `/opt/splunk/bin/python3 bin/logger.py`
+3. No import errors: `python3 -c "import payload_parser"` from bin/
+4. restmap.conf exists and handler class name matches query_tester.py class name
+5. Log file appears at /opt/splunk/var/log/splunk/query_tester.log after first request

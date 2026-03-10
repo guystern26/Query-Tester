@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTestStore } from 'core/store/testStore';
-import { selectActiveTest, selectTestResponse, selectErrors, selectWarnings } from 'core/store/selectors';
+import { selectActiveTest, selectTestResponse } from 'core/store/selectors';
 import { validateBeforeRun } from '../../utils/preflight';
 import { ScenarioResultCard } from './ScenarioResultCard';
 
@@ -14,18 +14,25 @@ function Chevron({ up }: { up: boolean }) {
   );
 }
 
+const EMPTY_SPL_ANALYSIS = {
+  unauthorizedCommands: [] as string[],
+  unusualCommands: [] as string[],
+  uniqLimitations: null,
+  commandsUsed: [] as string[],
+};
+
 export function ResultsBar() {
   const store = useTestStore();
   const test = selectActiveTest(store);
   const response = selectTestResponse(store);
-  const errors = selectErrors(store);
-  const warnings = selectWarnings(store);
-  const { isRunning, resultsBarExpanded: expanded, toggleResultsBar, setResultsBarExpanded } = store;
+  const { isRunning, resultsBarExpanded: expanded, toggleResultsBar } = store;
 
-  /* preflight errors stored in testResponse with PREFLIGHT_ codes */
+  /* preflight errors stored in testResponse.errors with PREFLIGHT_ codes */
   const preflightErrors = (response?.errors ?? []).filter((e) => e.code.startsWith('PREFLIGHT_'));
   const isPreflightFailure = preflightErrors.length > 0;
-  const displayErrors = isPreflightFailure ? [] : errors;
+  const displayErrors = isPreflightFailure ? [] : (response?.errors ?? []);
+  const warnings = response?.warnings ?? [];
+  const splAnalysis = response?.splAnalysis ?? EMPTY_SPL_ANALYSIS;
 
   /* status text */
   let status: React.ReactNode;
@@ -61,20 +68,20 @@ export function ResultsBar() {
     if (errs.length > 0) {
       store.setTestResponse({
         status: 'error',
-        message: `${errs.length} validation error(s) found`,
+        message: errs.length + ' validation error(s) found',
         testName: test.name,
         testType: test.testType,
         timestamp: new Date().toISOString(),
-        executionTimeMs: 0,
-        errors: errs.map((msg, i) => ({
-          code: `PREFLIGHT_${i}`,
-          message: msg,
-          severity: 'error' as const,
-        })),
+        totalScenarios: 0,
+        passedScenarios: 0,
         warnings: [],
-        queryInfo: null,
-        summary: null,
+        splAnalysis: EMPTY_SPL_ANALYSIS,
         scenarioResults: [],
+        errors: errs.map((msg, i) => ({
+          code: 'PREFLIGHT_' + i,
+          message: msg,
+          severity: 'error',
+        })),
       });
       return;
     }
@@ -121,6 +128,7 @@ export function ResultsBar() {
         className={`flex-1 min-h-0 bg-navy-950 p-4 transition-opacity duration-200 ${expanded ? 'opacity-100 delay-150' : 'opacity-0'}`}
       >
         <div className="flex flex-col gap-3">
+        {/* Preflight errors */}
         {isPreflightFailure && (
           <>
             <div className="font-semibold text-red-500 text-[13px]">Pre-flight errors</div>
@@ -129,19 +137,42 @@ export function ResultsBar() {
             ))}
           </>
         )}
+
+        {/* splAnalysis: unauthorized commands = error banner */}
+        {splAnalysis.unauthorizedCommands.length > 0 && (
+          <div className="px-3 py-2.5 rounded-md border-l-4 border-red-500 bg-red-500/10 text-[13px] text-red-300">
+            <strong>Unauthorized commands detected:</strong>{' '}
+            {splAnalysis.unauthorizedCommands.join(', ')}
+          </div>
+        )}
+
+        {/* splAnalysis: unusual commands = warning banner */}
+        {splAnalysis.unusualCommands.length > 0 && (
+          <div className="px-3 py-2.5 rounded-md border-l-4 border-amber-500 bg-amber-500/10 text-[13px] text-amber-300">
+            <strong>Unusual commands:</strong>{' '}
+            {splAnalysis.unusualCommands.join(', ')}
+          </div>
+        )}
+
+        {/* Frontend errors */}
         {displayErrors.map((e, i) => (
-          <div key={`e${i}`} className="px-3 py-2.5 rounded-md border-l-4 border-red-500 bg-navy-800 text-[13px] text-slate-200">
+          <div key={'e' + i} className="px-3 py-2.5 rounded-md border-l-4 border-red-500 bg-navy-800 text-[13px] text-slate-200">
             {e.message}
             {e.tip && <div className="text-slate-400 mt-1 text-xs">{e.tip}</div>}
           </div>
         ))}
+
+        {/* Backend warnings */}
         {warnings.map((w, i) => (
-          <div key={`w${i}`} className="px-3 py-2.5 rounded-md border-l-4 border-amber-500 bg-navy-800 text-[13px] text-slate-200">{w.message}</div>
+          <div key={'w' + i} className="px-3 py-2.5 rounded-md border-l-4 border-amber-500 bg-navy-800 text-[13px] text-slate-200">{w.message}</div>
         ))}
-        {sr.map((s) => <ScenarioResultCard key={s.scenarioId} result={s} />)}
+
+        {/* Scenario result cards */}
+        {sr.map((s, i) => <ScenarioResultCard key={i} result={s} />)}
+
         {totalS > 0 && (
           <div className="py-2 border-t border-slate-700 text-[13px] text-slate-400">
-            Total: {passedS} passed, {totalS - passedS} failed{displayErrors.length > 0 ? `, ${displayErrors.length} errors` : ''}
+            Total: {passedS} passed, {totalS - passedS} failed{displayErrors.length > 0 ? ', ' + displayErrors.length + ' errors' : ''}
           </div>
         )}
         </div>

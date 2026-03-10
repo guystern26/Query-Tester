@@ -21,8 +21,11 @@ export function ResultCountSection({ testId, resultCount }: ResultCountSectionPr
   const store = useTestStore();
 
   return (
-    <div className="bg-navy-900 rounded-lg p-3 border border-slate-800">
-      <div className="text-[10px] uppercase tracking-[1.5px] text-slate-500 mb-2">Result Count</div>
+    <div className={`bg-navy-900 rounded-lg p-3 border ${resultCount.enabled ? 'border-green-500/40' : 'border-slate-800'}`}>
+      <div className="text-[10px] uppercase tracking-[1.5px] text-slate-500 mb-2 flex items-center gap-1.5">
+        Result Count
+        {resultCount.enabled && <span className="text-green-400 text-[12px]">{'\u2713'}</span>}
+      </div>
       <Switch
         checked={resultCount.enabled}
         onChange={(v) => store.updateResultCount(testId, { enabled: v })}

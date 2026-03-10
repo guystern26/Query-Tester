@@ -4,13 +4,13 @@
 
 import type { EntityId, TestDefinition } from '../types';
 import type { TestStoreState } from './testStore';
-import type { TestResponse, ResponseMessage } from '../types';
+import type { TestResponse, ResponseMessage, SplWarning } from '../types';
 
 export function selectErrors(s: TestStoreState): ResponseMessage[] {
   return s.testResponse?.errors ?? [];
 }
 
-export function selectWarnings(s: TestStoreState): ResponseMessage[] {
+export function selectWarnings(s: TestStoreState): SplWarning[] {
   return s.testResponse?.warnings ?? [];
 }
 

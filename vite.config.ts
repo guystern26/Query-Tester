@@ -53,7 +53,11 @@ export default defineConfig({
   optimizeDeps: {
     include: [
       'react',
-      'react-dom'
+      'react-dom',
+      'ace-builds/src-min-noconflict/ace',
+      'ace-builds/src-min-noconflict/ext-language_tools',
+      '@splunk/react-search/components/Ace',
+      '@splunk/react-search/components/Input',
     ]
   }
 });

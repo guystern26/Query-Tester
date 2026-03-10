@@ -3,9 +3,15 @@
  */
 
 import type { EntityId, TestDefinition, TestResponse } from '../../types';
-import { mockRunTest } from '../../../utils/mockResults';
+import { runTest, cancelTestOnBackend } from '../../../api/testApi';
+import { buildPayload } from '../../../utils/payloadBuilder';
 
-// TODO: Replace mockRunTest with real API call: testApi.runTest(buildPayload(test))
+const EMPTY_SPL_ANALYSIS = {
+  unauthorizedCommands: [] as string[],
+  unusualCommands: [] as string[],
+  uniqLimitations: null,
+  commandsUsed: [] as string[],
+};
 
 let abortController: AbortController | null = null;
 
@@ -31,6 +37,33 @@ export function runSlice(set: SetState, get: GetState) {
       const test = activeTestId ? tests.find((t) => t.id === activeTestId) : null;
       if (!test) return;
 
+      // Pre-flight: check for query_data inputs with empty SPL
+      if (test.testType !== 'query_only') {
+        for (const s of test.scenarios) {
+          for (const inp of s.inputs) {
+            if (inp.inputMode === 'query_data' && !inp.queryDataConfig.spl.trim()) {
+              set((draft) => {
+                draft.testResponse = {
+                  status: 'error',
+                  message: 'Query Data input in scenario "' + (s.name || 'Scenario') + '" has an empty sub-query. Enter a SPL query or switch to a different input mode.',
+                  testName: test.name,
+                  testType: test.testType,
+                  timestamp: new Date().toISOString(),
+                  totalScenarios: 0,
+                  passedScenarios: 0,
+                  warnings: [],
+                  splAnalysis: EMPTY_SPL_ANALYSIS,
+                  scenarioResults: [],
+                  errors: [{ code: 'EMPTY_QUERY_DATA', message: 'Query Data sub-query is empty.', severity: 'error' as const }],
+                };
+                draft.resultsBarExpanded = true;
+              });
+              return;
+            }
+          }
+        }
+      }
+
       abortController = new AbortController();
 
       set((draft) => {
@@ -39,7 +72,7 @@ export function runSlice(set: SetState, get: GetState) {
       });
 
       try {
-        const response = await mockRunTest(test, abortController.signal);
+        const response = await runTest(buildPayload(test), abortController.signal);
         set((draft) => {
           draft.testResponse = response;
           draft.isRunning = false;
@@ -57,11 +90,10 @@ export function runSlice(set: SetState, get: GetState) {
               testName: test.name,
               testType: test.testType,
               timestamp: new Date().toISOString(),
-              executionTimeMs: 0,
-              errors: [],
+              totalScenarios: 0,
+              passedScenarios: 0,
               warnings: [],
-              queryInfo: null,
-              summary: null,
+              splAnalysis: EMPTY_SPL_ANALYSIS,
               scenarioResults: [],
             };
           });
@@ -75,12 +107,12 @@ export function runSlice(set: SetState, get: GetState) {
               testName: test.name,
               testType: test.testType,
               timestamp: new Date().toISOString(),
-              executionTimeMs: 0,
-              errors: [{ code: 'RUN_FAILED', message: String(e), severity: 'error' }],
+              totalScenarios: 0,
+              passedScenarios: 0,
               warnings: [],
-              queryInfo: null,
-              summary: null,
+              splAnalysis: EMPTY_SPL_ANALYSIS,
               scenarioResults: [],
+              errors: [{ code: 'RUN_FAILED', message: String(e), severity: 'error' }],
             };
           });
         }
@@ -91,6 +123,7 @@ export function runSlice(set: SetState, get: GetState) {
 
     cancelTest: () => {
       if (abortController) abortController.abort();
+      cancelTestOnBackend();
     },
 
     setTestResponse: (response: TestResponse | null) =>

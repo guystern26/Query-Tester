@@ -9,6 +9,7 @@ import type {
   EntityId,
   TestDefinition,
   TestResponse,
+  TimeRange,
   InputMode,
   ValidationType,
   ValidationScope,
@@ -86,6 +87,7 @@ export interface TestStoreState {
 
   updateSpl: (testId: EntityId, spl: string) => void;
   loadSavedSearchSpl: (testId: EntityId, spl: string, savedSearchOrigin: string | null) => void;
+  setTimeRange: (testId: EntityId, timeRange: TimeRange) => void;
 
   addFieldGroup: (testId: EntityId, initial?: Partial<FieldConditionGroup>) => void;
   removeFieldGroup: (testId: EntityId, groupId: EntityId) => void;
@@ -127,6 +129,10 @@ export interface TestStoreState {
   setFieldExtraction: (testId: EntityId, sources: ExtractedDataSource[]) => void;
   selectDataSource: (testId: EntityId, scenarioId: EntityId, inputId: EntityId, source: ExtractedDataSource) => void;
   applySuggestedValidationFields: (testId: EntityId, fields: string[]) => void;
+
+  updateQueryDataSpl: (testId: EntityId, scenarioId: EntityId, inputId: EntityId, spl: string) => void;
+  updateQueryDataTimeRange: (testId: EntityId, scenarioId: EntityId, inputId: EntityId, timeRange: TimeRange) => void;
+  updateQueryDataSavedSearch: (testId: EntityId, scenarioId: EntityId, inputId: EntityId, name: string | null) => void;
 }
 
 const initialTest = createDefaultTest();
