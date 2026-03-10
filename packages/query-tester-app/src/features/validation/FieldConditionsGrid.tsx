@@ -5,6 +5,7 @@ import { MAX_FIELD_GROUPS } from 'core/constants/limits';
 import { EmptyState } from '../../common';
 import { ValidationScopeSelector } from './ValidationScope';
 import { FieldGroupCard } from './FieldGroupCard';
+import { SuggestFieldsButton } from './SuggestFieldsButton';
 
 export function FieldConditionsGrid() {
   const store = useTestStore();
@@ -26,7 +27,10 @@ export function FieldConditionsGrid() {
         scopeN={test.validation.scopeN}
       />
 
-      <div className="text-[10px] uppercase tracking-[1.5px] text-slate-500">Field Conditions</div>
+      <div className="flex items-center justify-between">
+        <div className="text-[10px] uppercase tracking-[1.5px] text-slate-500">Field Conditions</div>
+        <SuggestFieldsButton />
+      </div>
 
       {groups.length === 0 && (
         <EmptyState
@@ -62,7 +66,7 @@ export function FieldConditionsGrid() {
             group={g}
             index={i + 1}
             scenarios={scenarios}
-            isOnly={groups.length <= 1}
+            isOnly={false}
           />
         </div>
       ))}

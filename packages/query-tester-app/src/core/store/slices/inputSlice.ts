@@ -2,7 +2,7 @@
  * Input + event + field slice.
  */
 
-import type { EntityId, TestDefinition } from '../../types';
+import type { EntityId, TestDefinition, TimeRange } from '../../types';
 import type { InputMode } from '../../types';
 import { genId, createDefaultInput } from '../../constants/defaults';
 import { MAX_INPUTS_PER_SCENARIO } from '../../constants/limits';
@@ -170,6 +170,30 @@ export function inputSlice(set: SetState) {
             fieldValues: source.fields.map((f) => ({ id: genId(), field: f, value: '' })),
           },
         ];
+      }),
+
+    updateQueryDataSpl: (testId: EntityId, scenarioId: EntityId, inputId: EntityId, spl: string) =>
+      set((draft) => {
+        const t = findTest(draft.tests, testId);
+        const s = t && findScenario(t, scenarioId);
+        const input = s && findInput(s, inputId);
+        if (input) input.queryDataConfig.spl = spl;
+      }),
+
+    updateQueryDataTimeRange: (testId: EntityId, scenarioId: EntityId, inputId: EntityId, timeRange: TimeRange) =>
+      set((draft) => {
+        const t = findTest(draft.tests, testId);
+        const s = t && findScenario(t, scenarioId);
+        const input = s && findInput(s, inputId);
+        if (input) input.queryDataConfig.timeRange = timeRange;
+      }),
+
+    updateQueryDataSavedSearch: (testId: EntityId, scenarioId: EntityId, inputId: EntityId, name: string | null) =>
+      set((draft) => {
+        const t = findTest(draft.tests, testId);
+        const s = t && findScenario(t, scenarioId);
+        const input = s && findInput(s, inputId);
+        if (input) input.queryDataConfig.savedSearchName = name;
       }),
   };
 }

@@ -1,8 +1,8 @@
 /**
- * Query slice: updateSpl, loadSavedSearchSpl.
+ * Query slice: updateSpl, loadSavedSearchSpl, setTimeRange.
  */
 
-import type { EntityId, TestDefinition } from '../../types';
+import type { EntityId, TestDefinition, TimeRange } from '../../types';
 import { findTest } from './helpers';
 
 type SetState = (recipe: (draft: { tests: TestDefinition[] }) => void) => void;
@@ -22,6 +22,12 @@ export function querySlice(set: SetState) {
           t.query.spl = spl;
           t.query.savedSearchOrigin = savedSearchOrigin;
         }
+      }),
+
+    setTimeRange: (testId: EntityId, timeRange: TimeRange) =>
+      set((draft) => {
+        const t = findTest(draft.tests, testId);
+        if (t) t.query.timeRange = timeRange;
       }),
   };
 }

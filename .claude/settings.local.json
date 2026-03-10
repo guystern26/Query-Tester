@@ -23,7 +23,17 @@
       "Bash(echo:*)",
       "WebFetch(domain:dev.splunk.com)",
       "WebFetch(domain:docs.splunk.com)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(npx:*)",
+      "Bash(\"C:/Program Files/Splunk/bin/splunk\" restart:*)",
+      "Bash(yarn webpack:*)",
+      "Bash(\"/c/Program Files/Splunk/var/run/splunk/push-version.txt\":*)",
+      "Bash(xargs ls:*)",
+      "Bash(tasklist:*)",
+      "Bash(ls:*)",
+      "Bash(xxd:*)",
+      "Bash(cmd.exe:*)",
+      "Bash(./node_modules/.bin/webpack:*)"
     ]
   }
 }

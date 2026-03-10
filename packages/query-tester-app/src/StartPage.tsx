@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useCallback } from 'react';
 import { useTestStore } from 'core/store/testStore';
 import { selectActiveTest } from 'core/store/selectors';
 import { TopBar } from './components/test-navigation/TopBar';
+import { AppSelector } from './components/AppSelector';
 import { TestTypeSelector } from './features/scenarios/TestTypeSelector';
 import { QuerySection } from './features/query/QuerySection';
 import { ScenarioPanel } from './features/scenarios/ScenarioPanel';
@@ -27,15 +28,20 @@ export function StartPage() {
   const hasApp = app.trim() !== '';
   const hasQuery = (activeTest?.query.spl ?? '').trim() !== '';
   const showData = hasApp && hasQuery && testType === 'standard';
-  const hasScenariosWithInputs =
-    (activeTest?.scenarios?.length ?? 0) > 0 &&
-    activeTest?.scenarios?.some((s) => (s.inputs?.length ?? 0) > 0);
-  const showValidation = hasApp && hasQuery && (testType === 'query_only' || !!hasScenariosWithInputs);
+  const dataDone = (activeTest?.scenarios ?? []).some(
+    (s) => s.inputs.some((i) =>
+      (i.inputMode === 'query_data' && (i.queryDataConfig?.spl ?? '').trim() !== '')
+      || i.inputMode === 'no_events'
+      || (i.inputMode === 'json' && (i.jsonContent ?? '').trim() !== '')
+      || i.events.some((e) => e.fieldValues.some((f) => f.field.trim() !== ''))
+    )
+  );
+  const showValidation = hasApp && hasQuery && (testType === 'query_only' || dataDone);
 
   const pipeline = usePipelineState();
 
-  const handleAppChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (activeTest) state.updateApp(activeTest.id, e.target.value);
+  const handleAppChange = (appValue: string) => {
+    if (activeTest) state.updateApp(activeTest.id, appValue);
   };
 
   const handleStepClick = useCallback((stepId: string) => {
@@ -84,13 +90,7 @@ export function StartPage() {
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-[11px] text-slate-500 uppercase tracking-wider">App</span>
-                <input
-                  type="text"
-                  value={app}
-                  onChange={handleAppChange}
-                  placeholder="e.g. search"
-                  className="w-44 px-2.5 py-1 text-sm bg-navy-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-500/30 transition-all duration-200"
-                />
+                <AppSelector value={app} onChange={handleAppChange} compact />
               </div>
               <TestTypeSelector compact />
             </div>
@@ -115,14 +115,7 @@ export function StartPage() {
             </div>
             <div className="flex flex-col gap-2">
               <span className="text-[11px] text-slate-500 uppercase tracking-wider">Splunk App</span>
-              <input
-                type="text"
-                value={app}
-                onChange={handleAppChange}
-                placeholder="e.g. search"
-                autoFocus
-                className="w-full px-3.5 py-2.5 text-base bg-navy-950 border border-slate-700 rounded-xl text-slate-200 placeholder-slate-500 focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-500/30 transition-all duration-200"
-              />
+              <AppSelector value={app} onChange={handleAppChange} autoFocus />
             </div>
             <TestTypeSelector />
           </div>
@@ -156,7 +149,7 @@ export function StartPage() {
 
           {showValidation && (
             <>
-              <PipelineConnector leftComplete={showData ? !!hasScenariosWithInputs : hasQuery} />
+              <PipelineConnector leftComplete={showData ? dataDone : hasQuery} />
               <div
                 ref={validationRef}
                 className="min-w-[280px] bg-navy-900 rounded-xl border border-slate-800 p-5 overflow-y-auto flex flex-col gap-4 animate-panelReveal panel-delay-2"

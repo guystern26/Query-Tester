@@ -1,9 +1,13 @@
 import React, { useRef, useEffect, useState } from 'react';
+// Ace must be loaded before Input to set up window.ace and SPL mode
+import '@splunk/react-search/components/Ace';
+import SearchInput from '@splunk/react-search/components/Input';
 import { useTestStore } from 'core/store/testStore';
 import { selectActiveTest } from 'core/store/selectors';
 import { getSavedSearchSpl } from '../../api/splunkApi';
 import { useSavedSearches } from '../../hooks/useSavedSearches';
 import { Select, Message } from '../../common';
+import { TimeRangePicker } from './TimeRangePicker';
 
 const APP_CHANGE_MSG = 'You changed the app. Some lookups and saved searches may not be available.';
 
@@ -37,8 +41,8 @@ export function QuerySection() {
     } catch { /* leave SPL unchanged */ }
   };
 
-  const handleSplChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    if (test) state.loadSavedSearchSpl(test.id, e.target.value, null);
+  const handleSplChange = (_e: React.SyntheticEvent, { value }: { value: string }) => {
+    if (test) state.loadSavedSearchSpl(test.id, value, null);
   };
 
   return (
@@ -55,15 +59,29 @@ export function QuerySection() {
         {error && <div className="mt-1 text-[13px] text-red-400">{error}</div>}
       </div>
 
-      <div className="relative">
-        <textarea
-          value={spl}
-          onChange={handleSplChange}
-          placeholder="index=main sourcetype=access_combined | stats count by src_ip"
-          className="w-full min-h-[200px] px-3 py-3 text-[13px] leading-relaxed bg-navy-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 font-mono focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-500/30 transition resize-y"
-        />
-        <span className="absolute right-3 bottom-2 text-[11px] text-slate-500 pointer-events-none">{spl.length} chars</span>
+      <div className="flex gap-3 items-start">
+        <div className="relative flex-1 min-w-0">
+          <SearchInput
+            value={spl}
+            onChange={handleSplChange}
+            placeholder="index=main sourcetype=access_combined | stats count by src_ip"
+            minLines={6}
+            maxLines={20}
+            showLineNumbers
+          />
+          <span className="absolute right-3 bottom-2 text-[11px] text-slate-500 pointer-events-none">{spl.length} chars</span>
+        </div>
+
+        {test && (
+          <div className="flex-shrink-0 pt-0.5">
+            <TimeRangePicker
+              value={test.query.timeRange}
+              onChange={(tr) => state.setTimeRange(test.id, tr)}
+            />
+          </div>
+        )}
       </div>
+
     </div>
   );
 }

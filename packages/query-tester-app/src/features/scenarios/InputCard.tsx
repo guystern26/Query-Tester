@@ -4,7 +4,9 @@ import { useTestStore } from 'core/store/testStore';
 import { Card } from '../../common';
 import { FieldValueEditor } from '../../components/inputs/FieldValueEditor';
 import { JsonInputView } from '../../components/inputs/JsonInputView';
+import { QueryDataView } from '../../components/inputs/QueryDataView';
 import { GeneratorPanel } from '../eventGenerator/GeneratorPanel';
+import { DataSourceSelector } from './DataSourceSelector';
 
 export interface InputCardProps {
   testId: EntityId;
@@ -35,17 +37,25 @@ const NoEventsIcon = () => (
   </svg>
 );
 
+const QueryDataIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+    <line x1="8" y1="11" x2="14" y2="11" />
+  </svg>
+);
+
 const ChevronIcon = ({ open }: { open: boolean }) => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform duration-200 shrink-0 ${open ? 'rotate-90' : ''}`}>
     <polyline points="9 18 15 12 9 6" />
   </svg>
 );
 
-const MODE_LABELS: Record<InputMode, string> = { fields: 'Fields', json: 'JSON', no_events: 'No Events' };
+const MODE_LABELS: Record<InputMode, string> = { fields: 'Fields', json: 'JSON', no_events: 'No Events', query_data: 'Query Data' };
 
 const modes: { key: InputMode; label: string; Icon: React.FC }[] = [
   { key: 'fields', label: 'Fields', Icon: GridIcon },
   { key: 'json', label: 'JSON', Icon: JsonIcon },
+  { key: 'query_data', label: 'Query Data', Icon: QueryDataIcon },
   { key: 'no_events', label: 'No Events', Icon: NoEventsIcon },
 ];
 
@@ -133,12 +143,11 @@ export function InputCard({ testId, scenarioId, input, index, isOpen = true, onT
         </button>
       </div>
 
-      <input
-        type="text"
+      <DataSourceSelector
+        testId={testId}
+        scenarioId={scenarioId}
+        inputId={input.id}
         value={input.rowIdentifier}
-        onChange={(e) => state.updateRowIdentifier(testId, scenarioId, input.id, e.target.value)}
-        placeholder="e.g., index=main sourcetype=access_combined"
-        className="w-full mb-4 px-3 py-2 text-sm bg-navy-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-500/30 transition-all duration-200"
       />
 
       <div className="flex bg-navy-950/80 rounded-xl p-1 border border-slate-700/60 w-fit mb-4 gap-0.5">
@@ -168,6 +177,9 @@ export function InputCard({ testId, scenarioId, input, index, isOpen = true, onT
         {input.inputMode === 'json' && (
           <JsonInputView testId={testId} scenarioId={scenarioId} inputId={input.id} />
         )}
+        {input.inputMode === 'query_data' && (
+          <QueryDataView testId={testId} scenarioId={scenarioId} inputId={input.id} />
+        )}
         {input.inputMode === 'no_events' && (
           <div className="flex items-center gap-2 py-4 px-3 rounded-lg bg-navy-800/30 border border-slate-700/40">
             <NoEventsIcon />
@@ -176,7 +188,7 @@ export function InputCard({ testId, scenarioId, input, index, isOpen = true, onT
         )}
 
         {/* Event Generator — available for fields and json modes */}
-        {input.inputMode !== 'no_events' && (
+        {input.inputMode !== 'no_events' && input.inputMode !== 'query_data' && (
           <>
             <div
               className={`flex items-center gap-2.5 w-full px-3 py-2.5 mt-4 rounded-lg text-[13px] font-medium transition-all duration-200 border select-none ${

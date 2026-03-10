@@ -5,6 +5,7 @@
 import type { EntityId, TestDefinition } from '../../types';
 import { buildPayload } from '../../../utils/payloadBuilder';
 import type { ApiPayload } from '../../../utils/payloadBuilder';
+import { DEFAULT_TIME_RANGE } from '../../constants/defaults';
 
 const SAVE_VERSION = 2;
 
@@ -49,6 +50,12 @@ export function fileSlice(set: SetState, get: GetState) {
         }
         // Support both v1 (tests) and v2 (testDefinition) formats
         const tests = parsed.testDefinition ?? parsed.tests ?? [];
+        // Backfill timeRange for files saved before this feature existed
+        for (const t of tests) {
+          if (t.query && !t.query.timeRange) {
+            t.query.timeRange = { ...DEFAULT_TIME_RANGE };
+          }
+        }
         set((draft) => {
           draft.tests = tests;
           draft.activeTestId = parsed.activeTestId ?? (tests[0]?.id ?? null);

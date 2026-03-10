@@ -10,9 +10,11 @@ import type {
   TestInput,
   InputEvent,
   QueryConfig,
+  TimeRange,
   ValidationConfig,
   ResultCountRule,
   GeneratorConfig,
+  QueryDataConfig,
   SingleCondition,
   FieldConditionGroup,
 } from '../types';
@@ -42,6 +44,14 @@ export function createDefaultEvent(): InputEvent {
   };
 }
 
+export function createDefaultQueryDataConfig(): QueryDataConfig {
+  return {
+    spl: '',
+    savedSearchName: null,
+    timeRange: { ...DEFAULT_TIME_RANGE },
+  };
+}
+
 export function createDefaultInput(): TestInput {
   return {
     id: genId(),
@@ -51,6 +61,7 @@ export function createDefaultInput(): TestInput {
     events: [createDefaultEvent()],
     fileRef: null,
     generatorConfig: createDefaultGeneratorConfig(),
+    queryDataConfig: createDefaultQueryDataConfig(),
   };
 }
 
@@ -63,10 +74,17 @@ export function createDefaultScenario(): Scenario {
   };
 }
 
+export const DEFAULT_TIME_RANGE: TimeRange = {
+  earliest: '-24h@h',
+  latest: 'now',
+  label: 'Last 24 hours',
+};
+
 export function createDefaultQueryConfig(): QueryConfig {
   return {
     spl: '',
     savedSearchOrigin: null,
+    timeRange: { ...DEFAULT_TIME_RANGE },
   };
 }
 

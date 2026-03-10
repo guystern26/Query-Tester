@@ -4,6 +4,7 @@ import type { EntityId, FieldConditionGroup, Scenario } from 'core/types';
 import { MAX_CONDITIONS_PER_GROUP } from 'core/constants/limits';
 import { ConditionRow } from './ConditionRow';
 import { conditionPreview } from './conditionPreview';
+import { FieldNameSelector } from './FieldNameSelector';
 
 const inputCls = 'px-2.5 py-1.5 text-[13px] bg-navy-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-500/30 transition';
 const selectCls = 'px-2 py-1.5 text-[13px] bg-navy-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-accent-600 cursor-pointer';
@@ -44,11 +45,11 @@ export function FieldGroupCard({ testId, group, index, scenarios, isOnly }: Fiel
         <span className="w-6 h-6 rounded-full bg-slate-700 text-slate-400 text-[11px] font-bold flex items-center justify-center shrink-0">
           {index}
         </span>
-        <input
-          className={`${inputCls} flex-1 min-w-0 font-semibold`}
+        <FieldNameSelector
+          testId={testId}
+          groupId={group.id}
           value={group.field}
-          onChange={(e) => store.updateFieldGroupField(testId, group.id, e.target.value)}
-          placeholder="Field name (e.g., status, reason)"
+          className="flex-1 min-w-0"
         />
         <select className={`${selectCls} text-xs w-[120px]`} value={scope}
           onChange={(e) => {

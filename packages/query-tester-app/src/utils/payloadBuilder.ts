@@ -5,19 +5,19 @@
 import type { TestDefinition, TestInput } from 'core/types';
 
 export function buildEventsForInput(input: TestInput): Record<string, string>[] {
-  if (input.inputMode === 'no_events') return [{}];
+  if (input.inputMode === 'no_events' || input.inputMode === 'query_data') return [];
   if (input.inputMode === 'json') {
     try {
       const parsed = JSON.parse(input.jsonContent || '[]');
       return Array.isArray(parsed) ? parsed : [parsed];
     } catch {
-      return [{}];
+      return [];
     }
   }
   return input.events.map((evt) => {
     const pairs = evt.fieldValues.filter((fv) => fv.field.trim() !== '');
     if (pairs.length === 0) return {};
-    return Object.fromEntries(pairs.map((fv) => [fv.field, fv.value]));
+    return Object.fromEntries(pairs.map((fv) => [fv.field, fv.value ?? '']));
   });
 }
 
@@ -26,12 +26,29 @@ export interface ApiPayload {
   app: string;
   testType: TestDefinition['testType'];
   query: string;
+  earliestTime: string;
+  latestTime: string;
   scenarios?: Array<{
     name: string;
     inputs: Array<{
       rowIdentifier: string;
+      inputMode: string;
       events: Record<string, string>[];
-      generatorConfig?: TestInput['generatorConfig'];
+      generatorConfig?: {
+        enabled: boolean;
+        eventCount?: number;
+        rules: Array<{
+          id: string;
+          fieldName: string;
+          generationType: string;
+          config: Record<string, unknown>;
+        }>;
+      };
+      queryDataConfig?: {
+        spl: string;
+        earliestTime: string;
+        latestTime: string;
+      };
     }>;
   }>;
   validation: {
@@ -55,6 +72,8 @@ export function buildPayload(test: TestDefinition): ApiPayload {
     app: test.app,
     testType: test.testType,
     query: test.query.spl,
+    earliestTime: test.query.timeRange.earliest,
+    latestTime: test.query.timeRange.latest,
     scenarios:
       test.testType === 'query_only'
         ? undefined
@@ -62,9 +81,26 @@ export function buildPayload(test: TestDefinition): ApiPayload {
             name: s.name || 'Scenario 1',
             inputs: s.inputs.map((input) => ({
               rowIdentifier: input.rowIdentifier,
+              inputMode: input.inputMode,
               events: buildEventsForInput(input),
               generatorConfig: input.generatorConfig.enabled
-                ? input.generatorConfig
+                ? {
+                    enabled: input.generatorConfig.enabled,
+                    eventCount: input.generatorConfig.eventCount,
+                    rules: input.generatorConfig.rules.map((r) => ({
+                      id: r.id,
+                      fieldName: r.field,
+                      generationType: r.type,
+                      config: r.config,
+                    })),
+                  }
+                : undefined,
+              queryDataConfig: input.inputMode === 'query_data' && input.queryDataConfig.spl.trim()
+                ? {
+                    spl: input.queryDataConfig.spl,
+                    earliestTime: input.queryDataConfig.timeRange.earliest,
+                    latestTime: input.queryDataConfig.timeRange.latest,
+                  }
                 : undefined,
             })),
           })),
