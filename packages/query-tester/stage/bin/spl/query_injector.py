@@ -6,7 +6,7 @@ Rewrite SPL strings to target the temp query tester index.
 from __future__ import annotations
 
 import re
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, Optional
 
 from logger import get_logger
 from config import TEMP_INDEX
@@ -131,6 +131,37 @@ def _replace_outer_index(spl: str, replacement: str) -> str:
     outer = spl[:bracket_pos]
     inner = spl[bracket_pos:]
     return INDEX_PATTERN.sub(replacement, outer, count=1) + inner
+
+
+_ORPHAN_PATTERNS = [
+    (re.compile(r"(?i)\bsourcetype\s*=\s*\S+"), "sourcetype="),
+    (re.compile(r"(?i)\bsource\s*=\s*\S+"), "source="),
+    (re.compile(r"(?i)\bhost\s*=\s*\S+"), "host="),
+]
+
+
+def check_orphaned_filters(original_spl: str, injected_spl: str) -> Optional[str]:
+    """
+    After injection, check if filter clauses (sourcetype=, source=, host=)
+    remain in the outer segment.  These won't match data in the temp index
+    and will silently produce zero results.
+
+    Returns a warning message string, or None if everything looks fine.
+    """
+    outer = _outer_segment(injected_spl)
+    orphans = []  # type: List[str]
+    for pattern, label in _ORPHAN_PATTERNS:
+        if pattern.search(outer):
+            orphans.append(label)
+    if not orphans:
+        return None
+    return (
+        "After injection the query still contains {0} in the outer segment. "
+        "These filters don't apply to generated data and may cause zero results. "
+        "Include them in the row identifier to avoid this.".format(
+            ", ".join(orphans)
+        )
+    )
 
 
 STRATEGY_HANDLERS: Dict[str, Callable[[str, str, List[ParsedInput]], str]] = {

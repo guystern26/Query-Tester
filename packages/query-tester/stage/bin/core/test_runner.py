@@ -15,7 +15,7 @@ from core.payload_parser import parse
 from core.response_builder import build_response
 from spl.spl_analyzer import SplAnalysis, analyze as analyze_spl
 from spl.spl_normalizer import normalize_spl
-from spl.query_injector import detect_strategy, inject
+from spl.query_injector import check_orphaned_filters, detect_strategy, inject
 from spl.query_executor import QueryExecutor
 from generators.event_generator import build_events
 from data.data_indexer import index_events
@@ -136,8 +136,17 @@ class TestRunner:
             for scenario in payload.scenarios:
                 run_id = uuid4().hex[:8]
                 strategy = detect_strategy(spl)
+                injected_spl = inject(spl, run_id, strategy, scenario.inputs)
+                orphan_warning = check_orphaned_filters(spl, injected_spl)
+                if orphan_warning:
+                    analysis.warnings.append(
+                        {"message": orphan_warning, "severity": "warning"}
+                    )
                 try:
-                    result = self._run_scenario(payload, spl, analysis, scenario, run_id, strategy)
+                    result = self._run_scenario(
+                        payload, spl, analysis, scenario, run_id, strategy,
+                        injected_spl,
+                    )
                 except Exception as exc:
                     logger.error(
                         'Scenario "%s" failed: %s', scenario.name, str(exc), exc_info=True
@@ -147,7 +156,7 @@ class TestRunner:
                         passed=False,
                         execution_time_ms=0,
                         result_count=0,
-                        injected_spl="",
+                        injected_spl=injected_spl,
                         validations=[],
                         error=str(exc),
                     )
@@ -167,6 +176,7 @@ class TestRunner:
         scenario: ParsedScenario,
         run_id: str,
         strategy: str,
+        injected_spl: str,
     ) -> ScenarioResult:
         all_events = []  # type: List[Dict[str, Any]]
         for inp in scenario.inputs:
@@ -195,8 +205,6 @@ class TestRunner:
 
         if strategy == "lookup" and all_events:
             create_temp_lookup(run_id, all_events, payload.app)
-
-        injected_spl = inject(spl, run_id, strategy, scenario.inputs)
 
         start_ms = int(time.time() * 1000)
         results = self._executor.run(

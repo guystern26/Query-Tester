@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 // Ace must be loaded before Input to set up window.ace and SPL mode
 import '@splunk/react-search/components/Ace';
 import SearchInput from '@splunk/react-search/components/Input';
@@ -8,6 +8,9 @@ import { getSavedSearchSpl } from '../../api/splunkApi';
 import { useSavedSearches } from '../../hooks/useSavedSearches';
 import { Select, Message } from '../../common';
 import { TimeRangePicker } from './TimeRangePicker';
+import { lintSpl, SplWarning } from './splLinter';
+
+import { useAceMarkers } from './useAceMarkers';
 
 const APP_CHANGE_MSG = 'You changed the app. Some lookups and saved searches may not be available.';
 
@@ -22,6 +25,20 @@ export function QuerySection() {
 
   const prevApp = useRef(app);
   const [appChanged, setAppChanged] = useState(false);
+  const [splWarnings, setSplWarnings] = useState<SplWarning[]>([]);
+  const editorRef = useRef<HTMLDivElement>(null);
+
+  // Clear warnings while user is editing, re-lint on blur
+  const handleEditorFocus = useCallback(() => {
+    setSplWarnings([]);
+  }, []);
+
+  const handleEditorBlur = useCallback(() => {
+    setSplWarnings(lintSpl(spl));
+  }, [spl]);
+
+  // Apply inline Ace markers + gutter annotations + hover tooltips
+  useAceMarkers(editorRef, splWarnings);
 
   useEffect(() => {
     if (app !== prevApp.current && prevApp.current !== '') setAppChanged(true);
@@ -60,7 +77,12 @@ export function QuerySection() {
       </div>
 
       <div className="flex gap-3 items-start">
-        <div className="relative flex-1 min-w-0">
+        <div
+          ref={editorRef}
+          className="relative flex-1 min-w-0"
+          onFocus={handleEditorFocus}
+          onBlur={handleEditorBlur}
+        >
           <SearchInput
             value={spl}
             onChange={handleSplChange}
