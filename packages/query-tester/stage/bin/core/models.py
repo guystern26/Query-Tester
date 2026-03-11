@@ -78,7 +78,7 @@ class QueryDataConfig:
     """Configuration for the query_data input mode (sub-query as test data)."""
 
     spl: str
-    earliest_time: str = "0"
+    earliest_time: str = "-24h@h"
     latest_time: str = "now"
 
 
@@ -111,7 +111,7 @@ class TestPayload:
     query: str
     scenarios: List[ParsedScenario] = field(default_factory=list)
     validation: ValidationConfig = field(default=None)  # type: ignore[assignment]
-    earliest_time: str = "0"
+    earliest_time: str = "-24h@h"
     latest_time: str = "now"
 
 

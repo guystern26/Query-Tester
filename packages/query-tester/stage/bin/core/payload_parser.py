@@ -72,6 +72,10 @@ def parse(raw: Dict[str, Any]) -> TestPayload:
         earliest_time = "0"
     if not isinstance(latest_time, str):
         latest_time = "now"
+    if earliest_time.strip() == "0":
+        raise ValueError(
+            '"All time" is not allowed. Please select a specific time range.'
+        )
 
     return TestPayload(
         test_name=test_name,

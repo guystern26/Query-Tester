@@ -17,6 +17,22 @@ logger = get_logger(__name__)
 SPLUNK_HOME = os.environ.get("SPLUNK_HOME", "/opt/splunk")
 
 
+def _deduplicate(
+    events,   # type: List[Dict[str, Any]]
+    fieldnames,  # type: List[str]
+):
+    # type: (...) -> List[Dict[str, Any]]
+    """Remove duplicate rows from the event list, preserving order."""
+    seen = set()  # type: set
+    unique = []  # type: List[Dict[str, Any]]
+    for event in events:
+        key = tuple(event.get(f, "") for f in fieldnames)
+        if key not in seen:
+            seen.add(key)
+            unique.append(event)
+    return unique
+
+
 def _lookup_dir(app: str) -> str:
     """Build the lookups directory path for the given Splunk app."""
     return os.path.join(SPLUNK_HOME, "etc", "apps", app, "lookups")
@@ -42,15 +58,22 @@ def create_temp_lookup(
     os.makedirs(lookup_dir, exist_ok=True)
 
     fieldnames = list(events[0].keys())
+    unique_events = _deduplicate(events, fieldnames)
     with open(filepath, "w", newline="", encoding="utf-8") as csv_file:
         writer = csv.DictWriter(
             csv_file, fieldnames=fieldnames, extrasaction="ignore"
         )
         writer.writeheader()
-        writer.writerows(events)
+        writer.writerows(unique_events)
+
+    if len(unique_events) < len(events):
+        logger.info(
+            "Deduplicated lookup %s: %d -> %d rows",
+            filename, len(events), len(unique_events),
+        )
 
     logger.info(
-        "Created lookup %s with %d rows in app=%s", filename, len(events), app
+        "Created lookup %s with %d rows in app=%s", filename, len(unique_events), app
     )
     return filename
 
