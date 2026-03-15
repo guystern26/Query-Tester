@@ -21,6 +21,7 @@ export interface TestsTableRowProps {
     test: SavedTestMeta;
     schedule: ScheduledTest | null;
     isLoading: boolean;
+    isToggling: boolean;
     onOpen: (id: string) => void;
     onEdit: (id: string) => void;
     onSchedule: (id: string) => void;
@@ -31,7 +32,7 @@ export interface TestsTableRowProps {
 }
 
 export function TestsTableRow({
-    test, schedule, isLoading, onOpen, onEdit, onSchedule, onHistory, onToggleSchedule, onDelete, deleteError,
+    test, schedule, isLoading, isToggling, onOpen, onEdit, onSchedule, onHistory, onToggleSchedule, onDelete, deleteError,
 }: TestsTableRowProps) {
     const [isConfirming, setIsConfirming] = useState(false);
     const badge = TYPE_BADGE[test.validationType] || TYPE_BADGE[test.testType] || TYPE_BADGE.standard;
@@ -75,10 +76,19 @@ export function TestsTableRow({
             <td className="px-4 py-3">
                 {schedule ? (
                     <div className="flex items-center gap-1.5" data-action="true">
-                        <code className="text-[11px] text-slate-400 font-mono">{schedule.cronSchedule}</code>
-                        <span className={'text-[10px] font-medium ' + (isEnabled ? 'text-green-400' : 'text-slate-600')}>
-                            {isEnabled ? 'On' : 'Off'}
-                        </span>
+                        {isToggling ? (
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-3 h-3 border-[1.5px] border-slate-600 border-t-blue-400 rounded-full animate-spin" />
+                                <span className="text-[10px] text-slate-500">Updating...</span>
+                            </div>
+                        ) : (
+                            <>
+                                <code className="text-[11px] text-slate-400 font-mono">{schedule.cronSchedule}</code>
+                                <span className={'text-[10px] font-medium ' + (isEnabled ? 'text-green-400' : 'text-slate-600')}>
+                                    {isEnabled ? 'On' : 'Off'}
+                                </span>
+                            </>
+                        )}
                     </div>
                 ) : (
                     <span className="text-[11px] text-slate-600">&mdash;</span>

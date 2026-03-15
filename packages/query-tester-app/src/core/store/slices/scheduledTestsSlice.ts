@@ -29,18 +29,15 @@ export function scheduledTestsSlice(set: SetState) {
     return {
         fetchScheduledTests: async () => {
             set((draft) => {
-                draft.isLoadingScheduled = true;
                 draft.scheduledError = null;
             });
             try {
                 const tests = await scheduledTestsApi.getScheduledTests();
                 set((draft) => {
                     draft.scheduledTests = Array.isArray(tests) ? tests : [];
-                    draft.isLoadingScheduled = false;
                 });
             } catch (e) {
                 set((draft) => {
-                    draft.isLoadingScheduled = false;
                     draft.scheduledError = e instanceof Error ? e.message : String(e);
                 });
             }
@@ -72,6 +69,7 @@ export function scheduledTestsSlice(set: SetState) {
             let snapshot: ScheduledTest | undefined;
             set((draft) => {
                 draft.isLoadingScheduled = true;
+                draft.togglingScheduleId = id;
                 draft.scheduledError = null;
                 const idx = draft.scheduledTests.findIndex((t) => t.id === id);
                 if (idx !== -1) {
@@ -83,6 +81,7 @@ export function scheduledTestsSlice(set: SetState) {
                 const updated = await scheduledTestsApi.updateScheduledTest(id, patch);
                 set((draft) => {
                     draft.isLoadingScheduled = false;
+                    draft.togglingScheduleId = null;
                     const idx = draft.scheduledTests.findIndex((t) => t.id === id);
                     if (idx !== -1) {
                         draft.scheduledTests[idx] = updated;
@@ -92,6 +91,7 @@ export function scheduledTestsSlice(set: SetState) {
                 // Revert to snapshot on failure
                 set((draft) => {
                     draft.isLoadingScheduled = false;
+                    draft.togglingScheduleId = null;
                     draft.scheduledError = e instanceof Error ? e.message : String(e);
                     if (snapshot) {
                         const idx = draft.scheduledTests.findIndex((t) => t.id === id);

@@ -10,7 +10,7 @@ export interface RunHistoryDrawerProps {
 }
 
 export function RunHistoryDrawer({ open, onClose, test }: RunHistoryDrawerProps) {
-    const { runHistory, fetchRunHistory, isLoadingScheduled } = useTestStore();
+    const { runHistory, fetchRunHistory, isLoadingHistory } = useTestStore();
 
     const testId = test?.id || '';
     const runs = runHistory[testId] || [];
@@ -56,7 +56,7 @@ export function RunHistoryDrawer({ open, onClose, test }: RunHistoryDrawerProps)
 
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto px-5 py-4">
-                    {isLoadingScheduled && !loaded ? (
+                    {isLoadingHistory && !loaded ? (
                         <div className="flex items-center justify-center py-12">
                             <div className="w-6 h-6 border-2 border-slate-600 border-t-blue-400 rounded-full animate-spin" />
                         </div>

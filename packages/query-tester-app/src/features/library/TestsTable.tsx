@@ -20,6 +20,7 @@ export interface TestsTableProps {
     tests: SavedTestMeta[];
     isLoading: boolean;
     loadingRowId: string | null;
+    togglingScheduleId: string | null;
     scheduleByTestId: Record<string, ScheduledTest>;
     onOpen: (id: string) => void;
     onEdit: (id: string) => void;
@@ -31,7 +32,7 @@ export interface TestsTableProps {
 }
 
 export function TestsTable({
-    tests, isLoading, loadingRowId, scheduleByTestId,
+    tests, isLoading, loadingRowId, togglingScheduleId, scheduleByTestId,
     onOpen, onEdit, onSchedule, onHistory, onToggleSchedule, onDelete, deleteError,
 }: TestsTableProps) {
     if (isLoading) {
@@ -95,6 +96,7 @@ export function TestsTable({
                             test={t}
                             schedule={scheduleByTestId[t.id] || null}
                             isLoading={loadingRowId === t.id}
+                            isToggling={!!(scheduleByTestId[t.id] && togglingScheduleId === scheduleByTestId[t.id].id)}
                             onOpen={onOpen}
                             onEdit={onEdit}
                             onSchedule={onSchedule}
