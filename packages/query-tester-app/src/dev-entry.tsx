@@ -1,9 +1,9 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import './globals.css';
-import { StartPage } from './StartPage';
+import { AppShell } from './AppShell';
 
 ReactDOM.render(
-  <StartPage />,
+  <AppShell />,
   document.getElementById('root')
 );

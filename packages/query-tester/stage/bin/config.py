@@ -12,7 +12,14 @@ from __future__ import annotations
 
 SPLUNK_HOST = "localhost"
 SPLUNK_PORT = 8089            # splunkd management port
-SPLUNK_SCHEME = "https"
+SPLUNK_SCHEME = "http"
+SPLUNK_USERNAME = "admin"
+SPLUNK_PASSWORD = "Password1!"
+
+# ─── Endpoints ───────────────────────────────────────────────────────────────
+
+ENDPOINT = "servicesNS/admin/playground/data/tester"
+APPS_ENDPOINT = "http://splunk:8089/services/apps/local/?output_mode=json&count=1000"
 
 # ─── HEC (HTTP Event Collector) ─────────────────────────────────────────────
 # Used for indexing synthetic test data. HEC must be enabled on this instance.
@@ -29,6 +36,15 @@ HEC_TIMEOUT = 30              # seconds
 
 TEMP_INDEX = "temp_query_tester"
 TEMP_SOURCETYPE = "query_tester_input"
+
+# ─── SMTP / Email ────────────────────────────────────────────────────────────
+
+SMTP_SERVER = "CASNLB"
+SMTP_PORT = 25
+MAIL_FROM = "svc_ijump@souf.org"
+MAIL_PASSWORD = "Password1!"
+MAIL_TO = "t_splunk@souf.org"
+DEFAULT_ALERT_EMAIL = "t_splunk@souf.org"
 
 # ─── Logging ─────────────────────────────────────────────────────────────────
 # Log file path. Falls back to $SPLUNK_HOME/var/log/splunk/query_tester.log

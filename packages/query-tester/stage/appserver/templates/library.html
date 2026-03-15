@@ -3,11 +3,11 @@
     <head>
         <meta charset="utf-8" />
         <meta http-equiv="x-ua-compatible" content="ie=edge" />
-        <title>pageTitle</title>
+        <title>Test Library</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 
-        <link rel="stylesheet" type="text/css" href="${make_url('/static/app/query-tester/pages/QueryTesterApp.css')}" />
+        <link rel="stylesheet" type="text/css" href="${make_url('/static/app/QueryTester/pages/index-main.css')}" />
     </head>
 
     <body>
@@ -18,7 +18,7 @@
             __splunkd_partials__ = ${json_decode(splunkd)};
         </script>
 
-        <% page_path = "/static/app/query-tester/pages/" + page + ".js" %>
+        <% page_path = "/static/app/QueryTester/pages/TestLibrary.js" %>
 
         <script src="${make_url(page_path)}"></script>
     </body>

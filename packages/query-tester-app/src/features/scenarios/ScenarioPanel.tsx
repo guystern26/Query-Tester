@@ -90,6 +90,14 @@ export function ScenarioPanel() {
 
   return (
     <>
+      {/* Extract Fields — above scenario tabs */}
+      {sel && sel.inputs.length > 0 && (
+        <div className="flex items-center gap-2 mb-3">
+          <ExtractFieldsButton testId={test.id} scenarioId={sel.id} />
+          <span className="text-[11px] text-slate-500">AI extracts data sources &amp; fields from your SPL</span>
+        </div>
+      )}
+
       {/* Tab row */}
       <div className="flex items-center border-b border-slate-800 mb-4">
         {scenarios.map((s, i) => {
@@ -161,9 +169,14 @@ export function ScenarioPanel() {
             </div>
           ) : (
             <>
-              <div className="flex justify-center items-center gap-2 mt-2 mb-1">
-                <ExtractFieldsButton testId={test.id} scenarioId={sel.id} />
-                <span className="text-[11px] text-slate-500">AI extracts data sources &amp; fields from your SPL</span>
+              <div className="flex items-center gap-2 mt-2 mb-1">
+                <button
+                  className="px-3 py-1.5 rounded-md bg-blue-500/10 text-blue-400 text-[12px] font-medium hover:bg-blue-500/20 transition-all duration-200 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  onClick={() => state.addInput(test.id, sel.id)}
+                  disabled={!canAddInput}
+                >
+                  + Add Input
+                </button>
               </div>
               <div className={`flex flex-col gap-3 mt-1 rounded-lg p-2 -mx-2 transition-colors duration-300 ${selColor.tint}`}>
                 {sel.inputs.map((inp, i) => (

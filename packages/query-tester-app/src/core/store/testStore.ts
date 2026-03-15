@@ -19,6 +19,10 @@ import type {
   FieldGenerationRule,
   ExtractedDataSource,
   TestType,
+  ScheduledTest,
+  TestRunRecord,
+  SavedTestMeta,
+  SavedTestFull,
 } from '../types';
 import { createDefaultTest } from '../constants/defaults';
 import { testSlice } from './slices/testSlice';
@@ -29,6 +33,10 @@ import { validationSlice } from './slices/validationSlice';
 import { generatorSlice } from './slices/generatorSlice';
 import { runSlice } from './slices/runSlice';
 import { fileSlice } from './slices/fileSlice';
+import { scheduledTestsSlice, scheduledTestsInitialState } from './slices/scheduledTestsSlice';
+import type { ScheduledTestsState } from './slices/scheduledTestsSlice';
+import { testLibrarySlice, testLibraryInitialState } from './slices/testLibrarySlice';
+import type { TestLibraryState } from './slices/testLibrarySlice';
 
 export type { SavedState } from './slices/fileSlice';
 
@@ -38,6 +46,9 @@ export interface TestStoreState {
   isRunning: boolean;
   testResponse: TestResponse | null;
   resultsBarExpanded: boolean;
+  savedTestId: string | null;
+  hasUnsavedChanges: boolean;
+  markUnsaved: () => void;
 
   addTest: () => void;
   deleteTest: (testId: EntityId) => void;
@@ -126,6 +137,32 @@ export interface TestStoreState {
   saveToFile: () => void;
   loadFromFile: (content: string) => { success: boolean; error?: string };
 
+  // Scheduled tests
+  scheduledTests: ScheduledTest[];
+  runHistory: Record<string, TestRunRecord[]>;
+  isLoadingScheduled: boolean;
+  scheduledError: string | null;
+  fetchScheduledTests: () => Promise<void>;
+  createScheduledTest: (payload: Omit<ScheduledTest, 'id' | 'createdAt' | 'lastRunAt' | 'lastRunStatus'>) => Promise<void>;
+  updateScheduledTest: (id: string, patch: Partial<ScheduledTest>) => Promise<void>;
+  deleteScheduledTest: (id: string) => Promise<void>;
+  runNow: (id: string) => Promise<void>;
+  fetchRunHistory: (scheduledTestId: string) => Promise<void>;
+  clearScheduledError: () => void;
+
+  // Test Library
+  savedTests: SavedTestMeta[];
+  isLoadingLibrary: boolean;
+  isSaving: boolean;
+  libraryError: string | null;
+  fetchSavedTests: () => Promise<void>;
+  loadTestFromPayload: (full: SavedTestFull) => void;
+  loadTestIntoBuilder: (id: string) => Promise<string>;
+  saveCurrentTest: (name: string, description: string) => Promise<void>;
+  updateSavedTest: (id: string, name: string, description: string) => Promise<void>;
+  deleteSavedTest: (id: string) => Promise<void>;
+  clearLibraryError: () => void;
+
   setFieldExtraction: (testId: EntityId, sources: ExtractedDataSource[]) => void;
   selectDataSource: (testId: EntityId, scenarioId: EntityId, inputId: EntityId, source: ExtractedDataSource) => void;
   applySuggestedValidationFields: (testId: EntityId, fields: string[]) => void;
@@ -144,6 +181,9 @@ export const useTestStore = create<TestStoreState>()(
     isRunning: false,
     testResponse: null,
     resultsBarExpanded: false,
+    savedTestId: null,
+    hasUnsavedChanges: false,
+    markUnsaved: () => set((draft) => { draft.hasUnsavedChanges = true; }),
 
     ...testSlice(set, get),
     ...scenarioSlice(set),
@@ -153,5 +193,20 @@ export const useTestStore = create<TestStoreState>()(
     ...generatorSlice(set),
     ...runSlice(set, get),
     ...fileSlice(set, get),
+
+    ...scheduledTestsInitialState,
+    ...scheduledTestsSlice(set),
+
+    ...testLibraryInitialState,
+    ...testLibrarySlice(set, get),
   }))
 );
+
+// Auto-detect unsaved changes: any mutation to `tests` after a library load
+let _prevTests: TestDefinition[] | null = null;
+useTestStore.subscribe((state) => {
+  if (state.savedTestId && _prevTests !== null && state.tests !== _prevTests && !state.hasUnsavedChanges) {
+    state.markUnsaved();
+  }
+  _prevTests = state.tests;
+});

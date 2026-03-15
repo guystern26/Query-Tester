@@ -203,9 +203,9 @@ def check_result_count(actual: int, rc: ResultCount) -> ValidationDetail:
         passed = op(actual, rc.value)
 
     if passed:
-        message = "result count {0} {1} \u2713".format(rc.operator, rc.value)
+        message = "result count {0} {1}".format(rc.operator, rc.value)
     else:
-        message = "result count {0} {1} \u2014 got {2} \u2717".format(
+        message = "expected result count {0} {1}, but got {2}".format(
             rc.operator, rc.value, actual
         )
 

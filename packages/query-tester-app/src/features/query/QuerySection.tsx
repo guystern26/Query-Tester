@@ -18,8 +18,8 @@ export function QuerySection() {
   const state = useTestStore();
   const test = selectActiveTest(state);
   const app = test?.app ?? '';
-  const spl = test?.query.spl ?? '';
-  const origin = test?.query.savedSearchOrigin ?? '';
+  const spl = test?.query?.spl ?? '';
+  const origin = test?.query?.savedSearchOrigin ?? '';
 
   const { savedSearches, loading, error } = useSavedSearches(app);
 
@@ -97,7 +97,7 @@ export function QuerySection() {
         {test && (
           <div className="flex-shrink-0 pt-0.5">
             <TimeRangePicker
-              value={test.query.timeRange}
+              value={test.query?.timeRange}
               onChange={(tr) => state.setTimeRange(test.id, tr)}
             />
           </div>

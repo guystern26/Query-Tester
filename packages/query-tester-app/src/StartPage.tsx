@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { useTestStore } from 'core/store/testStore';
 import { selectActiveTest, inputHasData } from 'core/store/selectors';
 import { TopBar } from './components/test-navigation/TopBar';
@@ -14,9 +14,34 @@ import { PipelineConnector } from './features/layout/PipelineConnector';
 
 /* ── page component ─────────────────────────────────────────── */
 
-export function StartPage() {
+export interface StartPageProps {
+  onNavigateLibrary?: () => void;
+  loadTestId?: string;
+}
+
+export function StartPage({ onNavigateLibrary, loadTestId }: StartPageProps = {}) {
   const state = useTestStore();
   const activeTest = selectActiveTest(state);
+  const [isLoadingTest, setIsLoadingTest] = useState(false);
+
+  // Load a saved test by ID
+  useEffect(() => {
+    if (!loadTestId) return;
+
+    // If store already has the tests (client-side nav from Library), load instantly
+    const current = state.savedTests;
+    if (current.length > 0) {
+      try { state.loadTestIntoBuilder(loadTestId); } catch { /* */ }
+      return;
+    }
+
+    // Cold start (direct URL) — fetch from API
+    setIsLoadingTest(true);
+    state.fetchSavedTests().then(() => {
+      try { state.loadTestIntoBuilder(loadTestId); } catch { /* */ }
+      setIsLoadingTest(false);
+    }).catch(() => { setIsLoadingTest(false); });
+  }, [loadTestId]);
   const rowRef = useRef<HTMLDivElement>(null);
   const queryRef = useRef<HTMLDivElement>(null);
   const dataRef = useRef<HTMLDivElement>(null);
@@ -26,7 +51,7 @@ export function StartPage() {
   const app = activeTest?.app ?? '';
   const testType = activeTest?.testType ?? 'standard';
   const hasApp = app.trim() !== '';
-  const hasQuery = (activeTest?.query.spl ?? '').trim() !== '';
+  const hasQuery = (activeTest?.query?.spl ?? '').trim() !== '';
   const showData = hasApp && hasQuery && testType === 'standard';
   const dataDone = inputHasData(activeTest?.scenarios ?? []);
   const showValidation = hasApp && hasQuery && (testType === 'query_only' || dataDone);
@@ -67,7 +92,7 @@ export function StartPage() {
       className="h-screen flex flex-col bg-gradient-to-br from-navy-900 to-navy-800 text-slate-100 overflow-hidden"
       style={{ paddingBottom: barExpanded ? '45vh' : '48px' }}
     >
-      <TopBar />
+      <TopBar onNavigateLibrary={onNavigateLibrary} />
 
       {hasApp ? (
         <>
@@ -97,6 +122,16 @@ export function StartPage() {
             onStepClick={handleStepClick}
           />
         </>
+      ) : isLoadingTest ? (
+        <div className="flex-1 flex items-center justify-center px-5 pt-4 animate-fadeIn">
+          <div className="flex flex-col items-center gap-4">
+            <svg className="w-8 h-8 text-accent-400 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z" />
+            </svg>
+            <span className="text-sm text-slate-400">Loading test...</span>
+          </div>
+        </div>
       ) : (
         <div className="flex-1 flex items-center justify-center px-5 pt-4 animate-fadeIn">
           <div className="w-full max-w-xl bg-navy-900 rounded-2xl border border-slate-800 shadow-lg p-8 flex flex-col gap-6">

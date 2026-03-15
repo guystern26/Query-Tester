@@ -133,7 +133,12 @@ export function ResultRowsTable({ rows, hiddenColumns, onToggleColumn, fieldFail
                 <tr key={absIndex} className={rowBg}>
                   <td className="px-2 py-1 text-[11px] text-slate-600 border-b border-slate-700/30">{absIndex + 1}</td>
                   {visibleColumns.map((col) => {
-                    const cellVal = String(row[col] ?? '');
+                    const rawVal = row[col];
+                    const cellVal = Array.isArray(rawVal)
+                      ? rawVal.join(' ')
+                      : typeof rawVal === 'string' && rawVal.includes('\n')
+                        ? rawVal.replace(/\n/g, ' ')
+                        : String(rawVal ?? '');
                     const hasFail = fieldFailures.has(col);
                     return (
                       <td
