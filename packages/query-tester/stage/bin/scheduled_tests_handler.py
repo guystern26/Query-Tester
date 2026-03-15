@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import threading
 import uuid
 from typing import Any, Dict
 
@@ -29,6 +30,24 @@ from scheduled_search_manager import (
 logger = get_logger(__name__)
 
 COLLECTION_SCHEDULED_TESTS = "scheduled_tests"
+
+
+def _async_saved_search(fn, session_key, record):
+    # type: (Any, str, Dict[str, Any]) -> None
+    """Run a saved search operation in a background thread."""
+    try:
+        fn(session_key, record)
+    except Exception as exc:
+        logger.warning("Async saved search op failed: %s", exc)
+
+
+def _async_saved_search_delete(session_key, record_id):
+    # type: (str, str) -> None
+    """Run saved search deletion in a background thread."""
+    try:
+        delete_saved_search(session_key, record_id)
+    except Exception as exc:
+        logger.warning("Async saved search delete failed for %s: %s", record_id, exc)
 
 
 def _build_record(payload):
@@ -97,7 +116,12 @@ class ScheduledTestsHandler(PersistentServerConnectionApplication):
         record = _build_record(payload)
         kv = KVStoreClient(session_key)
         kv.upsert(COLLECTION_SCHEDULED_TESTS, record["id"], record)
-        create_saved_search(session_key, record)
+        # Fire-and-forget: create saved search in background thread
+        threading.Thread(
+            target=_async_saved_search,
+            args=(create_saved_search, session_key, record),
+            daemon=True,
+        ).start()
         logger.info("Created scheduled test: %s", record["id"])
         return json_response(record, 201)
 
@@ -113,11 +137,12 @@ class ScheduledTestsHandler(PersistentServerConnectionApplication):
         existing.update(payload)
         existing["id"] = record_id
         kv.upsert(COLLECTION_SCHEDULED_TESTS, record_id, existing)
-        # Update saved search — non-fatal if it fails
-        try:
-            update_saved_search(session_key, existing)
-        except Exception as exc:
-            logger.warning("Saved search update failed for %s: %s", record_id, exc)
+        # Fire-and-forget: update saved search in background thread
+        threading.Thread(
+            target=_async_saved_search,
+            args=(update_saved_search, session_key, existing),
+            daemon=True,
+        ).start()
         logger.info("Updated scheduled test: %s", record_id)
         return json_response(existing)
 
@@ -129,6 +154,11 @@ class ScheduledTestsHandler(PersistentServerConnectionApplication):
             raise ValueError("Missing record ID in URL path.")
         kv = KVStoreClient(session_key)
         kv.delete(COLLECTION_SCHEDULED_TESTS, record_id)
-        delete_saved_search(session_key, record_id)
+        # Fire-and-forget: delete saved search in background thread
+        threading.Thread(
+            target=_async_saved_search_delete,
+            args=(session_key, record_id),
+            daemon=True,
+        ).start()
         logger.info("Deleted scheduled test: %s", record_id)
         return json_response({"deleted": record_id})

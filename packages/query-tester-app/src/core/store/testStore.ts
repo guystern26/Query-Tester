@@ -141,6 +141,9 @@ export interface TestStoreState {
   scheduledTests: ScheduledTest[];
   runHistory: Record<string, TestRunRecord[]>;
   isLoadingScheduled: boolean;
+  isLoadingHistory: boolean;
+  togglingScheduleId: string | null;
+  creatingScheduleForTestId: string | null;
   scheduledError: string | null;
   fetchScheduledTests: () => Promise<void>;
   createScheduledTest: (payload: Omit<ScheduledTest, 'id' | 'createdAt' | 'lastRunAt' | 'lastRunStatus'>) => Promise<void>;

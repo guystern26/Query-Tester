@@ -19,8 +19,9 @@ function SkeletonRow() {
 export interface TestsTableProps {
     tests: SavedTestMeta[];
     isLoading: boolean;
-    loadingRowId: string | null;
+    deletingIds: Set<string>;
     togglingScheduleId: string | null;
+    creatingScheduleForTestId: string | null;
     scheduleByTestId: Record<string, ScheduledTest>;
     onOpen: (id: string) => void;
     onEdit: (id: string) => void;
@@ -28,12 +29,12 @@ export interface TestsTableProps {
     onHistory: (id: string) => void;
     onToggleSchedule: (scheduleId: string, enabled: boolean) => void;
     onDelete: (id: string) => void;
-    deleteError: string | null;
+    deleteErrors: Record<string, string>;
 }
 
 export function TestsTable({
-    tests, isLoading, loadingRowId, togglingScheduleId, scheduleByTestId,
-    onOpen, onEdit, onSchedule, onHistory, onToggleSchedule, onDelete, deleteError,
+    tests, isLoading, deletingIds, togglingScheduleId, creatingScheduleForTestId, scheduleByTestId,
+    onOpen, onEdit, onSchedule, onHistory, onToggleSchedule, onDelete, deleteErrors,
 }: TestsTableProps) {
     if (isLoading) {
         return (
@@ -95,15 +96,16 @@ export function TestsTable({
                             key={t.id}
                             test={t}
                             schedule={scheduleByTestId[t.id] || null}
-                            isLoading={loadingRowId === t.id}
+                            isLoading={deletingIds.has(t.id)}
                             isToggling={!!(scheduleByTestId[t.id] && togglingScheduleId === scheduleByTestId[t.id].id)}
+                            isCreatingSchedule={creatingScheduleForTestId === t.id}
                             onOpen={onOpen}
                             onEdit={onEdit}
                             onSchedule={onSchedule}
                             onHistory={onHistory}
                             onToggleSchedule={onToggleSchedule}
                             onDelete={onDelete}
-                            deleteError={loadingRowId === t.id ? deleteError : null}
+                            deleteError={deleteErrors[t.id] || null}
                         />
                     ))}
                 </tbody>

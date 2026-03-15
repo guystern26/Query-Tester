@@ -22,6 +22,7 @@ export interface TestsTableRowProps {
     schedule: ScheduledTest | null;
     isLoading: boolean;
     isToggling: boolean;
+    isCreatingSchedule: boolean;
     onOpen: (id: string) => void;
     onEdit: (id: string) => void;
     onSchedule: (id: string) => void;
@@ -32,7 +33,7 @@ export interface TestsTableRowProps {
 }
 
 export function TestsTableRow({
-    test, schedule, isLoading, isToggling, onOpen, onEdit, onSchedule, onHistory, onToggleSchedule, onDelete, deleteError,
+    test, schedule, isLoading, isToggling, isCreatingSchedule, onOpen, onEdit, onSchedule, onHistory, onToggleSchedule, onDelete, deleteError,
 }: TestsTableRowProps) {
     const [isConfirming, setIsConfirming] = useState(false);
     const badge = TYPE_BADGE[test.validationType] || TYPE_BADGE[test.testType] || TYPE_BADGE.standard;
@@ -74,7 +75,12 @@ export function TestsTableRow({
                 <span className="text-xs text-slate-400">{test.scenarioCount}</span>
             </td>
             <td className="px-4 py-3">
-                {schedule ? (
+                {isCreatingSchedule ? (
+                    <div className="flex items-center gap-1.5" data-action="true">
+                        <div className="w-3 h-3 border-[1.5px] border-slate-600 border-t-blue-400 rounded-full animate-spin" />
+                        <span className="text-[10px] text-slate-500">Creating schedule...</span>
+                    </div>
+                ) : schedule ? (
                     <div className="flex items-center gap-1.5" data-action="true">
                         {isToggling ? (
                             <div className="flex items-center gap-1.5">
@@ -83,7 +89,7 @@ export function TestsTableRow({
                             </div>
                         ) : (
                             <>
-                                <code className="text-[11px] text-slate-400 font-mono">{schedule.cronSchedule}</code>
+                                <code className={'text-[11px] font-mono ' + (isEnabled ? 'text-slate-400' : 'text-slate-600')}>{schedule.cronSchedule}</code>
                                 <span className={'text-[10px] font-medium ' + (isEnabled ? 'text-green-400' : 'text-slate-600')}>
                                     {isEnabled ? 'On' : 'Off'}
                                 </span>
@@ -127,11 +133,17 @@ export function TestsTableRow({
                 ) : (
                     <div className="flex items-center gap-1" data-action="true">
                         <button
-                            className={ICON_BTN_CLS}
+                            className={ICON_BTN_CLS + (!schedule ? ' animate-pulse' : '')}
                             onClick={handleClockClick}
-                            title={schedule ? (isEnabled ? 'Disable schedule' : 'Enable schedule') : 'Create schedule'}
+                            title={schedule ? (isEnabled ? 'Disable schedule' : 'Click to enable schedule') : 'Create schedule'}
                         >
-                            <svg className={'w-4 h-4 transition-colors ' + (isEnabled ? 'text-green-400 drop-shadow-[0_0_4px_rgba(74,222,128,0.5)]' : '')} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10" /><path strokeLinecap="round" d="M12 6v6l4 2" /></svg>
+                            <svg className={'w-4 h-4 transition-colors ' + (
+                                !schedule
+                                    ? 'text-blue-400 drop-shadow-[0_0_6px_rgba(96,165,250,0.6)]'
+                                    : isEnabled
+                                        ? 'text-green-400 drop-shadow-[0_0_4px_rgba(74,222,128,0.5)]'
+                                        : 'text-slate-600 hover:text-amber-400'
+                            )} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10" /><path strokeLinecap="round" d="M12 6v6l4 2" /></svg>
                         </button>
                         <button className={ICON_BTN_CLS} onClick={() => onSchedule(test.id)} title={schedule ? 'Edit schedule settings' : 'Create schedule'}>
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><circle cx="12" cy="12" r="3" /></svg>

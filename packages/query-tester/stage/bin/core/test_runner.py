@@ -10,10 +10,10 @@ from uuid import uuid4
 import time
 
 from logger import get_logger
-from core.models import ParsedScenario, ScenarioResult, TestPayload, ValidationDetail
+from core.models import ParsedScenario, ScenarioResult, TestPayload
 from core.payload_parser import parse
-from core.response_builder import build_response
-from spl.spl_analyzer import SplAnalysis, analyze as analyze_spl
+from core.response_builder import build_error_response, build_response
+from spl.spl_analyzer import analyze as analyze_spl
 from spl.spl_normalizer import normalize_spl
 from spl.query_injector import check_orphaned_filters, detect_strategy, inject
 from spl.query_executor import QueryExecutor
@@ -26,48 +26,13 @@ from validation.result_validator import validate
 
 logger = get_logger(__name__)
 
-_EMPTY_SPL_ANALYSIS = {
-    "unauthorizedCommands": [],
-    "unusualCommands": [],
-    "uniqLimitations": None,
-    "commandsUsed": [],
-}
 
-
-def _error_response(
-    payload,       # type: Any
-    message,       # type: str
-    error_code,    # type: str
-    analysis=None, # type: Any
-):
-    # type: (...) -> Dict[str, Any]
-    """Build a TestResponse-shaped error dict with all required fields."""
-    from datetime import datetime
-
-    spl_analysis = _EMPTY_SPL_ANALYSIS  # type: Dict[str, Any]
-    warnings = []  # type: list
-    if analysis is not None:
-        spl_analysis = {
-            "unauthorizedCommands": analysis.unauthorized_commands,
-            "unusualCommands": analysis.unusual_commands,
-            "uniqLimitations": analysis.uniq_limitations,
-            "commandsUsed": analysis.commands_used,
-        }
-        warnings = analysis.warnings
-
-    return {
-        "status": "error",
-        "message": message,
-        "testName": payload.test_name if payload else "",
-        "testType": payload.test_type if payload else "",
-        "timestamp": datetime.utcnow().isoformat() + "Z",
-        "totalScenarios": 0,
-        "passedScenarios": 0,
-        "errors": [{"code": error_code, "message": message, "severity": "error"}],
-        "warnings": warnings,
-        "splAnalysis": spl_analysis,
-        "scenarioResults": [],
-    }
+def _error_scenario(name, spl, exc):
+    # type: (str, str, Exception) -> ScenarioResult
+    return ScenarioResult(
+        scenario_name=name, passed=False, execution_time_ms=0,
+        result_count=0, injected_spl=spl, validations=[], error=str(exc),
+    )
 
 
 class TestRunner:
@@ -89,7 +54,7 @@ class TestRunner:
             if analysis.unauthorized_commands:
                 blocked = ", ".join(analysis.unauthorized_commands)
                 return (
-                    _error_response(
+                    build_error_response(
                         payload,
                         "Blocked commands detected: {0}".format(blocked),
                         "BLOCKED_COMMANDS",
@@ -100,13 +65,13 @@ class TestRunner:
         except ValueError as exc:
             logger.error("Client error while preparing test: %s", str(exc), exc_info=True)
             return (
-                _error_response(None, str(exc), "VALIDATION_ERROR"),
+                build_error_response(None, str(exc), "VALIDATION_ERROR"),
                 400,
             )
         except Exception as exc:
             logger.error("Fatal error while preparing test: %s", str(exc), exc_info=True)
             return (
-                _error_response(
+                build_error_response(
                     None,
                     "Internal error while preparing test payload.",
                     "INTERNAL_ERROR",
@@ -122,15 +87,7 @@ class TestRunner:
                 result = self._run_query_only(payload, spl)
             except Exception as exc:
                 logger.error("query_only failed: %s", str(exc), exc_info=True)
-                result = ScenarioResult(
-                    scenario_name="Query Only",
-                    passed=False,
-                    execution_time_ms=0,
-                    result_count=0,
-                    injected_spl=spl,
-                    validations=[],
-                    error=str(exc),
-                )
+                result = _error_scenario("Query Only", spl, exc)
             scenario_results.append(result)
         else:
             for scenario in payload.scenarios:
@@ -144,22 +101,13 @@ class TestRunner:
                     )
                 try:
                     result = self._run_scenario(
-                        payload, spl, analysis, scenario, run_id, strategy,
-                        injected_spl,
+                        payload, scenario, run_id, strategy, injected_spl,
                     )
                 except Exception as exc:
                     logger.error(
                         'Scenario "%s" failed: %s', scenario.name, str(exc), exc_info=True
                     )
-                    result = ScenarioResult(
-                        scenario_name=scenario.name,
-                        passed=False,
-                        execution_time_ms=0,
-                        result_count=0,
-                        injected_spl=injected_spl,
-                        validations=[],
-                        error=str(exc),
-                    )
+                    result = _error_scenario(scenario.name, injected_spl, exc)
                 finally:
                     self._cleanup(run_id, strategy, payload.app)
 
@@ -169,14 +117,8 @@ class TestRunner:
         return response, 200
 
     def _run_scenario(
-        self,
-        payload: TestPayload,
-        spl: str,
-        analysis: SplAnalysis,
-        scenario: ParsedScenario,
-        run_id: str,
-        strategy: str,
-        injected_spl: str,
+        self, payload: TestPayload, scenario: ParsedScenario,
+        run_id: str, strategy: str, injected_spl: str,
     ) -> ScenarioResult:
         all_events = []  # type: List[Dict[str, Any]]
         for inp in scenario.inputs:
@@ -206,56 +148,31 @@ class TestRunner:
         if strategy == "lookup" and all_events:
             create_temp_lookup(run_id, all_events, payload.app)
 
-        start_ms = int(time.time() * 1000)
-        results = self._executor.run(
-            injected_spl,
-            app=payload.app,
-            earliest_time=payload.earliest_time,
-            latest_time=payload.latest_time,
-        )
-        elapsed_ms = int(time.time() * 1000) - start_ms
-
-        validations, passed = validate(payload.validation, scenario, results)
-
-        return ScenarioResult(
-            scenario_name=scenario.name,
-            passed=passed,
-            execution_time_ms=elapsed_ms,
-            result_count=len(results),
-            injected_spl=injected_spl,
-            validations=validations,
-            result_rows=results,
-            error=None,
+        return self._execute_and_validate(
+            payload, scenario, injected_spl, scenario.name,
         )
 
-    def _run_query_only(
-        self,
-        payload: TestPayload,
-        spl: str,
-    ) -> ScenarioResult:
+    def _run_query_only(self, payload: TestPayload, spl: str) -> ScenarioResult:
         """Run the SPL as-is with no injection or data indexing."""
-        dummy_scenario = ParsedScenario(name="Query Only", inputs=[])
+        dummy = ParsedScenario(name="Query Only", inputs=[])
+        return self._execute_and_validate(payload, dummy, spl, "Query Only")
 
+    def _execute_and_validate(
+        self, payload: TestPayload, scenario: ParsedScenario,
+        run_spl: str, name: str,
+    ) -> ScenarioResult:
         start_ms = int(time.time() * 1000)
         results = self._executor.run(
-            spl,
-            app=payload.app,
-            earliest_time=payload.earliest_time,
-            latest_time=payload.latest_time,
+            run_spl, app=payload.app,
+            earliest_time=payload.earliest_time, latest_time=payload.latest_time,
         )
         elapsed_ms = int(time.time() * 1000) - start_ms
-
-        validations, passed = validate(payload.validation, dummy_scenario, results)
-
+        validations, passed = validate(payload.validation, scenario, results)
         return ScenarioResult(
-            scenario_name="Query Only",
-            passed=passed,
-            execution_time_ms=elapsed_ms,
-            result_count=len(results),
-            injected_spl=spl,
-            validations=validations,
-            result_rows=results,
-            error=None,
+            scenario_name=name, passed=passed,
+            execution_time_ms=elapsed_ms, result_count=len(results),
+            injected_spl=run_spl, validations=validations,
+            result_rows=results, error=None,
         )
 
     def _resolve_spl(self, payload: TestPayload) -> str:

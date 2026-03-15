@@ -6,6 +6,7 @@ import { LibraryFilters } from './LibraryFilters';
 import { TestsTable } from './TestsTable';
 import { ScheduleModal } from '../suites/ScheduleModal';
 import { RunHistoryDrawer } from '../suites/RunHistoryDrawer';
+import { BugReportButton } from '../../components/test-navigation/BugReportButton';
 
 export interface LibraryPageProps {
     onNavigateBuilder: (testId?: string) => void;
@@ -17,14 +18,14 @@ export function LibraryPage({ onNavigateBuilder }: LibraryPageProps) {
         savedTests, isLoadingLibrary, libraryError,
         fetchSavedTests, deleteSavedTest, clearLibraryError,
         scheduledTests, fetchScheduledTests, updateScheduledTest,
-        isLoadingScheduled, togglingScheduleId, scheduledError,
+        isLoadingScheduled, togglingScheduleId, creatingScheduleForTestId, scheduledError,
     } = store;
 
     const [search, setSearch] = useState('');
     const [appFilter, setAppFilter] = useState('');
     const [typeFilter, setTypeFilter] = useState('');
-    const [loadingRowId, setLoadingRowId] = useState<string | null>(null);
-    const [deleteError, setDeleteError] = useState<string | null>(null);
+    const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+    const [deleteErrors, setDeleteErrors] = useState<Record<string, string>>({});
 
     // Schedule modal state
     const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
@@ -50,6 +51,12 @@ export function LibraryPage({ onNavigateBuilder }: LibraryPageProps) {
         }
         prevLoadingRef.current = isLoadingScheduled;
     }, [isLoadingScheduled, scheduledError]);
+
+    // Remove HTML loading overlay once React is rendering
+    useEffect(() => {
+        const el = document.getElementById('qt-loading');
+        if (el) el.remove();
+    }, []);
 
     useEffect(() => { fetchSavedTests(); fetchScheduledTests(); }, [fetchSavedTests, fetchScheduledTests]);
 
@@ -99,16 +106,19 @@ export function LibraryPage({ onNavigateBuilder }: LibraryPageProps) {
     }, [scheduleByTestId]);
 
     const handleDelete = useCallback(async (id: string) => {
-        setDeleteError(null);
-        setLoadingRowId(id);
+        setDeleteErrors((prev) => { const next = { ...prev }; delete next[id]; return next; });
+        setDeletingIds((prev) => new Set(prev).add(id));
         try {
             await deleteSavedTest(id);
-            // Refresh scheduled tests in case backend cascade-deleted a schedule
             fetchScheduledTests();
         } catch (e) {
-            setDeleteError(e instanceof Error ? e.message : String(e));
+            setDeleteErrors((prev) => ({ ...prev, [id]: e instanceof Error ? e.message : String(e) }));
         } finally {
-            setLoadingRowId(null);
+            setDeletingIds((prev) => {
+                const next = new Set(prev);
+                next.delete(id);
+                return next;
+            });
         }
     }, [deleteSavedTest, fetchScheduledTests]);
 
@@ -131,6 +141,8 @@ export function LibraryPage({ onNavigateBuilder }: LibraryPageProps) {
             <header className="sticky top-0 z-50 h-14 bg-navy-900 border-b border-slate-800 px-5 flex items-center justify-between shrink-0 shadow-lg shadow-black/20">
                 <span className="text-base font-bold text-slate-200 tracking-tight">Query Tester</span>
                 <nav className="flex items-center gap-1">
+                    <BugReportButton />
+                    <div className="w-px h-5 bg-slate-700 mx-1" />
                     <button className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-accent-600/20 text-accent-300 cursor-pointer">Library</button>
                     <button className="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-400 hover:text-slate-200 hover:bg-navy-800 transition cursor-pointer" onClick={() => onNavigateBuilder()}>Builder</button>
                 </nav>
@@ -156,8 +168,9 @@ export function LibraryPage({ onNavigateBuilder }: LibraryPageProps) {
                     <TestsTable
                         tests={filtered}
                         isLoading={isLoadingLibrary && savedTests.length === 0}
-                        loadingRowId={loadingRowId}
+                        deletingIds={deletingIds}
                         togglingScheduleId={togglingScheduleId}
+                        creatingScheduleForTestId={creatingScheduleForTestId}
                         scheduleByTestId={scheduleByTestId}
                         onOpen={handleOpen}
                         onEdit={handleOpen}
@@ -165,7 +178,7 @@ export function LibraryPage({ onNavigateBuilder }: LibraryPageProps) {
                         onHistory={handleHistory}
                         onToggleSchedule={handleToggleSchedule}
                         onDelete={handleDelete}
-                        deleteError={deleteError}
+                        deleteErrors={deleteErrors}
                     />
                 </div>
             </div>

@@ -11,6 +11,7 @@ from typing import Any, Callable, Dict, List, Optional
 from logger import get_logger
 from core.helpers import safe_float
 from core.models import FieldCondition, ResultCount, ValidationDetail
+from validation.scope_evaluator import evaluate_scope, SCOPE_LABELS
 
 
 logger = get_logger(__name__)
@@ -81,17 +82,6 @@ COUNT_OPS: Dict[str, Callable[[int, int], bool]] = {
 }
 
 
-# ── Scope descriptions for human-readable messages ──────────────────────────
-
-_SCOPE_LABELS = {
-    "all_events": "all events",
-    "any_event": "at least one event",
-    "exactly_n": "exactly {n} event(s)",
-    "at_least_n": "at least {n} event(s)",
-    "at_most_n": "at most {n} event(s)",
-}
-
-
 def check_field_condition(
     condition: FieldCondition,
     results: List[Dict[str, Any]],
@@ -114,10 +104,9 @@ def check_field_condition(
     actual_values = [str(row.get(condition.field, "")) for row in results]
     per_row = [handler(value, condition.value) for value in actual_values]
 
-    # Apply scope logic
     match_count = sum(per_row)
     total_count = len(per_row)
-    passed = _evaluate_scope(per_row, validation_scope, scope_n)
+    passed = evaluate_scope(per_row, validation_scope, scope_n)
 
     # Build display string
     if not actual_values:
@@ -130,7 +119,7 @@ def check_field_condition(
         if len(actual_values) > 3:
             display = display + "..."
 
-    scope_label = _SCOPE_LABELS.get(validation_scope, validation_scope)
+    scope_label = SCOPE_LABELS.get(validation_scope, validation_scope)
     if scope_n is not None:
         scope_label = scope_label.replace("{n}", str(scope_n))
 
@@ -154,43 +143,6 @@ def check_field_condition(
         passed=passed,
         message=message,
     )
-
-
-def _evaluate_scope(
-    per_row: List[bool],
-    validation_scope: str,
-    scope_n: Optional[int],
-) -> bool:
-    """Decide pass/fail based on per-row results and the validation scope."""
-    if not per_row:
-        return False
-
-    match_count = sum(per_row)
-
-    if validation_scope == "all_events":
-        return all(per_row)
-
-    if validation_scope == "any_event":
-        return any(per_row)
-
-    if scope_n is None:
-        logger.warning(
-            "Scope %r requires scopeN but it was not provided; defaulting to 0.",
-            validation_scope,
-        )
-    n = scope_n if scope_n is not None else 0
-
-    if validation_scope == "exactly_n":
-        return match_count == n
-
-    if validation_scope == "at_least_n":
-        return match_count >= n
-
-    if validation_scope == "at_most_n":
-        return match_count <= n
-
-    # Default: any_event
-    return any(per_row)
 
 
 def check_result_count(actual: int, rc: ResultCount) -> ValidationDetail:

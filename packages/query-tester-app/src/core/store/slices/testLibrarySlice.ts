@@ -103,6 +103,12 @@ export function testLibrarySlice(set: SetState, get: GetState) {
             });
             try {
                 const state = get();
+                const duplicate = state.savedTests.find(
+                    (t) => t.name.toLowerCase() === name.toLowerCase()
+                );
+                if (duplicate) {
+                    throw new Error('A test named "' + name + '" already exists. Choose a different name.');
+                }
                 const activeTest = state.tests.find((t) => t.id === state.activeTestId);
                 if (!activeTest) {
                     throw new Error('No active test to save.');
@@ -134,6 +140,12 @@ export function testLibrarySlice(set: SetState, get: GetState) {
             });
             try {
                 const state = get();
+                const duplicate = state.savedTests.find(
+                    (t) => t.id !== id && t.name.toLowerCase() === name.toLowerCase()
+                );
+                if (duplicate) {
+                    throw new Error('A test named "' + name + '" already exists. Choose a different name.');
+                }
                 const activeTest = state.tests.find((t) => t.id === state.activeTestId);
                 if (!activeTest) {
                     throw new Error('No active test to save.');

@@ -10,39 +10,10 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 from logger import get_logger
+from spl.spl_analyzer_rules import UNAUTHORIZED_COMMANDS, UNUSUAL_COMMANDS
 
 
 logger = get_logger(__name__)
-
-UNAUTHORIZED_COMMANDS = {
-    "delete",
-    "drop",
-    "collect",
-    "outputlookup",
-    "outputcsv",
-    "sendemail",
-    "dbxquery",
-    "rest",
-    "script",
-    "map",
-    "localop",
-    "dbinspect",
-    "audit",
-    "tscollect",
-    "meventcollect",
-}
-
-UNUSUAL_COMMANDS = {
-    "uniq",
-    "transaction",
-    "multisearch",
-    "appendpipe",
-    "join",
-    "selfjoin",
-    "gentimes",
-    "loadjob",
-    "savedsearch",
-}
 
 
 @dataclass
@@ -72,62 +43,34 @@ def analyze(spl: str) -> SplAnalysis:
     warnings = []  # type: List[Dict[str, Any]]
     uniq_message = None  # type: Optional[str]
 
+    def _warn(msg: str, severity: str = "warning") -> None:
+        warnings.append({"message": msg, "severity": severity})
+
     if "join" in commands:
-        warnings.append(
-            {
-                "message": (
-                    "join returns only 50,000 results. Consider using append "
-                    "+ stats values(*) by * instead."
-                ),
-                "severity": "warning",
-            }
+        _warn(
+            "join returns only 50,000 results. Consider using append "
+            "+ stats values(*) by * instead."
         )
-
     if "append" in commands:
-        warnings.append(
-            {
-                "message": "append is limited to 1 million results.",
-                "severity": "warning",
-            }
-        )
-
+        _warn("append is limited to 1 million results.")
     if "transaction" in commands:
-        warnings.append(
-            {
-                "message": (
-                    "transaction is resource-intensive. Consider using stats "
-                    "with by/grouping fields when possible."
-                ),
-                "severity": "caution",
-            }
+        _warn(
+            "transaction is resource-intensive. Consider using stats "
+            "with by/grouping fields when possible.",
+            "caution",
         )
-
     if "uniq" in commands:
         uniq_message = (
             "uniq removes only consecutive duplicate events. Sort by the target field "
             "first, or use dedup for full deduplication."
         )
-        warnings.append({"message": uniq_message, "severity": "info"})
-
+        _warn(uniq_message, "info")
     if _has_subsearch(spl_clean):
-        warnings.append(
-            {
-                "message": (
-                    "Subsearches are limited to 50,000 results and a 60-second timeout."
-                ),
-                "severity": "warning",
-            }
-        )
-
+        _warn("Subsearches are limited to 50,000 results and a 60-second timeout.")
     if _has_tstats(spl_clean):
-        warnings.append(
-            {
-                "message": (
-                    "tstats queries cannot be injected with test data. "
-                    'Use testType="query_only" to run this query without injection.'
-                ),
-                "severity": "warning",
-            }
+        _warn(
+            "tstats queries cannot be injected with test data. "
+            'Use testType="query_only" to run this query without injection.'
         )
 
     return SplAnalysis(

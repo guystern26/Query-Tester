@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Modal, Button } from '../../common';
+import { useTestStore } from 'core/store/testStore';
 
 export interface SaveTestModalProps {
     open: boolean;
@@ -17,6 +18,7 @@ export function SaveTestModal({
     const [name, setName] = useState(initialName);
     const [description, setDescription] = useState('');
     const [mode, setMode] = useState<'update' | 'new'>(savedTestId ? 'update' : 'new');
+    const savedTests = useTestStore((s) => s.savedTests);
 
     // Reset state when modal opens with new props
     React.useEffect(() => {
@@ -27,19 +29,26 @@ export function SaveTestModal({
         }
     }, [open, initialName, savedTestId]);
 
+    const trimmedName = name.trim();
+    const isDuplicate = trimmedName !== '' && savedTests.some(
+        (t) => t.name.toLowerCase() === trimmedName.toLowerCase() && t.id !== savedTestId
+    );
+
     const handleSave = () => {
+        if (isDuplicate) return;
         if (mode === 'update' && savedTestId) {
             onUpdate(savedTestId, initialName, '');
         } else {
-            if (!name.trim()) return;
-            onSaveNew(name.trim(), description.trim());
+            if (!trimmedName) return;
+            onSaveNew(trimmedName, description.trim());
         }
     };
 
     const isUpdate = mode === 'update' && savedTestId;
+    const canSave = isUpdate ? !isSaving : !isSaving && trimmedName !== '' && !isDuplicate;
 
     return (
-        <Modal open={open} title={isUpdate ? 'Save Test' : 'Save as New Copy'} onClose={onClose} confirmLabel={isSaving ? 'Saving...' : isUpdate ? 'Save' : 'Save as New'} onConfirm={handleSave}>
+        <Modal open={open} title={isUpdate ? 'Save Test' : 'Save as New Copy'} onClose={onClose} confirmLabel={isSaving ? 'Saving...' : isUpdate ? 'Save' : 'Save as New'} onConfirm={handleSave} confirmDisabled={!canSave}>
             <div className="flex flex-col gap-4">
                 {savedTestId && (
                     <div className="flex items-center gap-3">
@@ -63,9 +72,12 @@ export function SaveTestModal({
                                 type="text"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                className="px-3 py-2 text-sm bg-navy-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-500/30"
+                                className={'px-3 py-2 text-sm bg-navy-950 border rounded-lg text-slate-200 focus:outline-none focus:ring-1 ' + (isDuplicate ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30' : 'border-slate-700 focus:border-accent-600 focus:ring-accent-500/30')}
                                 autoFocus
                             />
+                            {isDuplicate && (
+                                <span className="text-[11px] text-red-400">A test with this name already exists</span>
+                            )}
                         </div>
                         <div className="flex flex-col gap-1.5">
                             <label className="text-xs font-semibold text-slate-400">Description</label>

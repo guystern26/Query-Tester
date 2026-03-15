@@ -12,6 +12,48 @@ from core.models import ScenarioResult, TestPayload, ValidationDetail
 from spl.spl_analyzer import SplAnalysis
 
 
+EMPTY_SPL_ANALYSIS = {
+    "unauthorizedCommands": [],
+    "unusualCommands": [],
+    "uniqLimitations": None,
+    "commandsUsed": [],
+}  # type: Dict[str, Any]
+
+
+def build_error_response(
+    payload,       # type: Any
+    message,       # type: str
+    error_code,    # type: str
+    analysis=None, # type: Any
+):
+    # type: (...) -> Dict[str, Any]
+    """Build a TestResponse-shaped error dict with all required fields."""
+    spl_analysis = EMPTY_SPL_ANALYSIS  # type: Dict[str, Any]
+    warnings = []  # type: list
+    if analysis is not None:
+        spl_analysis = {
+            "unauthorizedCommands": analysis.unauthorized_commands,
+            "unusualCommands": analysis.unusual_commands,
+            "uniqLimitations": analysis.uniq_limitations,
+            "commandsUsed": analysis.commands_used,
+        }
+        warnings = analysis.warnings
+
+    return {
+        "status": "error",
+        "message": message,
+        "testName": payload.test_name if payload else "",
+        "testType": payload.test_type if payload else "",
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "totalScenarios": 0,
+        "passedScenarios": 0,
+        "errors": [{"code": error_code, "message": message, "severity": "error"}],
+        "warnings": warnings,
+        "splAnalysis": spl_analysis,
+        "scenarioResults": [],
+    }
+
+
 def build_response(
     payload: TestPayload,
     analysis: SplAnalysis,
