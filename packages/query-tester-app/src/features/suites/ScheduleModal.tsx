@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTestStore } from 'core/store/testStore';
 import { Modal } from '../../common';
 import { DEFAULT_ALERT_EMAIL } from 'core/constants/scheduledTests';
-import { CronPicker } from './CronPicker';
+import { CronPicker, isValidCron } from './CronPicker';
 import { RecipientsList, hasInvalidRecipients } from './RecipientsList';
 import type { ScheduledTest, SavedTestMeta } from 'core/types';
 
@@ -26,7 +26,7 @@ export function ScheduleModal({ open, onClose, editingTest, preselectedTestId }:
 
     useEffect(() => {
         if (open) fetchSavedTests();
-    }, [open]);
+    }, [open, fetchSavedTests]);
 
     useEffect(() => {
         if (!open) return;
@@ -43,10 +43,10 @@ export function ScheduleModal({ open, onClose, editingTest, preselectedTestId }:
             setAlertOn(false);
             setRecipients([DEFAULT_ALERT_EMAIL]);
         }
-    }, [open, editingTest]);
+    }, [open, editingTest, preselectedTestId]);
 
     const selectedTest: SavedTestMeta | undefined = savedTests.find((t) => t.id === testId);
-    const canSave = testId && cron.trim() && !hasInvalidRecipients(recipients) && !isLoadingScheduled;
+    const canSave = testId && isValidCron(cron) && !hasInvalidRecipients(recipients) && !isLoadingScheduled;
 
     const handleSave = async () => {
         if (!canSave || !selectedTest) return;
@@ -55,14 +55,18 @@ export function ScheduleModal({ open, onClose, editingTest, preselectedTestId }:
             : [DEFAULT_ALERT_EMAIL];
 
         if (editingTest) {
-            await updateScheduledTest(editingTest.id, {
+            // Close immediately — updateScheduledTest applies optimistic update
+            onClose();
+            updateScheduledTest(editingTest.id, {
                 cronSchedule: cron,
                 enabled,
                 alertOnFailure: alertOn,
                 emailRecipients: finalRecipients,
             });
         } else {
-            await createScheduledTest({
+            // Close immediately — creation continues in background
+            onClose();
+            createScheduledTest({
                 testId: selectedTest.id,
                 testName: selectedTest.name,
                 app: selectedTest.app,
@@ -73,7 +77,6 @@ export function ScheduleModal({ open, onClose, editingTest, preselectedTestId }:
                 emailRecipients: finalRecipients,
             });
         }
-        onClose();
     };
 
     const confirmLabel = isLoadingScheduled ? 'Saving...' : 'Save';

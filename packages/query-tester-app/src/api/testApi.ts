@@ -6,7 +6,7 @@
 import type { TestResponse } from 'core/types';
 import type { ApiPayload } from '../utils/payloadBuilder';
 import { createRESTURL } from '@splunk/splunk-utils/url';
-import { createFetchInit } from '@splunk/splunk-utils/fetch';
+import { getDefaultFetchInit } from '@splunk/splunk-utils/fetch';
 import { ENV } from '../config/env';
 
 /**
@@ -35,12 +35,17 @@ export async function runTest(
   if (isSplunkEnv()) {
     // Inside Splunk Web — use splunk-utils for correct URL + CSRF
     url = createRESTURL(ENV.REST_PATH, { app: 'QueryTester', owner: 'admin' }) + '?output_mode=json';
-    init = createFetchInit({
+    const defaults = getDefaultFetchInit();
+    init = {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      credentials: defaults.credentials as RequestCredentials,
+      headers: {
+        ...(defaults.headers as Record<string, string>),
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify(payload),
       signal,
-    });
+    };
   } else {
     // Vite dev mode — direct fetch
     url = ENV.FALLBACK_ENDPOINT + '?output_mode=json';
@@ -96,7 +101,12 @@ export function cancelTestOnBackend(): void {
 
   if (isSplunkEnv()) {
     url = createRESTURL(ENV.REST_PATH, { app: 'QueryTester', owner: 'admin' }) + '?output_mode=json';
-    init = createFetchInit({ method: 'DELETE' });
+    const defaults2 = getDefaultFetchInit();
+    init = {
+      method: 'DELETE',
+      credentials: defaults2.credentials as RequestCredentials,
+      headers: defaults2.headers as Record<string, string>,
+    };
   } else {
     url = ENV.FALLBACK_ENDPOINT + '?output_mode=json';
     init = { method: 'DELETE', credentials: 'include' };

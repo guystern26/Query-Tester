@@ -22,9 +22,9 @@ def build_response(
     passed_count = sum(1 for s in scenario_results if s.passed)
 
     if passed_count == total and total > 0:
-        status = "success"
+        status = "pass"
     elif passed_count == 0:
-        status = "error"
+        status = "fail"
     else:
         status = "partial"
 

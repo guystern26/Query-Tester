@@ -40,7 +40,8 @@ export function ScheduledTestsTable({
 
     const hasDrift = (id: string): boolean => {
         const runs = lastRuns[id];
-        return runs != null && runs.length > 0 && runs[0].splDriftDetected;
+        const d = runs != null && runs.length > 0 && runs[0].splDriftDetected;
+        return !!d && d !== '0' && d !== 'false';
     };
 
     return (

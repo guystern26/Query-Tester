@@ -7,7 +7,7 @@ const TH = 'px-4 py-3 text-left text-[11px] font-semibold text-slate-500 upperca
 function SkeletonRow() {
     return (
         <tr className="border-b border-slate-800">
-            {Array.from({ length: 9 }).map((_, i) => (
+            {Array.from({ length: 10 }).map((_, i) => (
                 <td key={i} className="px-4 py-3">
                     <div className="h-4 bg-navy-700 rounded animate-pulse" style={{ width: i === 1 ? '70%' : '60%' }} />
                 </td>
@@ -46,6 +46,7 @@ export function TestsTable({
                             <th className={TH}>Type</th>
                             <th className={TH + ' text-center'}>Scenarios</th>
                             <th className={TH}>Schedule</th>
+                            <th className={TH}>Last Run</th>
                             <th className={TH}>Created by</th>
                             <th className={TH}>Updated</th>
                             <th className={TH}>Actions</th>
@@ -81,6 +82,7 @@ export function TestsTable({
                         <th className={TH}>Type</th>
                         <th className={TH + ' text-center'}>Scenarios</th>
                         <th className={TH}>Schedule</th>
+                        <th className={TH}>Last Run</th>
                         <th className={TH}>Created by</th>
                         <th className={TH}>Updated</th>
                         <th className={TH}>Actions</th>

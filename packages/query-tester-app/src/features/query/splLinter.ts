@@ -235,7 +235,7 @@ export function lintSpl(spl: string): SplWarning[] {
 
 /** Replace quoted string contents with spaces to avoid false positives. */
 function maskQuotedStrings(spl: string): string {
-  const chars = [...spl];
+  const chars = Array.from(spl);
   let i = 0;
   while (i < chars.length) {
     const ch = chars[i];

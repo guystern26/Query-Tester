@@ -35,6 +35,16 @@ function errMsg(e: unknown): string {
     return e instanceof Error ? e.message : String(e);
 }
 
+/** Prepare a definition for loading into the builder, backfilling missing fields. */
+function prepareDefinition(full: SavedTestFull): TestDefinition {
+    const def = { ...full.definition };
+    if (!def.name && full.name) def.name = full.name;
+    if (def.query && !def.query.timeRange) {
+        def.query.timeRange = { ...DEFAULT_TIME_RANGE };
+    }
+    return def;
+}
+
 export function testLibrarySlice(set: SetState, get: GetState) {
     return {
         fetchSavedTests: async () => {
@@ -58,10 +68,7 @@ export function testLibrarySlice(set: SetState, get: GetState) {
 
         loadTestFromPayload: (full: SavedTestFull): void => {
             if (!full || !full.definition) return;
-            const def = { ...full.definition };
-            if (def.query && !def.query.timeRange) {
-                def.query.timeRange = { ...DEFAULT_TIME_RANGE };
-            }
+            const def = prepareDefinition(full);
             set((draft) => {
                 draft.tests = [def];
                 draft.activeTestId = def.id;
@@ -78,13 +85,7 @@ export function testLibrarySlice(set: SetState, get: GetState) {
                 set((draft) => { draft.libraryError = 'Test not found in library.'; });
                 throw new Error('Test not found');
             }
-            const def = { ...full.definition };
-
-            // Backfill timeRange if missing
-            if (def.query && !def.query.timeRange) {
-                def.query.timeRange = { ...DEFAULT_TIME_RANGE };
-            }
-
+            const def = prepareDefinition(full);
             set((draft) => {
                 draft.tests = [def];
                 draft.activeTestId = def.id;
@@ -92,7 +93,6 @@ export function testLibrarySlice(set: SetState, get: GetState) {
                 draft.savedTestId = id;
                 draft.hasUnsavedChanges = false;
             });
-
             return full.name;
         },
 
@@ -107,13 +107,12 @@ export function testLibrarySlice(set: SetState, get: GetState) {
                 if (!activeTest) {
                     throw new Error('No active test to save.');
                 }
-
+                const defWithName = { ...activeTest, name };
                 const saved = await savedTestsApi.saveTest({
                     name,
                     description,
-                    definition: activeTest,
+                    definition: defWithName,
                 });
-
                 set((draft) => {
                     draft.savedTests.unshift(saved);
                     draft.isSaving = false;
@@ -139,13 +138,13 @@ export function testLibrarySlice(set: SetState, get: GetState) {
                 if (!activeTest) {
                     throw new Error('No active test to save.');
                 }
-
+                const effectiveName = name || activeTest.name || '';
+                const defWithName = { ...activeTest, name: effectiveName };
                 const updated = await savedTestsApi.updateTest(id, {
-                    name,
+                    name: effectiveName,
                     description,
-                    definition: activeTest,
+                    definition: defWithName,
                 });
-
                 set((draft) => {
                     const idx = draft.savedTests.findIndex((t) => t.id === id);
                     if (idx !== -1) {

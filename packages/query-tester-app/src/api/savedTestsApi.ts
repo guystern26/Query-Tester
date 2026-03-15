@@ -2,9 +2,9 @@
  * Saved Tests (Test Library) API — CRUD against Splunk REST / KVStore.
  */
 
-import type { SavedTestMeta, SavedTestFull, TestDefinition } from 'core/types';
+import type { SavedTestFull, TestDefinition } from 'core/types';
 import { createRESTURL } from '@splunk/splunk-utils/url';
-import { createFetchInit } from '@splunk/splunk-utils/fetch';
+import { getDefaultFetchInit } from '@splunk/splunk-utils/fetch';
 
 const REST_OPTS = { app: 'QueryTester', owner: 'admin' } as const;
 
@@ -27,12 +27,17 @@ function buildIdUrl(path: string, id: string): string {
 }
 
 async function request<T>(url: string, method: string, body?: unknown): Promise<T> {
-    const opts: Record<string, unknown> = { method };
+    const defaults = getDefaultFetchInit();
+    const headers: Record<string, string> = { ...(defaults.headers as Record<string, string>) };
     if (body !== undefined) {
-        opts.headers = { 'Content-Type': 'application/json' };
-        opts.body = JSON.stringify(body);
+        headers['Content-Type'] = 'application/json';
     }
-    const init = createFetchInit(opts);
+    const init: RequestInit = {
+        method,
+        credentials: defaults.credentials as RequestCredentials,
+        headers,
+        ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+    };
     const res = await fetch(url, init);
 
     if (!res.ok) {
