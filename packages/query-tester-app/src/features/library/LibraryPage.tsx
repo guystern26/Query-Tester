@@ -17,7 +17,7 @@ export function LibraryPage({ onNavigateBuilder }: LibraryPageProps) {
         savedTests, isLoadingLibrary, libraryError,
         fetchSavedTests, deleteSavedTest, clearLibraryError,
         scheduledTests, fetchScheduledTests, updateScheduledTest,
-        isLoadingScheduled, scheduledError,
+        isLoadingScheduled, togglingScheduleId, scheduledError,
     } = store;
 
     const [search, setSearch] = useState('');
@@ -157,6 +157,7 @@ export function LibraryPage({ onNavigateBuilder }: LibraryPageProps) {
                         tests={filtered}
                         isLoading={isLoadingLibrary && savedTests.length === 0}
                         loadingRowId={loadingRowId}
+                        togglingScheduleId={togglingScheduleId}
                         scheduleByTestId={scheduleByTestId}
                         onOpen={handleOpen}
                         onEdit={handleOpen}
