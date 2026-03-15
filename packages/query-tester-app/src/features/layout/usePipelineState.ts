@@ -25,7 +25,7 @@ export function usePipelineState(): PipelineState {
   const isQueryOnly = testType === 'query_only';
 
   const setupDone = (test?.app ?? '').trim() !== '';
-  const queryDone = (test?.query.spl ?? '').trim() !== '';
+  const queryDone = (test?.query?.spl ?? '').trim() !== '';
   const dataDone = !isQueryOnly && inputHasData(test?.scenarios ?? []);
   const validationDone = (test?.validation?.fieldGroups?.length ?? 0) > 0 || test?.validation?.resultCount?.enabled === true;
 

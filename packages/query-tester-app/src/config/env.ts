@@ -12,14 +12,23 @@
 export const ENV = {
   // ─── REST Handler ──────────────────────────────────────────────────────
   // Must match restmap.conf [script:...] match path
-  REST_PATH: 'splunk_query_tester/query_tester',
+  REST_PATH: 'data/tester',
 
   // Fallback endpoint for Vite dev mode (proxied via vite.config.ts)
-  FALLBACK_ENDPOINT: '/splunkd/__raw/services/splunk_query_tester/query_tester',
+  FALLBACK_ENDPOINT: '/splunkd/__raw/servicesNS/admin/QueryTester/data/tester',
 
   // ─── Splunk Services ──────────────────────────────────────────────────
   // Base path for Splunk REST API calls (apps, saved searches, etc.)
   SPLUNK_SERVICES_BASE: '/splunkd/__raw/services',
+
+  // Backend endpoint (inner network)
+  BACKEND_ENDPOINT: 'servicesNS/admin/playground/data/tester',
+
+  // Splunk base URL
+  SPLUNK_BASE: 'http://splunk:8089',
+
+  // Apps endpoint
+  APPS_ENDPOINT: 'http://splunk:8089/services/apps/local/?output_mode=json&count=1000',
 
   // ─── LLM / AI ─────────────────────────────────────────────────────────
   // Set to empty string '' to disable AI extract buttons

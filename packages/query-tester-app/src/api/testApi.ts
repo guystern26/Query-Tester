@@ -34,7 +34,7 @@ export async function runTest(
 
   if (isSplunkEnv()) {
     // Inside Splunk Web — use splunk-utils for correct URL + CSRF
-    url = createRESTURL(ENV.REST_PATH) + '?output_mode=json';
+    url = createRESTURL(ENV.REST_PATH, { app: 'QueryTester', owner: 'admin' }) + '?output_mode=json';
     init = createFetchInit({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -95,7 +95,7 @@ export function cancelTestOnBackend(): void {
   let init: RequestInit;
 
   if (isSplunkEnv()) {
-    url = createRESTURL(ENV.REST_PATH) + '?output_mode=json';
+    url = createRESTURL(ENV.REST_PATH, { app: 'QueryTester', owner: 'admin' }) + '?output_mode=json';
     init = createFetchInit({ method: 'DELETE' });
   } else {
     url = ENV.FALLBACK_ENDPOINT + '?output_mode=json';

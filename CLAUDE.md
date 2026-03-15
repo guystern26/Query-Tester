@@ -41,8 +41,12 @@ yarn workspace @splunk/query-tester run link:app
 ### `packages/query-tester-app` — React frontend library
 - Exports Zustand store, types, components, hooks as `@splunk/query-tester-app`
 - **Entry:** `src/StartPage.tsx` (main), `src/dev-entry.tsx` (Vite dev)
-- **Store:** Single Zustand v4 store with Immer middleware at `src/core/store/testStore.ts`, composed from slices in `src/core/store/slices/`
+- **Store:** Single Zustand v4 store with Immer middleware at `src/core/store/testStore.ts`, composed from 8 slices in `src/core/store/slices/`:
+  - `testSlice` (CRUD tests), `scenarioSlice`, `inputSlice`, `querySlice`, `validationSlice`, `generatorSlice`, `runSlice` (test execution state), `fileSlice` (save/load)
+  - `helpers.ts` — shared lookup functions (findTest, findScenario, findInput, deepCloneTestWithNewIds)
+  - `selectors.ts` — derived state selectors
 - **Data hierarchy:** Test -> Scenario[] -> TestInput[] -> InputEvent[] -> FieldValue[]
+- **Input modes:** `'json' | 'fields' | 'no_events' | 'query_data'` — each TestInput has a mode determining how events are provided
 - **Feature modules:** `src/features/{scenarios,query,results,validation,eventGenerator,layout}/`
 - **API layer:** `src/api/` (splunkApi.ts, testApi.ts, llmApi.ts)
 - **Config:** `src/config/env.ts` (REST_PATH, LLM_ENDPOINT — rebuild required after changes)
@@ -64,12 +68,19 @@ Key modules and their strict boundaries:
 - `query_tester.py` — REST handler entry point (Splunk wiring only)
 - `core/test_runner.py` — orchestrator, loops scenarios
 - `core/payload_parser.py` — JSON dict -> dataclasses (camelCase -> snake_case)
+- `core/response_builder.py` — serializes results to camelCase JSON for frontend
+- `core/helpers.py` — shared utilities
 - `spl/spl_analyzer.py` — reads SPL only, never modifies
 - `spl/query_injector.py` — rewrites SPL, never runs it
 - `spl/query_executor.py` — executes SPL via splunklib
+- `spl/spl_normalizer.py` — SPL preprocessing before analysis
 - `data/data_indexer.py` — indexes events, cleanup
+- `data/lookup_manager.py` — temp CSV lookup create/delete
+- `data/sub_query_runner.py` — executes sub-queries for data inputs
 - `generators/event_generator.py` — expands GeneratorConfig, no file I/O or Splunk calls
+- `generators/` — per-type modules: numbered.py, pick_list.py, email.py, ip_address.py, unique_id.py, random_number.py, general_field.py
 - `validation/result_validator.py` — compares rows to conditions, never runs queries
+- `validation/condition_handlers.py` — registry of condition evaluation functions
 
 **Bundled `splunklib/`** — no pip installs; closed network.
 
@@ -106,6 +117,12 @@ import { create } from 'zustand';
 - Tailwind v4 uses `@import "tailwindcss"` — DO NOT use that syntax
 - `darkMode: 'class'` in config — NOT `darkMode: 'selector'` (v4 syntax)
 - All utility classes are v3 compatible
+
+### Code Style (Prettier)
+- `tabWidth: 4` (not 2!) for all JS/TS/CSS
+- `tabWidth: 2` for JSON files only
+- `singleQuote: true`, `printWidth: 100`
+- JSX runtime: `classic` (React 16 requirement — Vite config sets `jsxRuntime: 'classic'`)
 
 ### Custom Colors — NO CYAN
 Backgrounds: navy-950/900/800/700 (#0a1628, #162033, #202b43, #2a3a5c)
@@ -174,7 +191,7 @@ content = data['entry'][0]['content']  # content is nested, not at root
 ```
 
 ### Backend specs
-Detailed specs live in `docs/spec-00` through `spec-11`. Attach `spec-00-conventions.md` to every backend prompt. See `BACKEND.md` for the full prompt sequence and spec index.
+Detailed specs live in `docs/` (32 spec files, spec-00 through spec-20+). Attach `spec-00-conventions.md` to every backend prompt. See `BACKEND.md` for the full prompt sequence and spec index.
 
 ---
 

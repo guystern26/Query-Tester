@@ -42,20 +42,20 @@ module.exports = mergeWithRules({
             ],
         }),
         new MiniCssExtractPlugin({
-            filename: '[name].css',
+            filename: 'index-main.css',
         }),
         {
             // Copy the extracted CSS up to appserver/static/ so Splunk can find it
             apply(compiler) {
                 compiler.hooks.afterEmit.tap('CopyCssPlugin', () => {
-                    const src = path.join(__dirname, 'stage/appserver/static/pages/QueryTesterApp.css');
-                    const dest = path.join(__dirname, 'stage/appserver/static/QueryTesterApp.css');
+                    const src = path.join(__dirname, 'stage/appserver/static/pages/index-main.css');
+                    const dest = path.join(__dirname, 'stage/appserver/static/index-main.css');
                     try { require('fs').copyFileSync(src, dest); } catch (e) { /* ignore */ }
                 });
             },
         },
     ],
-    devtool: 'eval-source-map',
+    devtool: false,
     module: {
         rules: [
             {
