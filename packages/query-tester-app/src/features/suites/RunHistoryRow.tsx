@@ -16,6 +16,7 @@ export interface RunHistoryRowProps {
 
 export function RunHistoryRow({ run, isLast }: RunHistoryRowProps) {
     const [expanded, setExpanded] = useState(false);
+    const hasDrift = run.splDriftDetected && run.splDriftDetected !== '0' && run.splDriftDetected !== 'false';
 
     return (
         <div className="flex gap-3">
@@ -35,7 +36,7 @@ export function RunHistoryRow({ run, isLast }: RunHistoryRowProps) {
                     <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs text-slate-300" title={run.ranAt}>{relativeTime(run.ranAt)}</span>
                         <span className="text-[10px] text-slate-600">{formatDuration(run.durationMs)}</span>
-                        {run.splDriftDetected && run.splDriftDetected !== '0' && run.splDriftDetected !== 'false' && (
+                        {hasDrift && (
                             <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-400/10 text-amber-400 border border-amber-400/20">
                                 SPL Changed
                             </span>
@@ -53,6 +54,14 @@ export function RunHistoryRow({ run, isLast }: RunHistoryRowProps) {
                     <div className="mt-2 flex flex-col gap-2">
                         {run.resultSummary && (
                             <p className="text-[11px] text-slate-400 m-0">{run.resultSummary}</p>
+                        )}
+                        {hasDrift && run.splDriftDetails && (
+                            <div className="px-2.5 py-2 rounded-lg bg-amber-400/5 border border-amber-400/20">
+                                <p className="text-[10px] font-semibold text-amber-400 m-0 mb-1">SPL Changed since last passed run:</p>
+                                {run.splDriftDetails.split('; ').map((change, i) => (
+                                    <p key={i} className="text-[11px] text-amber-300/80 m-0 font-mono">{change}</p>
+                                ))}
+                            </div>
                         )}
                         {run.scenarioResults.length > 0 && (
                             <table className="w-full text-[11px]">

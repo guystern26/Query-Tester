@@ -25,6 +25,12 @@ function getRoute(): { page: Page; testId?: string } {
 export function AppShell() {
     const [route, setRoute] = useState(getRoute);
 
+    // Remove the HTML loading overlay once React is rendering
+    useEffect(() => {
+        const el = document.getElementById('qt-loading');
+        if (el) el.remove();
+    }, []);
+
     useEffect(() => {
         const handler = () => setRoute(getRoute());
         window.addEventListener('hashchange', handler);

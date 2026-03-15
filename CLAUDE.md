@@ -202,3 +202,117 @@ Detailed specs live in `docs/` (32 spec files, spec-00 through spec-20+). Attach
 - **Frontend changes:** Webpack rebuild required, then restart Splunk
 - **Config files:** `stage/bin/config.py` (backend), `src/config/env.ts` (frontend)
 - See `DEPLOYMENT.md` for full deployment guide
+
+---
+
+## Test Library & Scheduled Tests Feature
+
+### New pages
+- `packages/query-tester-app/src/pages/library/` — Test Library (home/landing page). Browse all saved tests, load into builder, create new.
+- `packages/query-tester-app/src/pages/suites/` — Test Suites (scheduling dashboard). Cron scheduling, run history, SPL drift monitoring.
+
+### New store slices (add to the existing 8)
+- `testLibrarySlice` — saved test metadata list, save/load/delete operations
+- `scheduledTestsSlice` — scheduled test records, run history, cron management
+
+Root-level store state additions:
+- `savedTestId: string | null` — id of the currently loaded saved test (null for new tests)
+
+### New backend modules (`stage/bin/`)
+Following the same strict boundary rules as existing modules:
+- `saved_tests_handler.py` — REST handler for `/data/saved_tests`. CRUD for saved tests in KVStore. Reads `createdBy` from session token — never from request body.
+- `scheduled_tests_handler.py` — REST handler for `/data/scheduled_tests`. Creates/updates/deletes both the KVStore record AND the backing Splunk saved search.
+- `run_history_handler.py` — REST handler for `/data/test_run_history`. Returns last 50 run records sorted by ranAt desc.
+- `alert_run_test.py` — Custom alert action entry point. Orchestration only — reads test_id, fetches test, checks SPL drift, runs test, writes result. No business logic.
+- `alert_email.py` — Email formatting and sending only. Uses smtplib, host=CASNLB, port=25, no TLS.
+- `kvstore_client.py` — Raw KVStore CRUD only. No business logic. Methods: get_all, get_by_id, upsert, delete. Returns plain dicts only.
+- `handler_utils.py` — Shared handler utilities (session username reading, error response building). Imported by handlers — never a handler itself.
+
+### KVStore collections (`stage/default/collections.conf`)
+- `saved_tests` — full TestDefinition + metadata
+- `scheduled_tests` — scheduled test config + cron + recipients
+- `test_run_history` — per-run records with status, drift detection, scenario results
+
+### Custom alert action
+- Name: `query_tester_run_test`
+- Registered in `stage/default/alert_actions.conf`
+- Trigger search pattern: `| makeresults | eval test_id="{id}"` with cron schedule
+- The trigger search is created programmatically by `scheduled_tests_handler.py` — never manually
+
+### SPL sync behavior
+When a scheduled test has `savedSearchOrigin` set, the alert action always fetches
+the current SPL from that saved search before running. It hashes and compares to the
+stored hash — sets `splDriftDetected = true` if changed. Always runs with the CURRENT
+SPL, never the stored snapshot. This keeps the test in sync with the live alert automatically.
+
+### Email recipients
+Stored as `emailRecipients: string[]` on ScheduledTest. Never a single string.
+If the array is empty at send time, fall back to `DEFAULT_ALERT_EMAIL` from `config.py`.
+The default address is always shown as a locked row in the UI — cannot be removed.
+
+---
+
+## Automatic Code Audit
+
+**After every significant code change** (new files, 30+ lines added, new components,
+new handlers, feature completions) — run through this checklist before finishing.
+Fix all violations directly. Do not just report them.
+
+### Frontend
+- Every file under 200 lines. Single responsibility — if you need "and" to describe it, split it.
+- No `any` types. Explicit return types on all exported functions.
+- Props: named interface above the component, not inline.
+- **React 16 only** — see BANNED APIs section above. No exceptions.
+- `import create from 'zustand'` — default import. `{ create }` is v5 and will fail silently.
+- New slices match the exact pattern of existing slices in `core/store/slices/`.
+- No business logic in components — store actions, utils, or hooks only.
+- No prop drilling beyond one level — use `useTestStore()` with selectors.
+- No `console.log()` in production code.
+- No commented-out code blocks.
+- No magic numbers or magic strings — named constants.
+- All IDs via `crypto.randomUUID()`.
+- API layer: unwrap `entry[0].content`, throw typed `ApiError` on non-2xx, CSRF token on every mutating request, base URL from `config/env.ts`.
+- No API calls inside components — always through store actions.
+- Boolean props: `is`/`has`/`should` prefix. Handler props: `on` prefix. Handler implementations: `handle` prefix.
+
+### Backend
+- Every file under 200 lines. Single responsibility.
+- **One `PersistentServerConnectionApplication` class per file** — multiple classes = "can't start the script".
+- **No `print()` anywhere** — corrupts REST responses. Use `get_logger(__name__)`.
+- **LF line endings** — CRLF = silent 500 on Linux.
+- **Python 3.7 syntax** — no walrus, no `X | None`, no `str.removeprefix()`, no `d1 | d2` dict union, no `match/case`, no `list[x]`/`dict[x]` generics. Use `typing` module.
+- All handler return values are plain `dict` or `list[dict]` — no dataclasses or custom objects.
+- `restmap.conf` class names must exactly match Python class names — case-sensitive on Linux.
+- KVStore collection names identical between `collections.conf` and every `kvstore_client` call.
+- Every KVStore operation in `try/except`. Correct HTTP codes: 400/404/500. Never 200 with error flag.
+- `alert_run_test.py` entire flow in `try/except` — always writes a `TestRunRecord` even on failure.
+- `createdBy` always from session token, never request body.
+- No magic strings — `ALL_CAPS` constants at module level or imported from `config.py`.
+
+### Cross-stack
+- `snake_case` ↔ `camelCase` translation happens only in `api/` layer. Never leaks either direction.
+- Every backend endpoint → frontend API function → store action. Flag any gaps.
+- All env config in `config/env.ts` (frontend) and `bin/config.py` (backend) only.
+- KVStore collection names consistent across all files — grep before adding a new reference.
+
+### Finish
+```bash
+# TypeScript check
+npx tsc --noEmit        # zero errors required
+
+# Build check  
+yarn build              # must complete clean
+
+# Python syntax check — no local Python available on this machine.
+# Use this workaround instead:
+# Python syntax check
+python -m py_compile stage/bin/<new_file>.py
+
+# If the above fails, manually verify each new Python file by checking:
+# 1. No syntax highlighted errors in the file
+# 2. grep -n "print(" stage/bin/*.py  → must return nothing
+# 3. grep -rn " | None" stage/bin/*.py → must return nothing (use Optional[X])
+# 4. grep -rn ":= " stage/bin/*.py → must return nothing (no walrus)
+# 5. grep -rn "def .*\blist\[" stage/bin/*.py → must return nothing
+# Do NOT skip these checks and do NOT say "manually verified" without running them.
+```

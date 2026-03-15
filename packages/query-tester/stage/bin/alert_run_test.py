@@ -115,7 +115,7 @@ def run(payload_path, session_key):
             runner = TestRunner(session_key)
             result, _ = runner.run_test({"testId": scheduled.get("testId", "")})
             raw_status = result.get("status", "error")
-            status = raw_status if raw_status in ("pass", "fail") else "error"
+            status = raw_status if raw_status in ("pass", "fail", "partial") else "error"
         except Exception as exc:
             logger.error("Test execution failed: %s", exc, exc_info=True)
             result = {"status": "error", "message": str(exc)}
@@ -149,10 +149,23 @@ def run(payload_path, session_key):
         # Send failure emails
         if status in ("fail", "error") and scheduled.get("alertOnFailure"):
             recipients = scheduled.get("emailRecipients", [])
+            definition = {}  # type: Dict[str, Any]
+            try:
+                saved = kv.get_by_id("saved_tests", scheduled.get("testId", ""))
+                raw_def = saved.get("definition", {})
+                definition = json.loads(raw_def) if isinstance(raw_def, str) else raw_def
+            except Exception:
+                logger.warning("Could not fetch definition for email attachment")
+            full_scenario_results = result.get(
+                "scenarioResults", scenario_results,
+            )
             send_failure_emails(
                 recipients,
                 scheduled.get("testName", test_id),
-                ran_at, status, scenario_results, spl_drift,
+                ran_at, status, full_scenario_results, spl_drift,
+                test_id=scheduled.get("testId", test_id),
+                definition=definition if definition else None,
+                full_results=result if result else None,
             )
 
     except Exception as exc:

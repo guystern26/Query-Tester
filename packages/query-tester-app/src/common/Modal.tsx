@@ -10,10 +10,11 @@ export interface ModalProps {
   onClose: () => void;
   confirmLabel?: string;
   onConfirm?: () => void;
+  confirmDisabled?: boolean;
   variant?: ModalVariant;
 }
 
-export function Modal({ open, title, children, onClose, confirmLabel, onConfirm, variant = 'default' }: ModalProps) {
+export function Modal({ open, title, children, onClose, confirmLabel, onConfirm, confirmDisabled, variant = 'default' }: ModalProps) {
   if (!open) return null;
 
   const confirmCls = variant === 'danger'
@@ -37,7 +38,8 @@ export function Modal({ open, title, children, onClose, confirmLabel, onConfirm,
             <button
               type="button"
               onClick={onConfirm}
-              className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all duration-200 cursor-pointer ${confirmCls}`}
+              disabled={confirmDisabled}
+              className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all duration-200 ${confirmDisabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'} ${confirmCls}`}
             >
               {confirmLabel}
             </button>

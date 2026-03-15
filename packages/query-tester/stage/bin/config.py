@@ -37,6 +37,12 @@ HEC_TIMEOUT = 30              # seconds
 TEMP_INDEX = "temp_query_tester"
 TEMP_SOURCETYPE = "query_tester_input"
 
+# ─── Splunk Web URL ──────────────────────────────────────────────────────────
+# Base URL of the Splunk web interface (no trailing slash).
+# Used for building links in email notifications.
+
+SPLUNK_WEB_URL = "http://localhost:8000"
+
 # ─── SMTP / Email ────────────────────────────────────────────────────────────
 
 SMTP_SERVER = "CASNLB"

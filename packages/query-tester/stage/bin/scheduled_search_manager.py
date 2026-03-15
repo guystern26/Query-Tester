@@ -9,6 +9,7 @@ Splunk Free license does not support alert actions.
 """
 from __future__ import annotations
 
+import threading
 from typing import Any, Dict, Optional
 
 import splunklib.client as splunk_client
@@ -20,23 +21,41 @@ logger = get_logger(__name__)
 
 SAVED_SEARCH_PREFIX = "QT - "
 
+# Connection cache: keyed by (session_key, owner) -> splunklib Service object.
+# Reusing connections avoids the ~1-2s HTTPS handshake on every call.
+_conn_cache = {}  # type: Dict[tuple, Any]
+_conn_lock = threading.Lock()
+
 
 def _connect(session_key, owner="nobody"):
     # type: (str, str) -> Any
-    return splunk_client.connect(
+    cache_key = (session_key, owner)
+    with _conn_lock:
+        cached = _conn_cache.get(cache_key)
+        if cached is not None:
+            return cached
+    # Build connection outside lock to avoid blocking other threads
+    service = splunk_client.connect(
         host=SPLUNK_HOST, port=SPLUNK_PORT,
         splunkToken=session_key, app="QueryTester", owner=owner,
     )
+    with _conn_lock:
+        _conn_cache[cache_key] = service
+    return service
+
+
+def _invalidate_connection(session_key, owner="nobody"):
+    # type: (str, str) -> None
+    """Remove a cached connection (e.g. after a connection error)."""
+    cache_key = (session_key, owner)
+    with _conn_lock:
+        _conn_cache.pop(cache_key, None)
 
 
 def _is_enabled(record):
     # type: (Dict[str, Any]) -> bool
-    val = record.get("enabled", True)
-    if isinstance(val, bool):
-        return val
-    if isinstance(val, str):
-        return val.lower() in ("1", "true", "yes")
-    return bool(val)
+    from cron_matcher import is_enabled
+    return is_enabled(record)
 
 
 def saved_search_name(record):
@@ -66,32 +85,53 @@ def _search_kwargs(record):
 
 def _find_saved_search(session_key, record):
     # type: (str, Dict[str, Any]) -> Optional[Any]
-    """Find saved search across all owners."""
-    service = _connect(session_key, owner="-")
+    """Find saved search across all owners.
+
+    Strategy: try direct name lookups first (fast). Only fall back to
+    scanning all saved searches if both direct lookups miss — this avoids
+    iterating hundreds of saved searches on every call.
+    """
+    try:
+        service = _connect(session_key, owner="-")
+    except Exception as exc:
+        _invalidate_connection(session_key, owner="-")
+        logger.warning("Connection failed in _find_saved_search: %s", exc)
+        return None
+
     name = saved_search_name(record)
     record_id = record.get("id", "")
 
-    # Try new naming
+    # 1. Direct lookup — new naming convention
     try:
         return service.saved_searches[name]
     except KeyError:
         pass
+    except Exception as exc:
+        logger.debug("Error looking up saved search %s: %s", name, exc)
+        _invalidate_connection(session_key, owner="-")
 
-    # Try old naming
+    # 2. Direct lookup — old naming convention
     old_name = "QueryTester_Scheduled_" + record_id
     try:
         return service.saved_searches[old_name]
     except KeyError:
         pass
+    except Exception as exc:
+        logger.debug("Error looking up saved search %s: %s", old_name, exc)
 
-    # Scan by short ID suffix
-    short_id = "[{0}]".format(record_id[:8])
-    for search in service.saved_searches:
-        sname = search.name
-        if sname.startswith(SAVED_SEARCH_PREFIX) and sname.endswith(short_id):
-            return search
-        if sname.startswith("QueryTester_Scheduled_") and record_id in sname:
-            return search
+    # 3. Last resort: scan all saved searches by short ID suffix
+    logger.debug("Direct lookups missed for %s, scanning all saved searches", record_id)
+    try:
+        short_id = "[{0}]".format(record_id[:8])
+        for search in service.saved_searches:
+            sname = search.name
+            if sname.startswith(SAVED_SEARCH_PREFIX) and sname.endswith(short_id):
+                return search
+            if sname.startswith("QueryTester_Scheduled_") and record_id in sname:
+                return search
+    except Exception as exc:
+        logger.warning("Scan failed: %s", exc)
+        _invalidate_connection(session_key, owner="-")
 
     return None
 
@@ -117,7 +157,12 @@ def create_saved_search(session_key, record):
             except Exception:
                 pass
 
-    service = _connect(session_key)
+    try:
+        service = _connect(session_key)
+    except Exception as exc:
+        _invalidate_connection(session_key)
+        logger.warning("Connection failed in create_saved_search: %s", exc)
+        return
     try:
         ss = service.saved_searches.create(name, search=spl, **_search_kwargs(record))
         try:

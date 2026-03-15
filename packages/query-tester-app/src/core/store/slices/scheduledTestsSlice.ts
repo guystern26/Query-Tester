@@ -11,10 +11,12 @@ export interface ScheduledTestsState {
     isLoadingScheduled: boolean;
     isLoadingHistory: boolean;
     togglingScheduleId: string | null;
+    creatingScheduleForTestId: string | null;
     scheduledError: string | null;
 }
 
-type SetState = (recipe: (draft: ScheduledTestsState) => void) => void;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SetState = (recipe: (draft: any) => void) => void;
 
 export const scheduledTestsInitialState: ScheduledTestsState = {
     scheduledTests: [],
@@ -22,6 +24,7 @@ export const scheduledTestsInitialState: ScheduledTestsState = {
     isLoadingScheduled: false,
     isLoadingHistory: false,
     togglingScheduleId: null,
+    creatingScheduleForTestId: null,
     scheduledError: null,
 };
 
@@ -48,6 +51,7 @@ export function scheduledTestsSlice(set: SetState) {
         ) => {
             set((draft) => {
                 draft.isLoadingScheduled = true;
+                draft.creatingScheduleForTestId = payload.testId;
                 draft.scheduledError = null;
             });
             try {
@@ -55,10 +59,12 @@ export function scheduledTestsSlice(set: SetState) {
                 set((draft) => {
                     draft.scheduledTests.push(created);
                     draft.isLoadingScheduled = false;
+                    draft.creatingScheduleForTestId = null;
                 });
             } catch (e) {
                 set((draft) => {
                     draft.isLoadingScheduled = false;
+                    draft.creatingScheduleForTestId = null;
                     draft.scheduledError = e instanceof Error ? e.message : String(e);
                 });
             }
