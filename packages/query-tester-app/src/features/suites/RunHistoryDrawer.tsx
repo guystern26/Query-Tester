@@ -20,7 +20,7 @@ export function RunHistoryDrawer({ open, onClose, test }: RunHistoryDrawerProps)
         if (open && testId && !loaded) {
             fetchRunHistory(testId);
         }
-    }, [open, testId, loaded]);
+    }, [open, testId, loaded, fetchRunHistory]);
 
     return (
         <>

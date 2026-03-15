@@ -4,15 +4,23 @@ alert_email.py — Email formatting and sending for scheduled test failures.
 """
 from __future__ import annotations
 
+import re
 import smtplib
-import time
 from email.mime.text import MIMEText
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 from config import SMTP_SERVER, SMTP_PORT, MAIL_FROM, DEFAULT_ALERT_EMAIL
 from logger import get_logger
 
 logger = get_logger(__name__)
+
+EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def _is_valid_email(address):
+    # type: (str) -> bool
+    """Basic email format validation."""
+    return bool(EMAIL_PATTERN.match(address.strip()))
 
 
 def _format_failed_scenarios(scenario_results):
@@ -22,9 +30,9 @@ def _format_failed_scenarios(scenario_results):
     if not failed:
         return "  (none)"
     lines = []
-    for sr in failed:
-        name = sr.get("scenarioName", "Unknown")
-        msg = sr.get("message", "")
+    for scenario in failed:
+        name = scenario.get("scenarioName", "Unknown")
+        msg = scenario.get("message", "")
         line = "  - {0}".format(name)
         if msg:
             line += ": {0}".format(msg)
@@ -34,7 +42,7 @@ def _format_failed_scenarios(scenario_results):
 
 def build_failure_email(test_name, ran_at, status, scenario_results,
                         spl_drift_detected):
-    # type: (str, str, str, List[Dict[str, Any]], bool) -> tuple
+    # type: (str, str, str, List[Dict[str, Any]], bool) -> Tuple[str, str]
     """Build subject and body for a failure notification email.
 
     Returns (subject, body) tuple.
@@ -72,7 +80,7 @@ def build_failure_email(test_name, ran_at, status, scenario_results,
 def send_failure_emails(recipients, test_name, ran_at, status,
                         scenario_results, spl_drift_detected):
     # type: (List[str], str, str, str, List[Dict[str, Any]], bool) -> None
-    """Send failure notification to all recipients. Falls back to default."""
+    """Send failure notification to all valid recipients. Falls back to default."""
     if not recipients:
         recipients = [DEFAULT_ALERT_EMAIL]
 
@@ -81,16 +89,21 @@ def send_failure_emails(recipients, test_name, ran_at, status,
     )
 
     for recipient in recipients:
-        if not recipient:
+        stripped = recipient.strip() if recipient else ""
+        if not stripped:
             continue
+        if not _is_valid_email(stripped):
+            logger.warning("Skipping malformed email address: %s", stripped)
+            continue
+
         msg = MIMEText(body)
         msg["Subject"] = subject
         msg["From"] = MAIL_FROM
-        msg["To"] = recipient
+        msg["To"] = stripped
         try:
             server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
-            server.sendmail(MAIL_FROM, [recipient], msg.as_string())
+            server.sendmail(MAIL_FROM, [stripped], msg.as_string())
             server.quit()
-            logger.info("Failure email sent to %s for test '%s'", recipient, test_name)
+            logger.info("Failure email sent to %s for test '%s'", stripped, test_name)
         except Exception as exc:
-            logger.error("Failed to send email to %s: %s", recipient, exc)
+            logger.error("Failed to send email to %s: %s", stripped, exc)

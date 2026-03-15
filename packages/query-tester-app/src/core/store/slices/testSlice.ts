@@ -24,6 +24,16 @@ export function testSlice(set: SetState, _get: GetState) {
         draft.hasUnsavedChanges = false;
       }),
 
+    resetToNewTest: () =>
+      set((draft) => {
+        const fresh = createDefaultTest();
+        draft.tests = [fresh];
+        draft.activeTestId = fresh.id;
+        draft.testResponse = null;
+        draft.savedTestId = null;
+        draft.hasUnsavedChanges = false;
+      }),
+
     deleteTest: (testId: EntityId) =>
       set((draft) => {
         if (draft.tests.length <= 1) return;

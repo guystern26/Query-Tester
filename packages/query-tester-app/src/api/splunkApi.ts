@@ -5,7 +5,7 @@
  */
 
 import { createRESTURL } from '@splunk/splunk-utils/url';
-import { createFetchInit } from '@splunk/splunk-utils/fetch';
+import { getDefaultFetchInit } from '@splunk/splunk-utils/fetch';
 import { ENV } from '../config/env';
 
 export interface SavedSearch {
@@ -32,7 +32,12 @@ function isSplunkEnv(): boolean {
 async function splunkFetch(url: string): Promise<Record<string, unknown>> {
   const separator = url.includes('?') ? '&' : '?';
   const fullUrl = url + separator + 'output_mode=json&count=0';
-  const init = createFetchInit({ method: 'GET' });
+  const defaults = getDefaultFetchInit();
+  const init: RequestInit = {
+    method: 'GET',
+    credentials: defaults.credentials as RequestCredentials,
+    headers: defaults.headers as Record<string, string>,
+  };
   const response = await fetch(fullUrl, init);
   if (!response.ok) {
     throw new Error(

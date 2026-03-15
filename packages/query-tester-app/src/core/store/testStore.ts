@@ -21,7 +21,6 @@ import type {
   TestType,
   ScheduledTest,
   TestRunRecord,
-  SavedTestMeta,
   SavedTestFull,
 } from '../types';
 import { createDefaultTest } from '../constants/defaults';
@@ -51,6 +50,7 @@ export interface TestStoreState {
   markUnsaved: () => void;
 
   addTest: () => void;
+  resetToNewTest: () => void;
   deleteTest: (testId: EntityId) => void;
   duplicateTest: (testId: EntityId) => void;
   updateTestName: (testId: EntityId, name: string) => void;
@@ -151,13 +151,13 @@ export interface TestStoreState {
   clearScheduledError: () => void;
 
   // Test Library
-  savedTests: SavedTestMeta[];
+  savedTests: SavedTestFull[];
   isLoadingLibrary: boolean;
   isSaving: boolean;
   libraryError: string | null;
   fetchSavedTests: () => Promise<void>;
   loadTestFromPayload: (full: SavedTestFull) => void;
-  loadTestIntoBuilder: (id: string) => Promise<string>;
+  loadTestIntoBuilder: (id: string) => string;
   saveCurrentTest: (name: string, description: string) => Promise<void>;
   updateSavedTest: (id: string, name: string, description: string) => Promise<void>;
   deleteSavedTest: (id: string) => Promise<void>;

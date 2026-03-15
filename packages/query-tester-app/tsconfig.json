@@ -3,6 +3,7 @@
     "esModuleInterop": true,
     "jsx": "react",
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "types": ["vite/client", "node"],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "resolveJsonModule": true,

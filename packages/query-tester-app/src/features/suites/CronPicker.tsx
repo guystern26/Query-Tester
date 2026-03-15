@@ -17,9 +17,15 @@ export interface CronPickerProps {
     onChange: (cron: string) => void;
 }
 
+export function isValidCron(expr: string): boolean {
+    const parts = expr.trim().split(/\s+/);
+    return parts.length === 5 && parts.every((p) => /^[0-9*,/\-]+$/.test(p));
+}
+
 export function CronPicker({ value, onChange }: CronPickerProps) {
     const isPreset = CRON_PRESETS.some((p) => p.value !== '' && p.value === value);
     const isCustom = !isPreset;
+    const showError = isCustom && value.trim() !== '' && !isValidCron(value);
 
     const handlePresetClick = (preset: { label: string; value: string }) => {
         if (preset.value === '') {
@@ -31,7 +37,7 @@ export function CronPicker({ value, onChange }: CronPickerProps) {
     };
 
     const description = isCustom
-        ? (value.trim() ? 'Custom cron: ' + value : 'Enter a cron expression')
+        ? (showError ? 'Must be 5 space-separated fields (e.g. */5 * * * *)' : value.trim() ? 'Custom cron: ' + value : 'Enter a cron expression')
         : (DESCRIPTIONS[value] || value);
 
     return (
@@ -61,7 +67,7 @@ export function CronPicker({ value, onChange }: CronPickerProps) {
                     className="px-3 py-2 text-sm bg-navy-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-500/30 font-mono"
                 />
             )}
-            <span className="text-[11px] text-slate-500">{description}</span>
+            <span className={'text-[11px] ' + (showError ? 'text-red-400' : 'text-slate-500')}>{description}</span>
         </div>
     );
 }

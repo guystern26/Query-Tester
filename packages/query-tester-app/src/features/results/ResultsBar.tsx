@@ -44,14 +44,15 @@ export function ResultsBar() {
     const t = sr.length;
     const p = sr.filter((s) => s.passed).length;
     const isCancelled = response.status === 'error' && response.message === 'Test cancelled by user.';
+    const isLastRun = response.message?.startsWith('Last run');
     if (isCancelled) {
       status = <><span className="w-2 h-2 rounded-full bg-slate-400 shrink-0" /><span className="text-slate-400">Cancelled</span></>;
     } else if (response.status === 'error' && t === 0) {
       status = <><span className="w-2 h-2 rounded-full bg-red-500 shrink-0" /><span className="text-red-500">{response.message}</span></>;
     } else if (p < t) {
-      status = <><span className="w-2 h-2 rounded-full bg-red-500 shrink-0" /><span className="text-red-500">{t - p}/{t} scenarios failed</span></>;
+      status = <><span className="w-2 h-2 rounded-full bg-red-500 shrink-0" /><span className="text-red-500">{isLastRun ? response.message + ' \u2014 ' : ''}{t - p}/{t} scenarios failed</span></>;
     } else {
-      status = <><span className="w-2 h-2 rounded-full bg-green-400 shrink-0" /><span className="text-green-400">{p}/{t} scenarios passed</span></>;
+      status = <><span className="w-2 h-2 rounded-full bg-green-400 shrink-0" /><span className="text-green-400">{isLastRun ? response.message + ' \u2014 ' : ''}{p}/{t} scenarios passed</span></>;
     }
   } else {
     status = <span className="text-slate-400">Ready to run</span>;

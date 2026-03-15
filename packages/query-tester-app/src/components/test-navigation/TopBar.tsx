@@ -44,8 +44,8 @@ export function TopBar({ onNavigateLibrary }: TopBarProps = {}) {
   // Save as new copy → navigate to Library so user sees their new test in the list
   const handleSaveNew = useCallback(async (name: string, description: string) => {
     await state.saveCurrentTest(name, description);
+    setSaveModalOpen(false);
     if (!state.libraryError) {
-      setSaveModalOpen(false);
       showToast('Test saved');
       if (onNavigateLibrary) onNavigateLibrary();
     }
@@ -54,8 +54,8 @@ export function TopBar({ onNavigateLibrary }: TopBarProps = {}) {
   // Update existing → stay in Builder
   const handleUpdate = useCallback(async (id: string, name: string, description: string) => {
     await state.updateSavedTest(id, name, description);
+    setSaveModalOpen(false);
     if (!state.libraryError) {
-      setSaveModalOpen(false);
       showToast('Test updated');
     }
   }, [state, showToast]);

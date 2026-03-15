@@ -1,19 +1,8 @@
 import React, { useState } from 'react';
 import type { TestRunRecord } from 'core/types';
+import { relativeTime } from '../../utils/formatters';
 
-const STATUS_ICON: Record<string, string> = { pass: '\u2705', fail: '\u274C', error: '\u26A0\uFE0F' };
-
-function relativeTime(iso: string): string {
-    const diff = Date.now() - new Date(iso).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1) return 'just now';
-    if (mins < 60) return mins + 'm ago';
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return hrs + 'h ago';
-    const days = Math.floor(hrs / 24);
-    if (days < 30) return days + 'd ago';
-    return Math.floor(days / 30) + 'mo ago';
-}
+const STATUS_ICON: Record<string, string> = { pass: '\u2705', fail: '\u274C', partial: '\u26A0\uFE0F', error: '\u274C' };
 
 function formatDuration(ms: number): string {
     if (ms < 1000) return ms + 'ms';
@@ -46,7 +35,7 @@ export function RunHistoryRow({ run, isLast }: RunHistoryRowProps) {
                     <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs text-slate-300" title={run.ranAt}>{relativeTime(run.ranAt)}</span>
                         <span className="text-[10px] text-slate-600">{formatDuration(run.durationMs)}</span>
-                        {run.splDriftDetected && (
+                        {run.splDriftDetected && run.splDriftDetected !== '0' && run.splDriftDetected !== 'false' && (
                             <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-400/10 text-amber-400 border border-amber-400/20">
                                 SPL Changed
                             </span>

@@ -15,9 +15,9 @@ export function LibraryPage({ onNavigateBuilder }: LibraryPageProps) {
     const store = useTestStore();
     const {
         savedTests, isLoadingLibrary, libraryError,
-        fetchSavedTests, loadTestIntoBuilder, addTest,
-        deleteSavedTest, clearLibraryError,
+        fetchSavedTests, deleteSavedTest, clearLibraryError,
         scheduledTests, fetchScheduledTests, updateScheduledTest,
+        isLoadingScheduled, scheduledError,
     } = store;
 
     const [search, setSearch] = useState('');
@@ -34,7 +34,24 @@ export function LibraryPage({ onNavigateBuilder }: LibraryPageProps) {
     // Run history drawer state
     const [historyTest, setHistoryTest] = useState<ScheduledTest | null>(null);
 
-    useEffect(() => { fetchSavedTests(); fetchScheduledTests(); }, []);
+    // Schedule save toast
+    const [scheduleToast, setScheduleToast] = useState<string | null>(null);
+    const prevLoadingRef = React.useRef(false);
+    useEffect(() => {
+        if (prevLoadingRef.current && !isLoadingScheduled) {
+            // Finished saving
+            if (scheduledError) {
+                setScheduleToast('Failed to save schedule');
+            } else {
+                setScheduleToast('Schedule saved');
+            }
+            const timer = setTimeout(() => setScheduleToast(null), 2500);
+            return () => clearTimeout(timer);
+        }
+        prevLoadingRef.current = isLoadingScheduled;
+    }, [isLoadingScheduled, scheduledError]);
+
+    useEffect(() => { fetchSavedTests(); fetchScheduledTests(); }, [fetchSavedTests, fetchScheduledTests]);
 
     // Map testId -> ScheduledTest for quick lookup
     const scheduleByTestId = useMemo(() => {
@@ -86,13 +103,14 @@ export function LibraryPage({ onNavigateBuilder }: LibraryPageProps) {
         setLoadingRowId(id);
         try {
             await deleteSavedTest(id);
+            // Refresh scheduled tests in case backend cascade-deleted a schedule
+            fetchScheduledTests();
         } catch (e) {
-            const msg = e instanceof Error ? e.message : String(e);
-            setDeleteError(msg.includes('active schedule') ? 'Remove the schedule first.' : msg);
+            setDeleteError(e instanceof Error ? e.message : String(e));
         } finally {
             setLoadingRowId(null);
         }
-    }, [deleteSavedTest]);
+    }, [deleteSavedTest, fetchScheduledTests]);
 
     const handleToggleSchedule = useCallback(async (scheduleId: string, enabled: boolean) => {
         await updateScheduledTest(scheduleId, { enabled });
@@ -114,7 +132,7 @@ export function LibraryPage({ onNavigateBuilder }: LibraryPageProps) {
                 <span className="text-base font-bold text-slate-200 tracking-tight">Query Tester</span>
                 <nav className="flex items-center gap-1">
                     <button className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-accent-600/20 text-accent-300 cursor-pointer">Library</button>
-                    <button className="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-400 hover:text-slate-200 hover:bg-navy-800 transition cursor-pointer" onClick={onNavigateBuilder}>Builder</button>
+                    <button className="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-400 hover:text-slate-200 hover:bg-navy-800 transition cursor-pointer" onClick={() => onNavigateBuilder()}>Builder</button>
                 </nav>
             </header>
 
@@ -150,6 +168,20 @@ export function LibraryPage({ onNavigateBuilder }: LibraryPageProps) {
                     />
                 </div>
             </div>
+
+            {/* Saving indicator */}
+            {isLoadingScheduled && (
+                <div className="fixed top-16 left-1/2 -translate-x-1/2 z-[60] px-4 py-2 bg-blue-900/90 border border-blue-700 text-blue-300 text-xs font-medium rounded-lg shadow-lg animate-pulse">
+                    Saving schedule...
+                </div>
+            )}
+
+            {/* Success/error toast */}
+            {scheduleToast && !isLoadingScheduled && (
+                <div className={'fixed top-16 left-1/2 -translate-x-1/2 z-[60] px-4 py-2 text-xs font-medium rounded-lg shadow-lg ' + (scheduleToast.includes('Failed') ? 'bg-red-900/90 border border-red-700 text-red-300' : 'bg-green-900/90 border border-green-700 text-green-300')}>
+                    {scheduleToast}
+                </div>
+            )}
 
             <ScheduleModal
                 open={scheduleModalOpen}

@@ -9,6 +9,8 @@ export interface ScheduledTestsState {
     scheduledTests: ScheduledTest[];
     runHistory: Record<string, TestRunRecord[]>;
     isLoadingScheduled: boolean;
+    isLoadingHistory: boolean;
+    togglingScheduleId: string | null;
     scheduledError: string | null;
 }
 
@@ -18,6 +20,8 @@ export const scheduledTestsInitialState: ScheduledTestsState = {
     scheduledTests: [],
     runHistory: {},
     isLoadingScheduled: false,
+    isLoadingHistory: false,
+    togglingScheduleId: null,
     scheduledError: null,
 };
 
@@ -64,34 +68,35 @@ export function scheduledTestsSlice(set: SetState) {
         },
 
         updateScheduledTest: async (id: string, patch: Partial<ScheduledTest>) => {
-            // Optimistic update — apply immediately so toggle feels instant
-            const prev: ScheduledTest | undefined = undefined;
+            // Snapshot for rollback, then apply optimistically
+            let snapshot: ScheduledTest | undefined;
             set((draft) => {
+                draft.isLoadingScheduled = true;
                 draft.scheduledError = null;
                 const idx = draft.scheduledTests.findIndex((t) => t.id === id);
                 if (idx !== -1) {
+                    snapshot = { ...draft.scheduledTests[idx] };
                     Object.assign(draft.scheduledTests[idx], patch);
                 }
             });
             try {
                 const updated = await scheduledTestsApi.updateScheduledTest(id, patch);
                 set((draft) => {
+                    draft.isLoadingScheduled = false;
                     const idx = draft.scheduledTests.findIndex((t) => t.id === id);
                     if (idx !== -1) {
                         draft.scheduledTests[idx] = updated;
                     }
                 });
             } catch (e) {
-                // Revert optimistic update on failure
+                // Revert to snapshot on failure
                 set((draft) => {
+                    draft.isLoadingScheduled = false;
                     draft.scheduledError = e instanceof Error ? e.message : String(e);
-                    const idx = draft.scheduledTests.findIndex((t) => t.id === id);
-                    if (idx !== -1) {
-                        // Undo the patch
-                        for (const key of Object.keys(patch)) {
-                            if (key === 'enabled') {
-                                (draft.scheduledTests[idx] as any)[key] = !(patch as any)[key];
-                            }
+                    if (snapshot) {
+                        const idx = draft.scheduledTests.findIndex((t) => t.id === id);
+                        if (idx !== -1) {
+                            draft.scheduledTests[idx] = snapshot;
                         }
                     }
                 });
@@ -145,15 +150,18 @@ export function scheduledTestsSlice(set: SetState) {
 
         fetchRunHistory: async (scheduledTestId: string) => {
             set((draft) => {
+                draft.isLoadingHistory = true;
                 draft.scheduledError = null;
             });
             try {
                 const records = await scheduledTestsApi.getRunHistory(scheduledTestId);
                 set((draft) => {
                     draft.runHistory[scheduledTestId] = records;
+                    draft.isLoadingHistory = false;
                 });
             } catch (e) {
                 set((draft) => {
+                    draft.isLoadingHistory = false;
                     draft.scheduledError = e instanceof Error ? e.message : String(e);
                 });
             }

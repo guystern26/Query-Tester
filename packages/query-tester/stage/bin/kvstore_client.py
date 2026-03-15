@@ -56,11 +56,11 @@ class KVStoreClient:
             # Try update first
             self.get_by_id(collection, key)
             coll.data.update(key, json.dumps(record))
-            logger.info("Updated record %s in %s", key, collection)
+            logger.debug("Updated record %s in %s", key, collection)
         except ValueError:
             # Record doesn't exist — insert
             coll.data.insert(json.dumps(record))
-            logger.info("Inserted record %s in %s", key, collection)
+            logger.debug("Inserted record %s in %s", key, collection)
         return record
 
     def delete(self, collection, key):
@@ -69,7 +69,7 @@ class KVStoreClient:
         coll = self._get_collection(collection)
         try:
             coll.data.delete_by_id(key)
-            logger.info("Deleted record %s from %s", key, collection)
+            logger.debug("Deleted record %s from %s", key, collection)
         except Exception as exc:
             raise ValueError(
                 "Failed to delete {0} from {1}: {2}".format(key, collection, exc)
