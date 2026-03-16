@@ -16,9 +16,10 @@ export interface ScheduleModalProps {
 }
 
 export function ScheduleModal({ open, onClose, editingTest, preselectedTestId }: ScheduleModalProps) {
-    const { savedTests, fetchSavedTests, createScheduledTest, updateScheduledTest, isLoadingScheduled } = useTestStore();
+    const { savedTests, fetchSavedTests, createScheduledTest, updateScheduledTest, updateSavedTest, isLoadingScheduled } = useTestStore();
 
     const [testId, setTestId] = useState('');
+    const [testName, setTestName] = useState('');
     const [cron, setCron] = useState('0 6 * * *');
     const [enabled, setEnabled] = useState(true);
     const [alertOn, setAlertOn] = useState(false);
@@ -32,12 +33,16 @@ export function ScheduleModal({ open, onClose, editingTest, preselectedTestId }:
         if (!open) return;
         if (editingTest) {
             setTestId(editingTest.testId);
+            const saved = savedTests.find((t) => t.id === editingTest.testId);
+            setTestName(saved ? saved.name : editingTest.testName);
             setCron(editingTest.cronSchedule);
             setEnabled(editingTest.enabled);
             setAlertOn(editingTest.alertOnFailure);
             setRecipients(editingTest.emailRecipients.length > 0 ? editingTest.emailRecipients : [DEFAULT_ALERT_EMAIL]);
         } else {
             setTestId(preselectedTestId || '');
+            const pre = savedTests.find((t) => t.id === preselectedTestId);
+            setTestName(pre ? pre.name : '');
             setCron('0 6 * * *');
             setEnabled(true);
             setAlertOn(false);
@@ -46,13 +51,19 @@ export function ScheduleModal({ open, onClose, editingTest, preselectedTestId }:
     }, [open, editingTest, preselectedTestId]);
 
     const selectedTest: SavedTestMeta | undefined = savedTests.find((t) => t.id === testId);
-    const canSave = testId && isValidCron(cron) && !hasInvalidRecipients(recipients) && !isLoadingScheduled;
+    const canSave = testId && testName.trim() && isValidCron(cron) && !hasInvalidRecipients(recipients) && !isLoadingScheduled;
 
     const handleSave = async () => {
         if (!canSave || !selectedTest) return;
         const finalRecipients = alertOn
             ? recipients.filter((r) => r.trim() !== '')
             : [DEFAULT_ALERT_EMAIL];
+
+        // Rename the test if the name changed
+        const trimmedName = testName.trim();
+        if (trimmedName && trimmedName !== selectedTest.name) {
+            updateSavedTest(selectedTest.id, trimmedName, selectedTest.description);
+        }
 
         if (editingTest) {
             // Close immediately — updateScheduledTest applies optimistic update
@@ -68,7 +79,7 @@ export function ScheduleModal({ open, onClose, editingTest, preselectedTestId }:
             onClose();
             createScheduledTest({
                 testId: selectedTest.id,
-                testName: selectedTest.name,
+                testName: trimmedName,
                 app: selectedTest.app,
                 savedSearchOrigin: null,
                 cronSchedule: cron,
@@ -94,6 +105,21 @@ export function ScheduleModal({ open, onClose, editingTest, preselectedTestId }:
                         ))}
                     </select>
                 </div>
+
+                {/* Test name */}
+                {selectedTest && (
+                    <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-semibold text-slate-400">Test Name</label>
+                        <input
+                            type="text"
+                            value={testName}
+                            onChange={(e) => setTestName(e.target.value)}
+                            maxLength={120}
+                            placeholder="Test name..."
+                            className="w-full px-3 py-2 text-sm bg-navy-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-500/30 transition-all duration-200"
+                        />
+                    </div>
+                )}
 
                 {/* Linked saved search info */}
                 {selectedTest && (

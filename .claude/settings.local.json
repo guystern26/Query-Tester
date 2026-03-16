@@ -109,7 +109,9 @@
       "Bash(py -m pip install msal requests 2>&1 | tail -5)",
       "Bash(cd \"C:\\\\Users\\\\guyst\\\\splunk-ui-toolkit-apps\\\\packages\\\\query-tester\\\\stage\\\\bin\" && py tests/test_email_oauth.py 2>&1)",
       "Bash(cd \"C:\\\\Users\\\\guyst\\\\splunk-ui-toolkit-apps\\\\packages\\\\query-tester\\\\stage\\\\bin\" && py tests/test_email_simple.py 2>&1)",
-      "Bash(start \"\" \"C:\\\\Users\\\\guyst\\\\splunk-ui-toolkit-apps\\\\packages\\\\query-tester\\\\stage\\\\bin\\\\tests\\\\email_preview.html\")"
+      "Bash(start \"\" \"C:\\\\Users\\\\guyst\\\\splunk-ui-toolkit-apps\\\\packages\\\\query-tester\\\\stage\\\\bin\\\\tests\\\\email_preview.html\")",
+      "Bash(find \"C:/Users/guyst/splunk-ui-toolkit-apps/packages/query-tester\" -name \"start.html\" -o -name \"*.html\" 2>/dev/null | head -20)",
+      "Bash(cd \"C:\\\\Users\\\\guyst\\\\splunk-ui-toolkit-apps\" && yarn start 2>&1)"
     ]
   }
 }

@@ -4,6 +4,7 @@ import type { ScheduledTest } from 'core/types';
 import { Message } from '../../common';
 import { LibraryFilters } from './LibraryFilters';
 import { TestsTable } from './TestsTable';
+import { useLibraryFilters } from './useLibraryFilters';
 import { ScheduleModal } from '../suites/ScheduleModal';
 import { RunHistoryDrawer } from '../suites/RunHistoryDrawer';
 import { BugReportButton } from '../../components/test-navigation/BugReportButton';
@@ -21,10 +22,6 @@ export function LibraryPage({ onNavigateBuilder }: LibraryPageProps) {
         isLoadingScheduled, togglingScheduleId, creatingScheduleForTestId, scheduledError,
     } = store;
 
-    const [search, setSearch] = useState('');
-    const [appFilter, setAppFilter] = useState('');
-    const [typeFilter, setTypeFilter] = useState('');
-    const [creatorFilter, setCreatorFilter] = useState('');
     const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
     const [deleteErrors, setDeleteErrors] = useState<Record<string, string>>({});
 
@@ -41,11 +38,10 @@ export function LibraryPage({ onNavigateBuilder }: LibraryPageProps) {
     const prevLoadingRef = React.useRef(false);
     useEffect(() => {
         if (prevLoadingRef.current && !isLoadingScheduled) {
-            // Finished saving
             if (scheduledError) {
-                setScheduleToast('Failed to save schedule');
+                setScheduleToast('Failed to save');
             } else {
-                setScheduleToast('Schedule saved');
+                setScheduleToast('Saved');
             }
             const timer = setTimeout(() => setScheduleToast(null), 2500);
             return () => clearTimeout(timer);
@@ -68,29 +64,7 @@ export function LibraryPage({ onNavigateBuilder }: LibraryPageProps) {
         return map;
     }, [scheduledTests]);
 
-    const apps = useMemo(() => {
-        const set = new Set(savedTests.map((t) => t.app).filter(Boolean));
-        return Array.from(set).sort();
-    }, [savedTests]);
-
-    const creators = useMemo(() => {
-        const set = new Set(savedTests.map((t) => t.createdBy).filter(Boolean));
-        return Array.from(set).sort();
-    }, [savedTests]);
-
-    const filtered = useMemo(() => {
-        let list = savedTests;
-        if (search) {
-            const q = search.toLowerCase();
-            list = list.filter((t) => t.name.toLowerCase().includes(q));
-        }
-        if (appFilter) list = list.filter((t) => t.app === appFilter);
-        if (typeFilter) {
-            list = list.filter((t) => t.testType === typeFilter || t.validationType === typeFilter);
-        }
-        if (creatorFilter) list = list.filter((t) => t.createdBy === creatorFilter);
-        return list;
-    }, [savedTests, search, appFilter, typeFilter, creatorFilter]);
+    const filters = useLibraryFilters(savedTests, scheduleByTestId);
 
     const handleOpen = useCallback((id: string) => {
         onNavigateBuilder(id);
@@ -163,10 +137,11 @@ export function LibraryPage({ onNavigateBuilder }: LibraryPageProps) {
                     </div>
 
                     <LibraryFilters
-                        search={search} onSearchChange={setSearch}
-                        appFilter={appFilter} onAppFilterChange={setAppFilter} apps={apps}
-                        typeFilter={typeFilter} onTypeFilterChange={setTypeFilter}
-                        creatorFilter={creatorFilter} onCreatorFilterChange={setCreatorFilter} creators={creators}
+                        search={filters.search} onSearchChange={filters.setSearch}
+                        appFilter={filters.appFilter} onAppFilterChange={filters.setAppFilter} apps={filters.apps}
+                        typeFilter={filters.typeFilter} onTypeFilterChange={filters.setTypeFilter}
+                        creatorFilter={filters.creatorFilter} onCreatorFilterChange={filters.setCreatorFilter} creators={filters.creators}
+                        statusFilter={filters.statusFilter} onStatusFilterChange={filters.setStatusFilter}
                     />
 
                     {libraryError && (
@@ -174,7 +149,7 @@ export function LibraryPage({ onNavigateBuilder }: LibraryPageProps) {
                     )}
 
                     <TestsTable
-                        tests={filtered}
+                        tests={filters.filtered}
                         isLoading={isLoadingLibrary && savedTests.length === 0}
                         deletingIds={deletingIds}
                         togglingScheduleId={togglingScheduleId}
@@ -191,14 +166,12 @@ export function LibraryPage({ onNavigateBuilder }: LibraryPageProps) {
                 </div>
             </div>
 
-            {/* Saving indicator */}
             {isLoadingScheduled && (
                 <div className="fixed top-16 left-1/2 -translate-x-1/2 z-[60] px-4 py-2 bg-blue-900/90 border border-blue-700 text-blue-300 text-xs font-medium rounded-lg shadow-lg animate-pulse">
-                    Saving schedule...
+                    Saving...
                 </div>
             )}
 
-            {/* Success/error toast */}
             {scheduleToast && !isLoadingScheduled && (
                 <div className={'fixed top-16 left-1/2 -translate-x-1/2 z-[60] px-4 py-2 text-xs font-medium rounded-lg shadow-lg ' + (scheduleToast.includes('Failed') ? 'bg-red-900/90 border border-red-700 text-red-300' : 'bg-green-900/90 border border-green-700 text-green-300')}>
                     {scheduleToast}
