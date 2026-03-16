@@ -38,6 +38,13 @@ export function QuerySection() {
     setSplWarnings(lintSpl(spl));
   }, [spl]);
 
+  // Re-lint when SPL changes externally (e.g. saved search selection)
+  useEffect(() => {
+    if (!editorRef.current?.contains(document.activeElement)) {
+      setSplWarnings(lintSpl(spl));
+    }
+  }, [spl]);
+
   // Apply inline Ace markers + gutter annotations + hover tooltips
   useAceMarkers(editorRef, splWarnings);
 

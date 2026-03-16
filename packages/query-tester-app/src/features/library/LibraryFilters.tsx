@@ -20,13 +20,22 @@ export interface LibraryFiltersProps {
     creatorFilter: string;
     onCreatorFilterChange: (v: string) => void;
     creators: string[];
+    statusFilter: string;
+    onStatusFilterChange: (v: string) => void;
 }
 
 const TYPE_OPTIONS = [
     { value: '', label: 'All types' },
     { value: 'standard', label: 'Standard' },
-    { value: 'query_only', label: 'Query Only' },
     { value: 'ijump_alert', label: 'iJump' },
+];
+
+const STATUS_OPTIONS = [
+    { value: '', label: 'All statuses' },
+    { value: 'pass', label: 'Passed' },
+    { value: 'fail', label: 'Failed' },
+    { value: 'error', label: 'Error' },
+    { value: 'no_runs', label: 'Not run yet' },
 ];
 
 export function LibraryFilters({
@@ -34,6 +43,7 @@ export function LibraryFilters({
     appFilter, onAppFilterChange, apps,
     typeFilter, onTypeFilterChange,
     creatorFilter, onCreatorFilterChange, creators,
+    statusFilter, onStatusFilterChange,
 }: LibraryFiltersProps) {
     return (
         <div className="flex items-center gap-3 flex-wrap">
@@ -83,6 +93,16 @@ export function LibraryFilters({
                 <option value="">All creators</option>
                 {creators.map((c) => (
                     <option key={c} value={c}>{c}</option>
+                ))}
+            </select>
+
+            <select
+                value={statusFilter}
+                onChange={(e) => onStatusFilterChange(e.target.value)}
+                className={selectStyle}
+            >
+                {STATUS_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
             </select>
         </div>

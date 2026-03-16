@@ -1,7 +1,8 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
+import debounce from 'lodash/debounce';
 import { useTestStore } from 'core/store/testStore';
-import { selectActiveTest, inputHasData } from 'core/store/selectors';
-import { useLoadLastRun } from './hooks/useLoadLastRun';
+import { selectActiveTest, selectActiveTestId, inputHasData } from 'core/store/selectors';
+import { useLoadTest } from './hooks/useLoadTest';
 import { TopBar } from './components/test-navigation/TopBar';
 import { AppSelector } from './components/AppSelector';
 import { TestTypeSelector } from './features/scenarios/TestTypeSelector';
@@ -12,6 +13,7 @@ import { ResultsBar } from './features/results/ResultsBar';
 import { usePipelineState } from './features/layout/usePipelineState';
 import { StepPipeline } from './features/layout/StepPipeline';
 import { PipelineConnector } from './features/layout/PipelineConnector';
+import { SetupCard } from './features/layout/SetupCard';
 
 /* ── page component ─────────────────────────────────────────── */
 
@@ -23,40 +25,23 @@ export interface StartPageProps {
 export function StartPage({ onNavigateLibrary, loadTestId }: StartPageProps = {}) {
     const state = useTestStore();
     const activeTest = selectActiveTest(state);
-    const [isLoadingTest, setIsLoadingTest] = useState(false);
-    const loadLastRun = useLoadLastRun();
+    const activeTestId = selectActiveTestId(state);
+    const isLoadingTest = useLoadTest(loadTestId);
 
-    useEffect(() => {
-        if (!loadTestId) {
-            if (state.savedTestId) state.resetToNewTest();
-            return;
-        }
-        const current = state.savedTests;
-        if (current.length > 0) {
-            try {
-                state.loadTestIntoBuilder(loadTestId);
-                loadLastRun(loadTestId);
-            } catch {
-                /* */
-            }
-            return;
-        }
-        setIsLoadingTest(true);
-        state
-            .fetchSavedTests()
-            .then(() => {
-                try {
-                    state.loadTestIntoBuilder(loadTestId);
-                    loadLastRun(loadTestId);
-                } catch {
-                    /* */
-                }
-                setIsLoadingTest(false);
-            })
-            .catch(() => {
-                setIsLoadingTest(false);
-            });
-    }, [loadTestId]);
+    const [localName, setLocalName] = useState(activeTest?.name ?? '');
+    useEffect(() => { setLocalName(activeTest?.name ?? ''); }, [activeTestId, activeTest?.name]);
+
+    const debouncedUpdateName = useMemo(
+        () => debounce((id: string, name: string) => { state.updateTestName(id, name); }, 300),
+        [state.updateTestName],
+    );
+    useEffect(() => () => { debouncedUpdateName.cancel(); }, [debouncedUpdateName]);
+
+    const handleNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        const v = e.target.value;
+        setLocalName(v);
+        if (activeTestId) debouncedUpdateName(activeTestId, v);
+    }, [activeTestId, debouncedUpdateName]);
 
     const rowRef = useRef<HTMLDivElement>(null);
     const queryRef = useRef<HTMLDivElement>(null);
@@ -124,6 +109,17 @@ export function StartPage({ onNavigateLibrary, loadTestId }: StartPageProps = {}
                                 <span className="text-sm font-semibold text-slate-200">Setup</span>
                             </div>
                             <div className="flex items-center gap-2">
+                                <span className="text-[11px] text-slate-500 uppercase tracking-wider">Name</span>
+                                <input
+                                    type="text"
+                                    value={localName}
+                                    onChange={handleNameChange}
+                                    maxLength={120}
+                                    placeholder="Test name..."
+                                    className="min-w-[140px] max-w-[220px] px-2.5 py-1 text-sm bg-navy-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-500/30 transition-all duration-200"
+                                />
+                            </div>
+                            <div className="flex items-center gap-2">
                                 <span className="text-[11px] text-slate-500 uppercase tracking-wider">App</span>
                                 <AppSelector value={app} onChange={handleAppChange} compact />
                             </div>
@@ -150,21 +146,7 @@ export function StartPage({ onNavigateLibrary, loadTestId }: StartPageProps = {}
                     </div>
                 </div>
             ) : (
-                <div className="flex-1 flex items-center justify-center px-5 pt-4 animate-fadeIn">
-                    <div className="w-full max-w-xl bg-navy-900 rounded-2xl border border-slate-800 shadow-lg p-8 flex flex-col gap-6">
-                        <div className="flex items-center gap-2.5">
-                            <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-[1.5px] shrink-0 border-accent-600 bg-accent-900 text-accent-400">
-                                1
-                            </span>
-                            <span className="text-sm font-semibold text-slate-200">Setup</span>
-                        </div>
-                        <div className="flex flex-col gap-2">
-                            <span className="text-[11px] text-slate-500 uppercase tracking-wider">Splunk App</span>
-                            <AppSelector value={app} onChange={handleAppChange} autoFocus />
-                        </div>
-                        <TestTypeSelector />
-                    </div>
-                </div>
+                <SetupCard localName={localName} onNameChange={handleNameChange} app={app} onAppChange={handleAppChange} />
             )}
 
             {hasApp && (
