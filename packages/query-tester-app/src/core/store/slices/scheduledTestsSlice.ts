@@ -95,10 +95,13 @@ export function scheduledTestsSlice(set: SetState) {
                 });
             } catch (e) {
                 // Revert to snapshot on failure
+                const isConflict = e instanceof Error && 'status' in e && (e as any).status === 409;
                 set((draft) => {
                     draft.isLoadingScheduled = false;
                     draft.togglingScheduleId = null;
-                    draft.scheduledError = e instanceof Error ? e.message : String(e);
+                    draft.scheduledError = isConflict
+                        ? 'This schedule was modified by someone else — please refresh before updating.'
+                        : (e instanceof Error ? e.message : String(e));
                     if (snapshot) {
                         const idx = draft.scheduledTests.findIndex((t) => t.id === id);
                         if (idx !== -1) {

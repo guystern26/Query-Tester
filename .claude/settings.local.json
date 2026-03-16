@@ -93,7 +93,23 @@
       "Bash(pip install:*)",
       "Bash(grep -r \"#[0-9a-f]\\\\{3,6\\\\}\" \"C:/Users/guyst/splunk-ui-toolkit-apps/packages/query-tester-app/src\" --include=\"*.tsx\" 2>/dev/null)",
       "Read(//c//**)",
-      "Bash(find /c/Users/guyst/splunk-ui-toolkit-apps -type f -name \"*scheduled*\" 2>/dev/null | head -20)"
+      "Bash(find /c/Users/guyst/splunk-ui-toolkit-apps -type f -name \"*scheduled*\" 2>/dev/null | head -20)",
+      "Bash(cd \"C:\\\\Users\\\\guyst\\\\splunk-ui-toolkit-apps\\\\packages\\\\query-tester\\\\stage\\\\bin\\\\tests\" && py -m pytest test_saved_tests_handler.py test_scheduled_tests_handler.py -v 2>&1)",
+      "Bash(cd \"C:\\\\Users\\\\guyst\\\\splunk-ui-toolkit-apps\\\\packages\\\\query-tester\\\\stage\\\\bin\\\\tests\" && py -m pytest -v 2>&1)",
+      "Bash(cd \"C:\\\\Users\\\\guyst\\\\splunk-ui-toolkit-apps\\\\packages\\\\query-tester\\\\stage\\\\bin\\\\tests\" && py -m pytest test_saved_tests_handler.py test_scheduled_tests_handler.py test_handler_utils.py test_run_history_handler.py -v 2>&1)",
+      "Bash(cd \"C:\\\\Users\\\\guyst\\\\splunk-ui-toolkit-apps\\\\packages\\\\query-tester\\\\stage\\\\bin\" && py -m pytest tests/test_auth_utils.py -v 2>&1)",
+      "Bash(cd \"C:\\\\Users\\\\guyst\\\\splunk-ui-toolkit-apps\\\\packages\\\\query-tester\\\\stage\\\\bin\" && py -m pytest tests/test_saved_tests_handler.py tests/test_scheduled_tests_handler.py -v 2>&1)",
+      "Bash(cd \"C:\\\\Users\\\\guyst\\\\splunk-ui-toolkit-apps\\\\packages\\\\query-tester\\\\stage\\\\bin\" && py tests/test_email_manual.py 2>&1)",
+      "Bash(cd \"C:\\\\Users\\\\guyst\\\\splunk-ui-toolkit-apps\\\\packages\\\\query-tester\\\\stage\\\\bin\" && echo \"\" | py tests/test_email_manual.py 2>&1)",
+      "Bash(cd \"C:\\\\Users\\\\guyst\\\\splunk-ui-toolkit-apps\\\\packages\\\\query-tester\\\\stage\\\\bin\" && SMTP_USER=\"guystern007@outlook.com\" SMTP_PASS=\"guystern2626\" py tests/test_email_manual.py 2>&1)",
+      "Bash(curl -s -k -u admin:Password1! \"https://localhost:8089/services/configs/conf-alert_actions/email?output_mode=json\" 2>&1 | py -m json.tool 2>&1 | head -80)",
+      "Bash(py -c \"import aiosmtpd; print\\('aiosmtpd available'\\)\" 2>&1 || echo \"not installed\")",
+      "Bash(cd \"C:\\\\Users\\\\guyst\\\\splunk-ui-toolkit-apps\\\\packages\\\\query-tester\\\\stage\\\\bin\" && SMTP_USER=\"guystern007@outlook.com\" SMTP_PASS=\"11949975\" py tests/test_email_manual.py 2>&1)",
+      "Bash(cd \"C:\\\\Users\\\\guyst\\\\splunk-ui-toolkit-apps\\\\packages\\\\query-tester\\\\stage\\\\bin\" && SMTP_USER=\"guystern007@outlook.com\" SMTP_PASS=\"tksrpvwzkarlxngw\" py tests/test_email_manual.py 2>&1)",
+      "Bash(py -m pip install msal requests 2>&1 | tail -5)",
+      "Bash(cd \"C:\\\\Users\\\\guyst\\\\splunk-ui-toolkit-apps\\\\packages\\\\query-tester\\\\stage\\\\bin\" && py tests/test_email_oauth.py 2>&1)",
+      "Bash(cd \"C:\\\\Users\\\\guyst\\\\splunk-ui-toolkit-apps\\\\packages\\\\query-tester\\\\stage\\\\bin\" && py tests/test_email_simple.py 2>&1)",
+      "Bash(start \"\" \"C:\\\\Users\\\\guyst\\\\splunk-ui-toolkit-apps\\\\packages\\\\query-tester\\\\stage\\\\bin\\\\tests\\\\email_preview.html\")"
     ]
   }
 }

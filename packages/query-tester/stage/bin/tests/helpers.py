@@ -9,11 +9,11 @@ from typing import Any, Dict, List, Optional
 SESSION_KEY = "mock-session-key-12345"
 
 
-def make_request(method="GET", payload=None, query=None, session_key=SESSION_KEY, path=""):
+def make_request(method="GET", payload=None, query=None, session_key=SESSION_KEY, path="", user="admin"):
     """Build a mock Splunk REST request dict."""
     req = {
         "method": method,
-        "session": {"authtoken": session_key, "user": "admin"},
+        "session": {"authtoken": session_key, "user": user},
         "rest_path": path,
     }
     if payload is not None:

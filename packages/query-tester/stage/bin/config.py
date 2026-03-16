@@ -59,7 +59,18 @@ DEFAULT_ALERT_EMAIL = "t_splunk@souf.org"
 LOG_FILE = ""                 # e.g. "/opt/splunk/var/log/splunk/query_tester.log"
 LOG_LEVEL = "INFO"            # DEBUG | INFO | WARNING | ERROR
 
+# ─── Authorization ────────────────────────────────────────────────────────
+# Roles considered "admin" for ownership bypass on PUT/DELETE.
+# Add custom roles (e.g. from SAML role mapping) as needed.
+
+ADMIN_ROLES = ["admin", "sc_admin", "query_tester_admin"]
+
 # ─── Limits ──────────────────────────────────────────────────────────────────
 
 MAX_QUERY_DATA_EVENTS = 10000  # max events from a Query Data sub-query
 HEC_BATCH_SIZE = 1000          # events per HEC POST request
+MAX_DEFINITION_SIZE_BYTES = 25 * 1024 * 1024  # 25 MB — inside KVStore doc limit
+
+# Run history retention (enforced by nightly saved search, not at write time)
+MAX_RUN_HISTORY_PER_TEST = 20     # keep last N runs per scheduled test
+MAX_RUN_HISTORY_TOTAL = 100000    # advisory cap on total run history records

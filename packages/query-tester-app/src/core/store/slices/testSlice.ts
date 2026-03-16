@@ -7,7 +7,7 @@ import { genId, createDefaultTest } from '../../constants/defaults';
 import { MAX_TESTS_PER_SESSION } from '../../constants/limits';
 import { findTest, deepCloneTestWithNewIds } from './helpers';
 
-type SliceState = { tests: TestDefinition[]; activeTestId: EntityId | null; testResponse: unknown | null; savedTestId: string | null; hasUnsavedChanges: boolean };
+type SliceState = { tests: TestDefinition[]; activeTestId: EntityId | null; testResponse: unknown | null; savedTestId: string | null; savedTestVersion: number | null; hasUnsavedChanges: boolean };
 type SetState = (recipe: (draft: SliceState) => void) => void;
 type GetState = () => SliceState;
 
@@ -21,6 +21,7 @@ export function testSlice(set: SetState, _get: GetState) {
         draft.tests.push(newTest);
         draft.activeTestId = newTest.id;
         draft.savedTestId = null;
+        draft.savedTestVersion = null;
         draft.hasUnsavedChanges = false;
       }),
 
@@ -31,6 +32,7 @@ export function testSlice(set: SetState, _get: GetState) {
         draft.activeTestId = fresh.id;
         draft.testResponse = null;
         draft.savedTestId = null;
+        draft.savedTestVersion = null;
         draft.hasUnsavedChanges = false;
       }),
 

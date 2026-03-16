@@ -7,6 +7,8 @@ export { Modal } from './Modal';
 export type { ModalProps, ModalVariant } from './Modal';
 export { Select } from './Select';
 export type { SelectProps, SelectOption } from './Select';
+export { SearchableSelect } from './SearchableSelect';
+export type { SearchableSelectProps, SearchableSelectOption } from './SearchableSelect';
 export { TextArea } from './TextArea';
 export type { TextAreaProps } from './TextArea';
 export { Switch } from './Switch';

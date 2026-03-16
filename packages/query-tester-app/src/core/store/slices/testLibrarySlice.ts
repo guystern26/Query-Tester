@@ -4,6 +4,7 @@
 
 import type { EntityId, TestDefinition, TestResponse, SavedTestFull } from '../../types';
 import { savedTestsApi } from '../../../api/savedTestsApi';
+import { getSavedSearchSpl } from '../../../api/splunkApi';
 import { DEFAULT_TIME_RANGE } from '../../constants/defaults';
 
 export interface TestLibraryState {
@@ -11,6 +12,7 @@ export interface TestLibraryState {
     isLoadingLibrary: boolean;
     isSaving: boolean;
     libraryError: string | null;
+    splDriftWarning: string | null;
 }
 
 type StoreState = {
@@ -18,6 +20,7 @@ type StoreState = {
     activeTestId: EntityId | null;
     testResponse: TestResponse | null;
     savedTestId: string | null;
+    savedTestVersion: number | null;
     hasUnsavedChanges: boolean;
 } & TestLibraryState;
 
@@ -29,6 +32,7 @@ export const testLibraryInitialState: TestLibraryState = {
     isLoadingLibrary: false,
     isSaving: false,
     libraryError: null,
+    splDriftWarning: null,
 };
 
 function errMsg(e: unknown): string {
@@ -74,6 +78,7 @@ export function testLibrarySlice(set: SetState, get: GetState) {
                 draft.activeTestId = def.id;
                 draft.testResponse = null;
                 draft.savedTestId = full.id;
+                draft.savedTestVersion = full.version ?? null;
                 draft.hasUnsavedChanges = false;
             });
         },
@@ -91,8 +96,33 @@ export function testLibrarySlice(set: SetState, get: GetState) {
                 draft.activeTestId = def.id;
                 draft.testResponse = null;
                 draft.savedTestId = id;
+                draft.savedTestVersion = full.version ?? null;
                 draft.hasUnsavedChanges = false;
+                draft.splDriftWarning = null;
             });
+
+            // Fire-and-forget SPL drift check
+            const origin = full.definition?.query?.savedSearchOrigin;
+            const app = full.app || full.definition?.app;
+            if (origin && app) {
+                getSavedSearchSpl(app, origin)
+                    .then((currentSpl) => {
+                        const storedSpl = full.definition.query?.spl ?? '';
+                        if (currentSpl.trim() !== storedSpl.trim()) {
+                            set((draft) => {
+                                draft.splDriftWarning =
+                                    'The saved search "' + origin + '" has changed since this test was last saved.';
+                            });
+                        }
+                    })
+                    .catch(() => {
+                        set((draft) => {
+                            draft.splDriftWarning =
+                                'The saved search "' + origin + '" could not be found. It may have been deleted or renamed.';
+                        });
+                    });
+            }
+
             return full.name;
         },
 
@@ -123,6 +153,7 @@ export function testLibrarySlice(set: SetState, get: GetState) {
                     draft.savedTests.unshift(saved);
                     draft.isSaving = false;
                     draft.savedTestId = saved.id;
+                    draft.savedTestVersion = saved.version ?? 1;
                     draft.hasUnsavedChanges = false;
                 });
             } catch (e) {
@@ -152,10 +183,12 @@ export function testLibrarySlice(set: SetState, get: GetState) {
                 }
                 const effectiveName = name || activeTest.name || '';
                 const defWithName = { ...activeTest, name: effectiveName };
+                const version = state.savedTestVersion ?? undefined;
                 const updated = await savedTestsApi.updateTest(id, {
                     name: effectiveName,
                     description,
                     definition: defWithName,
+                    version,
                 });
                 set((draft) => {
                     const idx = draft.savedTests.findIndex((t) => t.id === id);
@@ -163,12 +196,16 @@ export function testLibrarySlice(set: SetState, get: GetState) {
                         draft.savedTests[idx] = updated;
                     }
                     draft.isSaving = false;
+                    draft.savedTestVersion = updated.version ?? null;
                     draft.hasUnsavedChanges = false;
                 });
             } catch (e) {
+                const isConflict = e instanceof Error && 'status' in e && (e as any).status === 409;
                 set((draft) => {
                     draft.isSaving = false;
-                    draft.libraryError = errMsg(e);
+                    draft.libraryError = isConflict
+                        ? 'This test was modified by someone else — please reload before saving.'
+                        : errMsg(e);
                 });
             }
         },
@@ -193,6 +230,34 @@ export function testLibrarySlice(set: SetState, get: GetState) {
             set((draft) => {
                 draft.libraryError = null;
             });
+        },
+
+        clearSplDriftWarning: () => {
+            set((draft) => {
+                draft.splDriftWarning = null;
+            });
+        },
+
+        reloadDriftedSpl: async () => {
+            const state = get();
+            const activeTest = state.tests.find((t) => t.id === state.activeTestId);
+            const origin = activeTest?.query?.savedSearchOrigin;
+            const app = activeTest?.app;
+            if (!activeTest || !origin || !app) return;
+            try {
+                const currentSpl = await getSavedSearchSpl(app, origin);
+                set((draft) => {
+                    const test = draft.tests.find((t) => t.id === draft.activeTestId);
+                    if (test) {
+                        test.query.spl = currentSpl;
+                    }
+                    draft.splDriftWarning = null;
+                });
+            } catch {
+                set((draft) => {
+                    draft.libraryError = 'Failed to reload SPL from saved search.';
+                });
+            }
         },
     };
 }

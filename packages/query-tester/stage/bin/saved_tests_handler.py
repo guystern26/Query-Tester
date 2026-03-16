@@ -21,9 +21,10 @@ from logger import get_logger
 from kvstore_client import KVStoreClient
 from handler_utils import (
     get_session_key, get_username, json_response,
-    normalize_payload, extract_id, now_iso,
+    normalize_payload, extract_id, now_iso, is_admin_user,
 )
 from scheduled_search_manager import delete_saved_search
+from config import MAX_DEFINITION_SIZE_BYTES
 
 logger = get_logger(__name__)
 
@@ -91,8 +92,22 @@ class SavedTestsHandler(PersistentServerConnectionApplication):
         # type: (Dict[str, Any]) -> Dict[str, Any]
         session_key = get_session_key(request)
         payload = normalize_payload(request.get("payload"))
+
+        name = str(payload.get("name", "")).strip()
+        if not name:
+            raise ValueError("Test name is required.")
+
         timestamp = now_iso()
         definition = payload.get("definition", {})
+
+        # Check definition size before writing
+        definition_str = json.dumps(definition) if isinstance(definition, dict) else str(definition or "")
+        if len(definition_str.encode("utf-8")) > MAX_DEFINITION_SIZE_BYTES:
+            size_mb = len(definition_str.encode("utf-8")) / (1024 * 1024)
+            raise ValueError(
+                "Test definition is too large to save ({0:.1f} MB). "
+                "Reduce the number of scenarios or events.".format(size_mb)
+            )
 
         record = {
             "id": str(uuid.uuid4()),
@@ -106,6 +121,7 @@ class SavedTestsHandler(PersistentServerConnectionApplication):
             "scenarioCount": payload.get("scenarioCount", 0),
             "description": payload.get("description", ""),
             "definition": json.dumps(definition) if isinstance(definition, dict) else definition,
+            "version": 1,
         }
         kv = KVStoreClient(session_key)
         kv.upsert(COLLECTION_SAVED_TESTS, record["id"], record)
@@ -125,6 +141,23 @@ class SavedTestsHandler(PersistentServerConnectionApplication):
         kv = KVStoreClient(session_key)
         existing = kv.get_by_id(COLLECTION_SAVED_TESTS, record_id)
 
+        # Ownership check
+        username = get_username(request)
+        owner = existing.get("createdBy", "")
+        if owner and username != owner and not is_admin_user(session_key, username):
+            return json_response(
+                {"error": "Forbidden: you can only modify your own tests."}, 403
+            )
+
+        # Optimistic locking: compare client version to stored version
+        stored_version = int(existing.get("version") or 0)
+        client_version = payload.pop("version", None)
+        if client_version is not None:
+            if int(client_version) != stored_version:
+                return json_response(
+                    {"error": "conflict", "currentVersion": stored_version}, 409
+                )
+
         # Preserve immutable fields
         created_at = existing.get("createdAt")
         created_by = existing.get("createdBy")
@@ -134,13 +167,21 @@ class SavedTestsHandler(PersistentServerConnectionApplication):
         existing["createdAt"] = created_at
         existing["createdBy"] = created_by
         existing["updatedAt"] = now_iso()
+        existing["version"] = stored_version + 1
 
         definition = existing.get("definition", {})
+        definition_str = json.dumps(definition) if isinstance(definition, dict) else str(definition or "")
+        if len(definition_str.encode("utf-8")) > MAX_DEFINITION_SIZE_BYTES:
+            size_mb = len(definition_str.encode("utf-8")) / (1024 * 1024)
+            raise ValueError(
+                "Test definition is too large to save ({0:.1f} MB). "
+                "Reduce the number of scenarios or events.".format(size_mb)
+            )
         if isinstance(definition, dict):
             existing["definition"] = json.dumps(definition)
 
         kv.upsert(COLLECTION_SAVED_TESTS, record_id, existing)
-        logger.info("Updated saved test: %s", record_id)
+        logger.info("Updated saved test: %s (version %d)", record_id, stored_version + 1)
 
         if isinstance(existing.get("definition"), str):
             existing["definition"] = json.loads(existing["definition"])
@@ -154,6 +195,15 @@ class SavedTestsHandler(PersistentServerConnectionApplication):
             raise ValueError("Missing record ID in URL path.")
 
         kv = KVStoreClient(session_key)
+        existing = kv.get_by_id(COLLECTION_SAVED_TESTS, record_id)
+
+        # Ownership check
+        username = get_username(request)
+        owner = existing.get("createdBy", "")
+        if owner and username != owner and not is_admin_user(session_key, username):
+            return json_response(
+                {"error": "Forbidden: you can only delete your own tests."}, 403
+            )
 
         # Cascade-delete any schedules referencing this test
         scheduled = kv.query(COLLECTION_SCHEDULED_TESTS, {"testId": record_id})

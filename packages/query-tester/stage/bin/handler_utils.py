@@ -109,3 +109,21 @@ def now_iso():
     # type: () -> str
     """Return the current UTC time as an ISO 8601 string."""
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def is_admin_user(session_key, username):
+    # type: (str, str) -> bool
+    """Check if the user has the 'admin' role via splunklib."""
+    try:
+        import splunklib.client as splunk_client
+        from config import SPLUNK_HOST, SPLUNK_PORT
+        service = splunk_client.connect(
+            host=SPLUNK_HOST,
+            port=int(SPLUNK_PORT),
+            splunkToken=session_key,
+        )
+        user = service.users[username]
+        roles = user.content.get("roles", [])
+        return "admin" in roles
+    except Exception:
+        return False

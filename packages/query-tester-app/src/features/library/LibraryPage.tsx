@@ -24,6 +24,7 @@ export function LibraryPage({ onNavigateBuilder }: LibraryPageProps) {
     const [search, setSearch] = useState('');
     const [appFilter, setAppFilter] = useState('');
     const [typeFilter, setTypeFilter] = useState('');
+    const [creatorFilter, setCreatorFilter] = useState('');
     const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
     const [deleteErrors, setDeleteErrors] = useState<Record<string, string>>({});
 
@@ -72,6 +73,11 @@ export function LibraryPage({ onNavigateBuilder }: LibraryPageProps) {
         return Array.from(set).sort();
     }, [savedTests]);
 
+    const creators = useMemo(() => {
+        const set = new Set(savedTests.map((t) => t.createdBy).filter(Boolean));
+        return Array.from(set).sort();
+    }, [savedTests]);
+
     const filtered = useMemo(() => {
         let list = savedTests;
         if (search) {
@@ -82,8 +88,9 @@ export function LibraryPage({ onNavigateBuilder }: LibraryPageProps) {
         if (typeFilter) {
             list = list.filter((t) => t.testType === typeFilter || t.validationType === typeFilter);
         }
+        if (creatorFilter) list = list.filter((t) => t.createdBy === creatorFilter);
         return list;
-    }, [savedTests, search, appFilter, typeFilter]);
+    }, [savedTests, search, appFilter, typeFilter, creatorFilter]);
 
     const handleOpen = useCallback((id: string) => {
         onNavigateBuilder(id);
@@ -159,6 +166,7 @@ export function LibraryPage({ onNavigateBuilder }: LibraryPageProps) {
                         search={search} onSearchChange={setSearch}
                         appFilter={appFilter} onAppFilterChange={setAppFilter} apps={apps}
                         typeFilter={typeFilter} onTypeFilterChange={setTypeFilter}
+                        creatorFilter={creatorFilter} onCreatorFilterChange={setCreatorFilter} creators={creators}
                     />
 
                     {libraryError && (

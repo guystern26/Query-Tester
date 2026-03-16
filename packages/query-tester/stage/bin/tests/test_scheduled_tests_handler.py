@@ -60,6 +60,7 @@ class TestPost:
         assert status == 201
         assert data["testName"] == "My Scheduled Test"
         assert data["cronSchedule"] == "0 */6 * * *"
+        assert data["version"] == 1
         assert len(data["id"]) == 36  # UUID
 
     def test_calls_create_saved_search(self, handler, patch_kv, mock_saved_search):
@@ -75,12 +76,12 @@ class TestPost:
         assert len(records) == 1
         assert records[0]["testId"] == "test-abc"
 
-    def test_default_cron(self, handler, patch_kv, mock_saved_search):
+    def test_missing_cron_returns_400(self, handler, patch_kv, mock_saved_search):
         payload = dict(SAMPLE_PAYLOAD)
         del payload["cronSchedule"]
         resp = handler.handle(make_request("POST", payload))
-        data, _ = parse_response(resp)
-        assert data["cronSchedule"] == "0 6 * * *"
+        _, status = parse_response(resp)
+        assert status == 400
 
 
 class TestPut:
@@ -113,6 +114,28 @@ class TestPut:
         _, status = parse_response(resp)
         assert status == 400
 
+    def test_version_conflict_returns_409(self, handler, patch_kv, mock_saved_search):
+        patch_kv.seed("scheduled_tests", [
+            {"id": "v1", "testName": "T", "cronSchedule": "0 6 * * *",
+             "enabled": True, "version": 4},
+        ])
+        resp = handler.handle(make_request("PUT", {"enabled": False, "version": 3}, query={"id": "v1"}))
+        data, status = parse_response(resp)
+        assert status == 409
+        assert data["error"] == "conflict"
+        assert data["currentVersion"] == 4
+
+    def test_version_match_succeeds_and_increments(self, handler, patch_kv, mock_saved_search):
+        patch_kv.seed("scheduled_tests", [
+            {"id": "v2", "testName": "T", "cronSchedule": "0 6 * * *",
+             "enabled": True, "version": 2},
+        ])
+        resp = handler.handle(make_request("PUT", {"enabled": False, "version": 2}, query={"id": "v2"}))
+        data, status = parse_response(resp)
+        assert status == 200
+        assert data["enabled"] is False
+        assert data["version"] == 3
+
 
 class TestDelete:
     def test_deletes_and_removes_saved_search(self, handler, patch_kv, mock_saved_search):
@@ -128,6 +151,70 @@ class TestDelete:
         resp = handler.handle(make_request("DELETE"))
         _, status = parse_response(resp)
         assert status == 400
+
+
+class TestOwnership:
+    """Ownership enforcement on PUT and DELETE."""
+
+    @pytest.fixture(autouse=True)
+    def _mock_search(self):
+        with patch("scheduled_tests_handler.create_saved_search"), \
+             patch("scheduled_tests_handler.update_saved_search"), \
+             patch("scheduled_tests_handler.delete_saved_search"):
+            yield
+
+    def test_put_forbidden_for_non_owner(self, handler, patch_kv):
+        with patch("scheduled_tests_handler.is_admin_user", return_value=False):
+            patch_kv.seed("scheduled_tests", [
+                {"id": "o1", "testName": "T", "createdBy": "alice", "enabled": True},
+            ])
+            req = make_request("PUT", {"enabled": False}, query={"id": "o1"}, user="bob")
+            resp = handler.handle(req)
+            _, status = parse_response(resp)
+            assert status == 403
+
+    def test_put_allowed_for_owner(self, handler, patch_kv):
+        with patch("scheduled_tests_handler.is_admin_user", return_value=False):
+            patch_kv.seed("scheduled_tests", [
+                {"id": "o2", "testName": "T", "createdBy": "bob", "enabled": True},
+            ])
+            req = make_request("PUT", {"enabled": False}, query={"id": "o2"}, user="bob")
+            resp = handler.handle(req)
+            _, status = parse_response(resp)
+            assert status == 200
+
+    def test_delete_forbidden_for_non_owner(self, handler, patch_kv):
+        with patch("scheduled_tests_handler.is_admin_user", return_value=False):
+            patch_kv.seed("scheduled_tests", [
+                {"id": "o3", "testName": "T", "createdBy": "alice"},
+            ])
+            req = make_request("DELETE", query={"id": "o3"}, user="bob")
+            resp = handler.handle(req)
+            _, status = parse_response(resp)
+            assert status == 403
+
+
+class TestPostValidation:
+    @pytest.fixture(autouse=True)
+    def _mock_search(self):
+        with patch("scheduled_tests_handler.create_saved_search"), \
+             patch("scheduled_tests_handler.update_saved_search"), \
+             patch("scheduled_tests_handler.delete_saved_search"):
+            yield
+
+    def test_missing_test_id_returns_400(self, handler, patch_kv):
+        payload = {"cronSchedule": "0 * * * *"}
+        resp = handler.handle(make_request("POST", payload))
+        data, status = parse_response(resp)
+        assert status == 400
+        assert "testId" in data["error"]
+
+    def test_missing_cron_returns_400(self, handler, patch_kv):
+        payload = {"testId": "t1", "cronSchedule": ""}
+        resp = handler.handle(make_request("POST", payload))
+        data, status = parse_response(resp)
+        assert status == 400
+        assert "cronSchedule" in data["error"]
 
 
 class TestMethodNotAllowed:
