@@ -22,7 +22,8 @@ from logger import get_logger
 from kvstore_client import KVStoreClient
 from handler_utils import (
     get_session_key, get_username, json_response,
-    normalize_payload, extract_id, now_iso, is_admin_user,
+    normalize_payload, extract_id, now_iso,
+    check_ownership, check_version,
 )
 from scheduled_search_manager import (
     create_saved_search, update_saved_search, delete_saved_search,
@@ -144,23 +145,15 @@ class ScheduledTestsHandler(PersistentServerConnectionApplication):
         kv = KVStoreClient(session_key)
         existing = kv.get_by_id(COLLECTION_SCHEDULED_TESTS, record_id)
 
-        # Ownership check
-        username = get_username(request)
-        owner = existing.get("createdBy", "")
-        if owner and username != owner and not is_admin_user(session_key, username):
-            return json_response(
-                {"error": "Forbidden: you can only modify your own schedules."}, 403
-            )
+        forbidden = check_ownership(existing, request, session_key)
+        if forbidden:
+            return forbidden
 
-        # Optimistic locking: compare client version to stored version
+        conflict = check_version(existing, payload)
+        if conflict:
+            return conflict
+
         stored_version = int(existing.get("version") or 0)
-        client_version = payload.pop("version", None)
-        if client_version is not None:
-            if int(client_version) != stored_version:
-                return json_response(
-                    {"error": "conflict", "currentVersion": stored_version}, 409
-                )
-
         existing.update(payload)
         existing["id"] = record_id
         existing["version"] = stored_version + 1
@@ -183,13 +176,9 @@ class ScheduledTestsHandler(PersistentServerConnectionApplication):
         kv = KVStoreClient(session_key)
         existing = kv.get_by_id(COLLECTION_SCHEDULED_TESTS, record_id)
 
-        # Ownership check
-        username = get_username(request)
-        owner = existing.get("createdBy", "")
-        if owner and username != owner and not is_admin_user(session_key, username):
-            return json_response(
-                {"error": "Forbidden: you can only delete your own schedules."}, 403
-            )
+        forbidden = check_ownership(existing, request, session_key)
+        if forbidden:
+            return forbidden
 
         kv.delete(COLLECTION_SCHEDULED_TESTS, record_id)
         # Fire-and-forget: delete saved search in background thread

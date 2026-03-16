@@ -164,7 +164,7 @@ class TestOwnership:
             yield
 
     def test_put_forbidden_for_non_owner(self, handler, patch_kv):
-        with patch("scheduled_tests_handler.is_admin_user", return_value=False):
+        with patch("handler_utils.is_admin_user", return_value=False):
             patch_kv.seed("scheduled_tests", [
                 {"id": "o1", "testName": "T", "createdBy": "alice", "enabled": True},
             ])
@@ -174,7 +174,7 @@ class TestOwnership:
             assert status == 403
 
     def test_put_allowed_for_owner(self, handler, patch_kv):
-        with patch("scheduled_tests_handler.is_admin_user", return_value=False):
+        with patch("handler_utils.is_admin_user", return_value=False):
             patch_kv.seed("scheduled_tests", [
                 {"id": "o2", "testName": "T", "createdBy": "bob", "enabled": True},
             ])
@@ -184,7 +184,7 @@ class TestOwnership:
             assert status == 200
 
     def test_delete_forbidden_for_non_owner(self, handler, patch_kv):
-        with patch("scheduled_tests_handler.is_admin_user", return_value=False):
+        with patch("handler_utils.is_admin_user", return_value=False):
             patch_kv.seed("scheduled_tests", [
                 {"id": "o3", "testName": "T", "createdBy": "alice"},
             ])

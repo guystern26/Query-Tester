@@ -127,3 +127,30 @@ def is_admin_user(session_key, username):
         return "admin" in roles
     except Exception:
         return False
+
+
+def check_ownership(existing, request, session_key):
+    # type: (Dict[str, Any], Dict[str, Any], str) -> Optional[Dict[str, Any]]
+    """Return a 403 response if the user doesn't own the record, else None."""
+    username = get_username(request)
+    owner = existing.get("createdBy", "")
+    if owner and username != owner and not is_admin_user(session_key, username):
+        return json_response(
+            {"error": "Forbidden: you can only modify your own records."}, 403
+        )
+    return None
+
+
+def check_version(existing, payload):
+    # type: (Dict[str, Any], Dict[str, Any]) -> Optional[Dict[str, Any]]
+    """Optimistic locking: return a 409 response on version mismatch, else None.
+
+    Pops 'version' from payload as a side effect.
+    """
+    stored_version = int(existing.get("version") or 0)
+    client_version = payload.pop("version", None)
+    if client_version is not None and int(client_version) != stored_version:
+        return json_response(
+            {"error": "conflict", "currentVersion": stored_version}, 409
+        )
+    return None

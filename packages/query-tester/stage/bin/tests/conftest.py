@@ -46,10 +46,9 @@ def patch_kv(fake_kv):
         "run_history_handler.KVStoreClient",
     ]
     patches = [patch(t, return_value=fake_kv) for t in targets]
-    # Default is_admin_user to True so existing tests pass (admin bypass)
+    # Default is_admin_user to True so ownership checks pass (admin bypass)
     admin_patches = [
-        patch("saved_tests_handler.is_admin_user", return_value=True),
-        patch("scheduled_tests_handler.is_admin_user", return_value=True),
+        patch("handler_utils.is_admin_user", return_value=True),
     ]
     for p in patches + admin_patches:
         p.start()

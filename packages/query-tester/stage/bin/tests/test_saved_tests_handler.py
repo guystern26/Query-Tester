@@ -189,7 +189,7 @@ class TestOwnership:
             yield
 
     def test_put_forbidden_for_non_owner(self, handler, patch_kv):
-        with patch("saved_tests_handler.is_admin_user", return_value=False):
+        with patch("handler_utils.is_admin_user", return_value=False):
             patch_kv.seed("saved_tests", [
                 {"id": "o1", "name": "Owned", "createdBy": "alice",
                  "createdAt": "2026-01-01", "definition": json.dumps(SAMPLE_DEFINITION),
@@ -201,7 +201,7 @@ class TestOwnership:
             assert status == 403
 
     def test_put_allowed_for_owner(self, handler, patch_kv):
-        with patch("saved_tests_handler.is_admin_user", return_value=False):
+        with patch("handler_utils.is_admin_user", return_value=False):
             patch_kv.seed("saved_tests", [
                 {"id": "o2", "name": "Mine", "createdBy": "bob",
                  "createdAt": "2026-01-01", "definition": json.dumps(SAMPLE_DEFINITION),
@@ -225,7 +225,7 @@ class TestOwnership:
         assert status == 200
 
     def test_delete_forbidden_for_non_owner(self, handler, patch_kv):
-        with patch("saved_tests_handler.is_admin_user", return_value=False):
+        with patch("handler_utils.is_admin_user", return_value=False):
             patch_kv.seed("saved_tests", [{"id": "o4", "name": "Owned", "createdBy": "alice"}])
             req = make_request("DELETE", query={"id": "o4"}, user="bob")
             resp = handler.handle(req)
