@@ -178,6 +178,17 @@ def run(payload_path, session_key):
                 kv, test_id, ran_at, "error", duration_ms,
                 "", False, "Unhandled error: {0}".format(exc), [],
             )
+            # Update the scheduled test so Library shows error, not stale data
+            try:
+                sched = kv.get_by_id(COLLECTION_SCHEDULED_TESTS, test_id)
+                sched["lastRunAt"] = ran_at
+                sched["lastRunStatus"] = "error"
+                kv.upsert(COLLECTION_SCHEDULED_TESTS, test_id, sched)
+            except Exception as update_exc:
+                logger.error(
+                    "Failed to update scheduled test %s in catch-all: %s",
+                    test_id, update_exc,
+                )
 
 
 if __name__ == "__main__":

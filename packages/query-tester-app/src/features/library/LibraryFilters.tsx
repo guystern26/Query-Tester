@@ -17,6 +17,9 @@ export interface LibraryFiltersProps {
     apps: string[];
     typeFilter: string;
     onTypeFilterChange: (v: string) => void;
+    creatorFilter: string;
+    onCreatorFilterChange: (v: string) => void;
+    creators: string[];
 }
 
 const TYPE_OPTIONS = [
@@ -30,6 +33,7 @@ export function LibraryFilters({
     search, onSearchChange,
     appFilter, onAppFilterChange, apps,
     typeFilter, onTypeFilterChange,
+    creatorFilter, onCreatorFilterChange, creators,
 }: LibraryFiltersProps) {
     return (
         <div className="flex items-center gap-3 flex-wrap">
@@ -68,6 +72,17 @@ export function LibraryFilters({
             >
                 {TYPE_OPTIONS.map((o) => (
                     <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+            </select>
+
+            <select
+                value={creatorFilter}
+                onChange={(e) => onCreatorFilterChange(e.target.value)}
+                className={selectStyle}
+            >
+                <option value="">All creators</option>
+                {creators.map((c) => (
+                    <option key={c} value={c}>{c}</option>
                 ))}
             </select>
         </div>

@@ -83,6 +83,7 @@ interface UpdatePayload {
     name?: string;
     description?: string;
     definition?: TestDefinition;
+    version?: number;
 }
 
 export const savedTestsApi = {
@@ -116,6 +117,7 @@ export const savedTestsApi = {
             body.scenarioCount = payload.definition.scenarios?.length ?? 0;
             body.app = payload.definition.app;
         }
+        if (payload.version !== undefined) body.version = payload.version;
         return request<SavedTestFull>(url, 'PUT', body);
     },
 

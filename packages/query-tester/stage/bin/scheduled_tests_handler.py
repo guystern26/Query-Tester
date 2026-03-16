@@ -21,7 +21,8 @@ from splunk.persistconn.application import PersistentServerConnectionApplication
 from logger import get_logger
 from kvstore_client import KVStoreClient
 from handler_utils import (
-    get_session_key, json_response, normalize_payload, extract_id, now_iso,
+    get_session_key, get_username, json_response,
+    normalize_payload, extract_id, now_iso, is_admin_user,
 )
 from scheduled_search_manager import (
     create_saved_search, update_saved_search, delete_saved_search,
@@ -50,8 +51,8 @@ def _async_saved_search_delete(session_key, record_id):
         logger.warning("Async saved search delete failed for %s: %s", record_id, exc)
 
 
-def _build_record(payload):
-    # type: (Dict[str, Any]) -> Dict[str, Any]
+def _build_record(payload, username="unknown"):
+    # type: (Dict[str, Any], str) -> Dict[str, Any]
     record_id = payload.get("id") or str(uuid.uuid4())
     return {
         "id": record_id,
@@ -62,6 +63,7 @@ def _build_record(payload):
         "cronSchedule": payload.get("cronSchedule", "0 6 * * *"),
         "enabled": payload.get("enabled", True),
         "createdAt": payload.get("createdAt") or now_iso(),
+        "createdBy": username,
         "lastRunAt": None,
         "lastRunStatus": None,
         "alertOnFailure": payload.get("alertOnFailure", False),
@@ -113,7 +115,14 @@ class ScheduledTestsHandler(PersistentServerConnectionApplication):
         # type: (Dict[str, Any]) -> Dict[str, Any]
         session_key = get_session_key(request)
         payload = normalize_payload(request.get("payload"))
-        record = _build_record(payload)
+
+        if not str(payload.get("testId", "")).strip():
+            raise ValueError("testId is required.")
+        if not str(payload.get("cronSchedule", "")).strip():
+            raise ValueError("cronSchedule is required.")
+
+        record = _build_record(payload, get_username(request))
+        record["version"] = 1
         kv = KVStoreClient(session_key)
         kv.upsert(COLLECTION_SCHEDULED_TESTS, record["id"], record)
         # Fire-and-forget: create saved search in background thread
@@ -134,8 +143,27 @@ class ScheduledTestsHandler(PersistentServerConnectionApplication):
         payload = normalize_payload(request.get("payload"))
         kv = KVStoreClient(session_key)
         existing = kv.get_by_id(COLLECTION_SCHEDULED_TESTS, record_id)
+
+        # Ownership check
+        username = get_username(request)
+        owner = existing.get("createdBy", "")
+        if owner and username != owner and not is_admin_user(session_key, username):
+            return json_response(
+                {"error": "Forbidden: you can only modify your own schedules."}, 403
+            )
+
+        # Optimistic locking: compare client version to stored version
+        stored_version = int(existing.get("version") or 0)
+        client_version = payload.pop("version", None)
+        if client_version is not None:
+            if int(client_version) != stored_version:
+                return json_response(
+                    {"error": "conflict", "currentVersion": stored_version}, 409
+                )
+
         existing.update(payload)
         existing["id"] = record_id
+        existing["version"] = stored_version + 1
         kv.upsert(COLLECTION_SCHEDULED_TESTS, record_id, existing)
         # Fire-and-forget: update saved search in background thread
         threading.Thread(
@@ -153,6 +181,16 @@ class ScheduledTestsHandler(PersistentServerConnectionApplication):
         if not record_id:
             raise ValueError("Missing record ID in URL path.")
         kv = KVStoreClient(session_key)
+        existing = kv.get_by_id(COLLECTION_SCHEDULED_TESTS, record_id)
+
+        # Ownership check
+        username = get_username(request)
+        owner = existing.get("createdBy", "")
+        if owner and username != owner and not is_admin_user(session_key, username):
+            return json_response(
+                {"error": "Forbidden: you can only delete your own schedules."}, 403
+            )
+
         kv.delete(COLLECTION_SCHEDULED_TESTS, record_id)
         # Fire-and-forget: delete saved search in background thread
         threading.Thread(

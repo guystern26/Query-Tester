@@ -6,7 +6,7 @@ import { useTestStore } from 'core/store/testStore';
 import { selectActiveTest } from 'core/store/selectors';
 import { getSavedSearchSpl } from '../../api/splunkApi';
 import { useSavedSearches } from '../../hooks/useSavedSearches';
-import { Select, Message } from '../../common';
+import { SearchableSelect, Message } from '../../common';
 import { TimeRangePicker } from './TimeRangePicker';
 import { lintSpl, SplWarning } from './splLinter';
 
@@ -20,6 +20,7 @@ export function QuerySection() {
   const app = test?.app ?? '';
   const spl = test?.query?.spl ?? '';
   const origin = test?.query?.savedSearchOrigin ?? '';
+  const splDriftWarning = state.splDriftWarning;
 
   const { savedSearches, loading, error } = useSavedSearches(app);
 
@@ -45,10 +46,7 @@ export function QuerySection() {
     prevApp.current = app;
   }, [app]);
 
-  const options = [
-    { value: '', label: 'Select a saved search...' },
-    ...savedSearches.map((s) => ({ value: s.name, label: s.name })),
-  ];
+  const options = savedSearches.map((s) => ({ value: s.name, label: s.name }));
 
   const handleSavedSearch = async (value: string) => {
     if (!test || !app || !value) return;
@@ -64,6 +62,26 @@ export function QuerySection() {
 
   return (
     <div className="flex flex-col gap-3">
+      {splDriftWarning && (
+        <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-amber-900/30 border border-amber-700/50 text-amber-200 text-[13px]">
+          <span className="flex-1">{splDriftWarning}</span>
+          <button
+            className="px-2.5 py-1 text-xs font-semibold rounded bg-amber-700/40 hover:bg-amber-700/60 text-amber-100 transition cursor-pointer whitespace-nowrap"
+            onClick={() => state.reloadDriftedSpl()}
+          >
+            Reload SPL
+          </button>
+          <button
+            className="text-amber-400 hover:text-amber-200 transition cursor-pointer"
+            onClick={() => state.clearSplDriftWarning()}
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
+
       {appChanged && (
         <Message type="warning" dismissible onDismiss={() => setAppChanged(false)}>
           {APP_CHANGE_MSG}
@@ -72,7 +90,7 @@ export function QuerySection() {
 
       <div>
         <label className="block mb-1 text-slate-400 text-[13px]">Load from saved search</label>
-        <Select value={origin} options={options} onChange={handleSavedSearch} disabled={loading} />
+        <SearchableSelect value={origin} options={options} onChange={handleSavedSearch} disabled={loading} placeholder="Search saved searches..." />
         {error && <div className="mt-1 text-[13px] text-red-400">{error}</div>}
       </div>
 

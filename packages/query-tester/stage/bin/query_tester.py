@@ -10,6 +10,8 @@ from __future__ import annotations
 import json
 import os
 import sys
+import time
+import uuid
 from typing import Any, Dict, List, Tuple
 
 # Add bin/ to sys.path so sibling modules (logger, core, spl, etc.) are importable
@@ -117,9 +119,35 @@ class QueryTesterHandler(PersistentServerConnectionApplication):
             raw_body = request.get("payload")
             payload = _normalize_payload(raw_body)
 
+            start_ms = int(time.time() * 1000)
             runner = TestRunner(session_key)
             self._current_runner = runner
             result, status_code = runner.run_test(payload)
+
+            # Fire-and-forget: write manual run history record
+            try:
+                from kvstore_client import KVStoreClient
+                duration_ms = int(time.time() * 1000) - start_ms
+                username = (request.get("session") or {}).get("user", "unknown")
+                kv = KVStoreClient(session_key)
+                history = {
+                    "id": str(uuid.uuid4()),
+                    "scheduledTestId": None,
+                    "testId": payload.get("testId", ""),
+                    "ranBy": username,
+                    "ranAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                    "status": result.get("status", "error"),
+                    "durationMs": duration_ms,
+                    "triggerType": "manual",
+                    "splSnapshotHash": "",
+                    "splDriftDetected": False,
+                    "resultSummary": "Manual run: {0}".format(result.get("status", "error")),
+                    "scenarioResults": json.dumps([]),
+                }
+                kv.upsert("test_run_history", history["id"], history)
+            except Exception as hist_exc:
+                logger.warning("Failed to write manual run history: %s", hist_exc)
+
             return _json_response(result, status_code)
         except Exception as exc:
             logger.error("Error handling POST: %s", str(exc), exc_info=True)

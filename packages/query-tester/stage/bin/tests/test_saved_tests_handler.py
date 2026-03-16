@@ -70,6 +70,7 @@ class TestPost:
         assert data["name"] == "New Test"
         assert len(data["id"]) == 36  # UUID format
         assert data["createdBy"] == "admin"
+        assert data["version"] == 1
         assert isinstance(data["definition"], dict)
 
     def test_stores_definition_as_json_string(self, handler, patch_kv):
@@ -101,6 +102,48 @@ class TestPut:
         data, status = parse_response(resp)
         assert status == 400
         assert "Missing record ID" in data["error"]
+
+    def test_version_conflict_returns_409(self, handler, patch_kv):
+        patch_kv.seed("saved_tests", [
+            {"id": "v1", "name": "Versioned", "version": 3,
+             "createdAt": "2026-01-01", "createdBy": "bob",
+             "definition": json.dumps(SAMPLE_DEFINITION), "updatedAt": "2026-01-01"},
+        ])
+        payload = {"name": "Stale Update", "version": 2}
+        req = make_request("PUT", payload, query={"id": "v1"})
+        resp = handler.handle(req)
+        data, status = parse_response(resp)
+        assert status == 409
+        assert data["error"] == "conflict"
+        assert data["currentVersion"] == 3
+
+    def test_version_match_succeeds_and_increments(self, handler, patch_kv):
+        patch_kv.seed("saved_tests", [
+            {"id": "v2", "name": "Versioned", "version": 5,
+             "createdAt": "2026-01-01", "createdBy": "bob",
+             "definition": json.dumps(SAMPLE_DEFINITION), "updatedAt": "2026-01-01"},
+        ])
+        payload = {"name": "Fresh Update", "version": 5}
+        req = make_request("PUT", payload, query={"id": "v2"})
+        resp = handler.handle(req)
+        data, status = parse_response(resp)
+        assert status == 200
+        assert data["name"] == "Fresh Update"
+        assert data["version"] == 6
+
+    def test_legacy_record_without_version_allows_update(self, handler, patch_kv):
+        patch_kv.seed("saved_tests", [
+            {"id": "v3", "name": "Legacy", "createdAt": "2026-01-01",
+             "createdBy": "bob", "definition": json.dumps(SAMPLE_DEFINITION),
+             "updatedAt": "2026-01-01"},
+        ])
+        payload = {"name": "Updated Legacy"}
+        req = make_request("PUT", payload, query={"id": "v3"})
+        resp = handler.handle(req)
+        data, status = parse_response(resp)
+        assert status == 200
+        assert data["name"] == "Updated Legacy"
+        assert data["version"] == 1
 
 
 class TestDelete:
@@ -135,6 +178,98 @@ class TestDelete:
         resp = handler.handle(make_request("DELETE"))
         _, status = parse_response(resp)
         assert status == 400
+
+
+class TestOwnership:
+    """Ownership enforcement on PUT and DELETE."""
+
+    @pytest.fixture(autouse=True)
+    def _mock_search(self):
+        with patch("saved_tests_handler.delete_saved_search"):
+            yield
+
+    def test_put_forbidden_for_non_owner(self, handler, patch_kv):
+        with patch("saved_tests_handler.is_admin_user", return_value=False):
+            patch_kv.seed("saved_tests", [
+                {"id": "o1", "name": "Owned", "createdBy": "alice",
+                 "createdAt": "2026-01-01", "definition": json.dumps(SAMPLE_DEFINITION),
+                 "updatedAt": "2026-01-01"},
+            ])
+            req = make_request("PUT", {"name": "Hijack"}, query={"id": "o1"}, user="bob")
+            resp = handler.handle(req)
+            _, status = parse_response(resp)
+            assert status == 403
+
+    def test_put_allowed_for_owner(self, handler, patch_kv):
+        with patch("saved_tests_handler.is_admin_user", return_value=False):
+            patch_kv.seed("saved_tests", [
+                {"id": "o2", "name": "Mine", "createdBy": "bob",
+                 "createdAt": "2026-01-01", "definition": json.dumps(SAMPLE_DEFINITION),
+                 "updatedAt": "2026-01-01"},
+            ])
+            req = make_request("PUT", {"name": "Updated"}, query={"id": "o2"}, user="bob")
+            resp = handler.handle(req)
+            _, status = parse_response(resp)
+            assert status == 200
+
+    def test_put_admin_bypasses_ownership(self, handler, patch_kv):
+        # is_admin_user returns True by default from conftest
+        patch_kv.seed("saved_tests", [
+            {"id": "o3", "name": "Others", "createdBy": "alice",
+             "createdAt": "2026-01-01", "definition": json.dumps(SAMPLE_DEFINITION),
+             "updatedAt": "2026-01-01"},
+        ])
+        req = make_request("PUT", {"name": "Admin Edit"}, query={"id": "o3"}, user="superuser")
+        resp = handler.handle(req)
+        _, status = parse_response(resp)
+        assert status == 200
+
+    def test_delete_forbidden_for_non_owner(self, handler, patch_kv):
+        with patch("saved_tests_handler.is_admin_user", return_value=False):
+            patch_kv.seed("saved_tests", [{"id": "o4", "name": "Owned", "createdBy": "alice"}])
+            req = make_request("DELETE", query={"id": "o4"}, user="bob")
+            resp = handler.handle(req)
+            _, status = parse_response(resp)
+            assert status == 403
+
+
+class TestPostValidation:
+    def test_missing_name_returns_400(self, handler, patch_kv):
+        payload = {"definition": SAMPLE_DEFINITION}
+        resp = handler.handle(make_request("POST", payload))
+        data, status = parse_response(resp)
+        assert status == 400
+        assert "name" in data["error"].lower()
+
+    def test_empty_name_returns_400(self, handler, patch_kv):
+        payload = {"name": "  ", "definition": SAMPLE_DEFINITION}
+        resp = handler.handle(make_request("POST", payload))
+        _, status = parse_response(resp)
+        assert status == 400
+
+
+class TestDefinitionSizeCap:
+    def test_oversized_definition_on_post_returns_400(self, handler, patch_kv):
+        with patch("saved_tests_handler.MAX_DEFINITION_SIZE_BYTES", 100):
+            huge = {"data": "x" * 200}
+            payload = {"name": "Big", "definition": huge}
+            resp = handler.handle(make_request("POST", payload))
+            data, status = parse_response(resp)
+            assert status == 400
+            assert "too large" in data["error"].lower()
+
+    def test_oversized_definition_on_put_returns_400(self, handler, patch_kv):
+        with patch("saved_tests_handler.MAX_DEFINITION_SIZE_BYTES", 100):
+            patch_kv.seed("saved_tests", [
+                {"id": "s1", "name": "Small", "createdBy": "admin",
+                 "createdAt": "2026-01-01", "definition": "{}", "updatedAt": "2026-01-01"},
+            ])
+            huge = {"data": "x" * 200}
+            req = make_request("PUT", {"definition": huge}, query={"id": "s1"})
+            resp = handler.handle(req)
+            data, status = parse_response(resp)
+            assert status == 400
+            assert "too large" in data["error"].lower()
 
 
 class TestMethodNotAllowed:

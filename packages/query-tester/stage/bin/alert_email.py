@@ -26,7 +26,7 @@ from alert_email_html import esc, format_scenario_block
 logger = get_logger(__name__)
 
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-APP_ROUTE = "/app/query-tester/QueryTesterApp"
+APP_ROUTE = "/app/QueryTester/QueryTesterApp"
 
 
 def _is_valid_email(address):

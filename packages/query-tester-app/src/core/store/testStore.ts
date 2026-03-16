@@ -46,6 +46,7 @@ export interface TestStoreState {
   testResponse: TestResponse | null;
   resultsBarExpanded: boolean;
   savedTestId: string | null;
+  savedTestVersion: number | null;
   hasUnsavedChanges: boolean;
   markUnsaved: () => void;
 
@@ -158,6 +159,7 @@ export interface TestStoreState {
   isLoadingLibrary: boolean;
   isSaving: boolean;
   libraryError: string | null;
+  splDriftWarning: string | null;
   fetchSavedTests: () => Promise<void>;
   loadTestFromPayload: (full: SavedTestFull) => void;
   loadTestIntoBuilder: (id: string) => string;
@@ -165,6 +167,8 @@ export interface TestStoreState {
   updateSavedTest: (id: string, name: string, description: string) => Promise<void>;
   deleteSavedTest: (id: string) => Promise<void>;
   clearLibraryError: () => void;
+  clearSplDriftWarning: () => void;
+  reloadDriftedSpl: () => Promise<void>;
 
   setFieldExtraction: (testId: EntityId, sources: ExtractedDataSource[]) => void;
   selectDataSource: (testId: EntityId, scenarioId: EntityId, inputId: EntityId, source: ExtractedDataSource) => void;
@@ -185,6 +189,7 @@ export const useTestStore = create<TestStoreState>()(
     testResponse: null,
     resultsBarExpanded: false,
     savedTestId: null,
+    savedTestVersion: null,
     hasUnsavedChanges: false,
     markUnsaved: () => set((draft) => { draft.hasUnsavedChanges = true; }),
 

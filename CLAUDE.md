@@ -26,6 +26,10 @@ yarn test                                           # all packages
 yarn workspace @splunk/query-tester-app run test    # single package
 yarn workspace @splunk/query-tester-app run test:watch
 
+# Backend tests (Python — use `py` on Windows, `python3` on Linux)
+cd packages/query-tester/stage/bin && py -m pytest tests/ -v
+cd packages/query-tester/stage/bin && py -m pytest tests/test_auth_utils.py -v  # single file
+
 # Format
 yarn format               # auto-format all JS/JSX/CSS
 yarn format:verify        # check only
@@ -201,6 +205,7 @@ Detailed specs live in `docs/` (32 spec files, spec-00 through spec-20+). Attach
 - **Python changes:** Just restart Splunk (no rebuild needed)
 - **Frontend changes:** Webpack rebuild required, then restart Splunk
 - **Config files:** `stage/bin/config.py` (backend), `src/config/env.ts` (frontend)
+- **Notable config.py entries:** `ADMIN_ROLES` (list of roles for admin bypass), `MAX_DEFINITION_SIZE_BYTES` (25 MB cap on saved test definition), `MAX_RUN_HISTORY_PER_TEST` (20 — must match savedsearches.conf janitor)
 - See `DEPLOYMENT.md` for full deployment guide
 
 ---
@@ -217,6 +222,9 @@ Detailed specs live in `docs/` (32 spec files, spec-00 through spec-20+). Attach
 
 Root-level store state additions:
 - `savedTestId: string | null` — id of the currently loaded saved test (null for new tests)
+- `savedTestVersion: number | null` — version counter for optimistic locking (null for new tests)
+- `hasUnsavedChanges: boolean` — auto-detected via store subscription comparing `tests` reference
+- `splDriftWarning: string | null` — set by `loadTestIntoBuilder` when saved search SPL has changed
 
 ### New backend modules (`stage/bin/`)
 Following the same strict boundary rules as existing modules:
@@ -226,12 +234,13 @@ Following the same strict boundary rules as existing modules:
 - `alert_run_test.py` — Custom alert action entry point. Orchestration only — reads test_id, fetches test, checks SPL drift, runs test, writes result. No business logic.
 - `alert_email.py` — Email formatting and sending only. Uses smtplib, host=CASNLB, port=25, no TLS.
 - `kvstore_client.py` — Raw KVStore CRUD only. No business logic. Methods: get_all, get_by_id, upsert, delete. Returns plain dicts only.
-- `handler_utils.py` — Shared handler utilities (session username reading, error response building). Imported by handlers — never a handler itself.
+- `handler_utils.py` — Shared handler utilities (session key/username extraction, JSON response building, payload normalization, record ID extraction). Imported by handlers — never a handler itself. Contains legacy `is_admin_user(session_key, username)` — prefer `auth_utils.is_admin(session_key)` for new code.
+- `auth_utils.py` — Authentication/authorization utilities. `get_current_user_roles(session_key)` calls `authentication/current-context` via splunklib (works with SAML — no username needed). `is_admin(session_key)` checks roles against `ADMIN_ROLES` from `config.py`. Returns `False` on any error (safe default). See "Auth & Ownership Enforcement" section below.
 
 ### KVStore collections (`stage/default/collections.conf`)
-- `saved_tests` — full TestDefinition + metadata
-- `scheduled_tests` — scheduled test config + cron + recipients
-- `test_run_history` — per-run records with status, drift detection, scenario results
+- `saved_tests` — full TestDefinition + metadata. Fields include `version` (number) for optimistic locking, `createdBy` for ownership.
+- `scheduled_tests` — scheduled test config + cron + recipients. Fields include `version` (number), `createdBy` for ownership.
+- `test_run_history` — per-run records with status, drift detection, scenario results. Fields include `testId`, `ranBy`, `triggerType` ("scheduled" or "manual") for audit trail.
 
 ### Custom alert action
 - Name: `query_tester_run_test`
@@ -249,6 +258,141 @@ SPL, never the stored snapshot. This keeps the test in sync with the live alert 
 Stored as `emailRecipients: string[]` on ScheduledTest. Never a single string.
 If the array is empty at send time, fall back to `DEFAULT_ALERT_EMAIL` from `config.py`.
 The default address is always shown as a locked row in the UI — cannot be removed.
+
+---
+
+## Optimistic Locking (Concurrency Protection)
+
+Both `saved_tests` and `scheduled_tests` collections use a `version` integer field to prevent lost-update problems when multiple users edit the same record.
+
+**Backend protocol:**
+- `version` field declared as `number` in `collections.conf`. Born at `1` on POST.
+- PUT handlers compare `payload["version"]` against stored `record["version"]`. Mismatch → `409 Conflict` with `{"error": "Version conflict — record was modified by another user. Please reload."}`.
+- On match, version is incremented: `record["version"] = existing_version + 1`.
+- **Backward compatibility:** Records with `version=0` or missing version field (pre-existing data) are treated as legacy. If the PUT payload omits `version`, the check is skipped but version is still set to `1` on the updated record. This allows gradual migration without a data backfill.
+
+**Frontend protocol:**
+- `savedTestsApi.updateTest()` forwards `version` in the PUT body.
+- `testLibrarySlice.updateSavedTest()` reads `savedTestVersion` from store state, sends it, and updates the local version on success.
+- `scheduledTestsSlice.updateScheduledTest()` does the same for schedule records.
+- On 409 response, both slices set a user-facing error: "This test was modified by someone else — please reload before saving."
+- `SavedTestMeta` and `ScheduledTest` TypeScript interfaces include `version: number`.
+
+---
+
+## Auth & Ownership Enforcement
+
+### auth_utils.py — Role-based authorization
+`get_current_user_roles(session_key)` calls Splunk's `authentication/current-context` REST endpoint via splunklib. This returns the roles for the session owner without needing the username — critical for SAML environments where usernames may be email/UPN format (e.g. `user@domain.com`) and `service.users[username]` lookups can fail.
+
+`is_admin(session_key)` checks whether any of the user's roles intersect with `ADMIN_ROLES` from `config.py`. Default: `["admin", "sc_admin", "query_tester_admin"]`. Returns `False` on any exception (safe default).
+
+**SAML consideration:** `get_username(request)` in `handler_utils.py` returns `session["user"]` — which Splunk populates from the SAML assertion. This may be an email or short name depending on IdP config. The `authentication/current-context` approach avoids this ambiguity entirely because it reads roles from the session token, not a username lookup.
+
+**Status:** `auth_utils.py` is written and tested but NOT yet wired into handlers. Handlers currently use the older `is_admin_user(session_key, username)` from `handler_utils.py` which does a `service.users[username]` lookup. The plan is to swap to `auth_utils.is_admin(session_key)` once validated in the SAML environment.
+
+### Ownership enforcement on PUT and DELETE
+Both `saved_tests_handler.py` and `scheduled_tests_handler.py` enforce ownership:
+- On PUT/DELETE, the handler reads `createdBy` from the existing KVStore record.
+- If `createdBy` is set and doesn't match the current session user, and `is_admin_user()` returns `False`, the handler returns `403 Forbidden` with `{"error": "Forbidden: you can only modify your own tests."}`.
+- Admin users bypass ownership checks entirely.
+- Records with empty `createdBy` (legacy data) allow anyone to modify.
+
+---
+
+## Input Validation Conventions
+
+### saved_tests POST
+- `name` — required, must be non-empty string. Missing/empty → `400` with `{"error": "Missing required field: name"}`.
+- `definition` — size checked against `MAX_DEFINITION_SIZE_BYTES` (25 MB, in `config.py`). Oversized → `400` with `{"error": "Test definition exceeds maximum size..."}`. The size check runs `json.dumps(definition)` and measures byte length. Applied on both POST and PUT.
+- Duplicate name check: case-insensitive match against existing saved tests. Duplicate → thrown error (not a 400 — it's a business rule in the store, not the handler).
+
+### scheduled_tests POST
+- `testId` — required. Missing → `400` with `{"error": "Missing required field: testId"}`.
+- `cronSchedule` — required. Missing → `400` with `{"error": "Missing required field: cronSchedule"}`.
+
+### General pattern
+All validation errors return `{"error": "..."}` with status `400`. Required-field checks happen before any KVStore operations.
+
+---
+
+## Manual Run Audit Trail
+
+`query_tester.py` writes a fire-and-forget history record after every manual test run (via the builder "Run" button). The record goes into `test_run_history` KVStore collection with:
+- `scheduledTestId: null` (not triggered by a schedule)
+- `testId` — from the request payload
+- `ranBy` — from `session.user`
+- `triggerType: "manual"` (vs `"scheduled"` for alert-action runs)
+- `status`, `durationMs`, `resultSummary` — from the test result
+
+The write is wrapped in `try/except` and logged on failure — it never affects the test response. This gives admins visibility into who ran what and when, via `| inputlookup test_run_history_lookup`.
+
+---
+
+## Crash Recovery — lastRunAt/lastRunStatus Fix
+
+`alert_run_test.py` has a catch-all `except` block that updates the scheduled test record with `lastRunAt` and `lastRunStatus="error"` before writing the error history record. Without this, a crash mid-run would leave the Library page showing stale "last run" data from a previous successful run. The update is also wrapped in its own `try/except` so a KVStore failure during error handling doesn't mask the original error.
+
+---
+
+## KVStore Admin Visibility
+
+`stage/default/transforms.conf` defines KVStore lookup definitions for admin inspection via `| inputlookup`:
+- `saved_tests_lookup` — all fields except `definition` (large JSON blob, up to 25 MB). Admins who need the definition should use the REST API directly.
+- `scheduled_tests_lookup` — all fields.
+- `test_run_history_lookup` — all fields except `splSnapshot` (full SPL text, can be large).
+
+These lookups are read-only views — the app never writes through them. They exist purely for operational visibility (debugging, auditing, capacity planning).
+
+---
+
+## Run History Cleanup
+
+`stage/default/savedsearches.conf` contains `query_tester_trim_run_history` — a nightly janitor search that trims `test_run_history` to the 20 most recent runs per scheduled test. Uses `| inputlookup`, `streamstats count as row_number by scheduledTestId`, `where row_number <= 20`, `| outputlookup` to overwrite.
+
+- **Cron:** `0 2 * * *` (02:00 daily)
+- **Disabled by default** (`disabled = 1`). Must be enabled after deployment.
+- **Source of truth:** `MAX_RUN_HISTORY_PER_TEST = 20` in `config.py`. If changed, the saved search `where` clause must be updated to match.
+- **Advisory total cap:** `MAX_RUN_HISTORY_TOTAL = 100000` in `config.py` — not enforced, informational only.
+
+---
+
+## SPL Drift Warning in Builder
+
+When a saved test is loaded via `loadTestIntoBuilder()` in `testLibrarySlice.ts`, if the test has a `savedSearchOrigin` (i.e., its SPL came from a Splunk saved search), the slice fires an async check:
+1. Calls `getSavedSearchSpl(app, origin)` to fetch the current SPL from Splunk.
+2. Compares (trimmed) to the stored SPL in the test definition.
+3. If different → sets `splDriftWarning` to `'The saved search "X" has changed since this test was last saved.'`
+4. If the saved search is not found (404 / error) → sets warning to `'The saved search "X" could not be found. It may have been deleted or renamed.'`
+
+The check is fire-and-forget (promise `.then/.catch`) inside a synchronous function. The warning clears on dismiss (`clearSplDriftWarning()`) or on reload (`reloadDriftedSpl()` which re-fetches the SPL and updates the test's query).
+
+**UI:** `QuerySection.tsx` renders the warning as an amber banner with "Reload SPL" button and an X dismiss button. Only shown when `splDriftWarning` is non-null.
+
+---
+
+## Library Page Filtering
+
+`LibraryPage.tsx` provides client-side filtering over the `savedTests` array:
+- **Search** — free-text, case-insensitive match on test `name`
+- **App** — exact match on `app` field. Options derived from unique apps in saved tests.
+- **Type** — matches against `testType` or `validationType`. Fixed options: Standard, Query Only, iJump.
+- **Creator** — exact match on `createdBy`. Options derived from unique creators in saved tests.
+
+All filters combine with AND logic (all must match). Implemented in `LibraryFilters.tsx` (presentational) and `LibraryPage.tsx` (state + filtering via `useMemo`).
+
+---
+
+## Future Considerations
+
+### CI/CD Integration Pattern
+Not yet implemented. Planned approach:
+- **`runByTestId` endpoint** — run a saved test by its KVStore ID without sending the full definition. Pipeline calls the endpoint with a test ID and a service account token.
+- **Placeholder string-replace convention** — dynamic test data (e.g., build number, commit hash) injected via `{{PLACEHOLDER}}` tokens in the SPL or input fields, replaced at runtime by the pipeline.
+- **Role-based pipeline token** — dedicated Splunk role (e.g., `query_tester_pipeline`) with minimal permissions. Added to `ADMIN_ROLES` only if the pipeline needs to run tests owned by others.
+
+### Remaining auth_utils.py wiring
+`auth_utils.is_admin(session_key)` needs to replace `handler_utils.is_admin_user(session_key, username)` in both `saved_tests_handler.py` and `scheduled_tests_handler.py` once validated in the SAML environment. The old function requires the username (fragile with SAML); the new one reads roles from the session token directly.
 
 ---
 
@@ -303,12 +447,13 @@ npx tsc --noEmit        # zero errors required
 # Build check  
 yarn build              # must complete clean
 
-# Python syntax check — no local Python available on this machine.
-# Use this workaround instead:
-# Python syntax check
-python -m py_compile stage/bin/<new_file>.py
+# Python syntax check (use `py` on Windows — `python` triggers Microsoft Store stub)
+py -m py_compile stage/bin/<new_file>.py
 
-# If the above fails, manually verify each new Python file by checking:
+# Backend tests (from stage/bin/)
+cd packages/query-tester/stage/bin && py -m pytest tests/ -v
+
+# If py_compile fails, manually verify each new Python file by checking:
 # 1. No syntax highlighted errors in the file
 # 2. grep -n "print(" stage/bin/*.py  → must return nothing
 # 3. grep -rn " | None" stage/bin/*.py → must return nothing (use Optional[X])
