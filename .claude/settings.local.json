@@ -111,7 +111,16 @@
       "Bash(cd \"C:\\\\Users\\\\guyst\\\\splunk-ui-toolkit-apps\\\\packages\\\\query-tester\\\\stage\\\\bin\" && py tests/test_email_simple.py 2>&1)",
       "Bash(start \"\" \"C:\\\\Users\\\\guyst\\\\splunk-ui-toolkit-apps\\\\packages\\\\query-tester\\\\stage\\\\bin\\\\tests\\\\email_preview.html\")",
       "Bash(find \"C:/Users/guyst/splunk-ui-toolkit-apps/packages/query-tester\" -name \"start.html\" -o -name \"*.html\" 2>/dev/null | head -20)",
-      "Bash(cd \"C:\\\\Users\\\\guyst\\\\splunk-ui-toolkit-apps\" && yarn start 2>&1)"
+      "Bash(cd \"C:\\\\Users\\\\guyst\\\\splunk-ui-toolkit-apps\" && yarn start 2>&1)",
+      "Bash(find \"/c/Users/guyst/splunk-ui-toolkit-apps/packages/query-tester-app/src\" -type f \\\\\\( -name \"*.ts\" -o -name \"*.tsx\" \\\\\\) 2>/dev/null | sort)",
+      "Bash(find \"/c/Users/guyst/splunk-ui-toolkit-apps/packages/query-tester/stage/bin\" -type f -name \"*.py\" ! -path \"*/splunklib/*\" 2>/dev/null | sort)",
+      "Bash(find \"/c/Users/guyst/splunk-ui-toolkit-apps/packages/query-tester/src\" -type f \\\\\\( -name \"*.ts\" -o -name \"*.tsx\" \\\\\\) 2>/dev/null | sort)",
+      "Bash(find \"/c/Users/guyst/splunk-ui-toolkit-apps/packages/query-tester-app/src\" -type f \\\\\\( -name \"*.ts\" -o -name \"*.tsx\" \\\\\\) -exec wc -l {} + 2>/dev/null | sort -rn | head -50)",
+      "Bash(find \"/c/Users/guyst/splunk-ui-toolkit-apps/packages/query-tester/stage/bin\" -type f -name \"*.py\" ! -path \"*/packaging/*\" ! -path \"*/splunklib/*\" ! -path \"*/tests/*\" -exec wc -l {} + 2>/dev/null | sort -rn | head -40)",
+      "Bash(cd /c/Users/guyst/splunk-ui-toolkit-apps/packages/query-tester/stage/bin && py -m py_compile handler_utils.py && py -m py_compile saved_tests_handler.py && py -m py_compile scheduled_tests_handler.py && py -m py_compile alert_run_test.py && echo \"All Python files compiled OK\")",
+      "Bash(py -m pytest tests/ -v --ignore=tests/test_scheduled_runner.py 2>&1 | tail -40)",
+      "Bash(py -m pytest tests/test_saved_tests_handler.py::TestGet -v 2>&1)",
+      "Bash(py -m pytest tests/ -v --ignore=tests/test_scheduled_runner.py 2>&1 | tail -30)"
     ]
   }
 }

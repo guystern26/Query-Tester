@@ -36,6 +36,7 @@ import { scheduledTestsSlice, scheduledTestsInitialState } from './slices/schedu
 import type { ScheduledTestsState } from './slices/scheduledTestsSlice';
 import { testLibrarySlice, testLibraryInitialState } from './slices/testLibrarySlice';
 import type { TestLibraryState } from './slices/testLibrarySlice';
+import { testLoaderSlice } from './slices/testLoaderSlice';
 
 export type { SavedState } from './slices/fileSlice';
 
@@ -207,6 +208,7 @@ export const useTestStore = create<TestStoreState>()(
 
     ...testLibraryInitialState,
     ...testLibrarySlice(set, get),
+    ...testLoaderSlice(set, get),
   }))
 );
 

@@ -21,7 +21,8 @@ from logger import get_logger
 from kvstore_client import KVStoreClient
 from handler_utils import (
     get_session_key, get_username, json_response,
-    normalize_payload, extract_id, now_iso, is_admin_user,
+    normalize_payload, extract_id, now_iso,
+    check_ownership, check_version,
 )
 from scheduled_search_manager import delete_saved_search
 from config import MAX_DEFINITION_SIZE_BYTES
@@ -141,22 +142,15 @@ class SavedTestsHandler(PersistentServerConnectionApplication):
         kv = KVStoreClient(session_key)
         existing = kv.get_by_id(COLLECTION_SAVED_TESTS, record_id)
 
-        # Ownership check
-        username = get_username(request)
-        owner = existing.get("createdBy", "")
-        if owner and username != owner and not is_admin_user(session_key, username):
-            return json_response(
-                {"error": "Forbidden: you can only modify your own tests."}, 403
-            )
+        forbidden = check_ownership(existing, request, session_key)
+        if forbidden:
+            return forbidden
 
-        # Optimistic locking: compare client version to stored version
+        conflict = check_version(existing, payload)
+        if conflict:
+            return conflict
+
         stored_version = int(existing.get("version") or 0)
-        client_version = payload.pop("version", None)
-        if client_version is not None:
-            if int(client_version) != stored_version:
-                return json_response(
-                    {"error": "conflict", "currentVersion": stored_version}, 409
-                )
 
         # Preserve immutable fields
         created_at = existing.get("createdAt")
@@ -197,13 +191,9 @@ class SavedTestsHandler(PersistentServerConnectionApplication):
         kv = KVStoreClient(session_key)
         existing = kv.get_by_id(COLLECTION_SAVED_TESTS, record_id)
 
-        # Ownership check
-        username = get_username(request)
-        owner = existing.get("createdBy", "")
-        if owner and username != owner and not is_admin_user(session_key, username):
-            return json_response(
-                {"error": "Forbidden: you can only delete your own tests."}, 403
-            )
+        forbidden = check_ownership(existing, request, session_key)
+        if forbidden:
+            return forbidden
 
         # Cascade-delete any schedules referencing this test
         scheduled = kv.query(COLLECTION_SCHEDULED_TESTS, {"testId": record_id})

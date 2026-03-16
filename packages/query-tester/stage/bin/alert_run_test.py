@@ -20,6 +20,7 @@ if _bin_dir not in sys.path:
 from logger import get_logger
 from kvstore_client import KVStoreClient
 from alert_email import send_failure_emails
+from alert_helpers import extract_scenario_results, build_result_summary
 from spl_drift import check_spl_drift
 
 logger = get_logger(__name__)
@@ -37,19 +38,6 @@ def _get_test_id_from_payload(payload_path):
     if not test_id:
         raise ValueError("test_id not found in alert action payload.")
     return test_id
-
-
-def _extract_scenario_results(result):
-    # type: (Dict[str, Any]) -> List[Dict[str, Any]]
-    out = []
-    for scenario in result.get("scenarioResults", []):
-        out.append({
-            "scenarioId": scenario.get("scenarioId", ""),
-            "scenarioName": scenario.get("scenarioName", ""),
-            "passed": scenario.get("passed", False),
-            "message": scenario.get("message", ""),
-        })
-    return out
 
 
 def _write_history_record(kv, test_id, ran_at, status, duration_ms,
@@ -122,10 +110,8 @@ def run(payload_path, session_key):
 
         duration_ms = int(time.time() * 1000) - start_ms
         ran_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-        scenario_results = _extract_scenario_results(result)
-        passed = result.get("passedScenarios", 0)
-        total = result.get("totalScenarios", 0)
-        summary = "Status: {0}, Passed: {1}/{2}".format(status, passed, total)
+        scenario_results = extract_scenario_results(result)
+        summary = build_result_summary(result)
 
         # Write history record (must never raise)
         _write_history_record(
