@@ -69,22 +69,34 @@ REST endpoint: `POST /splunkd/__raw/services/splunk_query_tester/query_tester`
 **Run loop:** parse payload -> resolve SPL -> analyze SPL -> for each scenario: generate events -> index -> inject SPL -> run query -> validate -> cleanup (in finally)
 
 Key modules and their strict boundaries:
-- `query_tester.py` — REST handler entry point (Splunk wiring only)
+- `query_tester.py` — REST handler entry point (Splunk wiring only). Delegates `/config/*` and `/command_policy/*` sub-paths to their respective handlers.
 - `core/test_runner.py` — orchestrator, loops scenarios
 - `core/payload_parser.py` — JSON dict -> dataclasses (camelCase -> snake_case)
 - `core/response_builder.py` — serializes results to camelCase JSON for frontend
 - `core/helpers.py` — shared utilities
+- `splunk_connect.py` — centralized `get_service(session_key)` factory. Always connects to localhost via static config.py. All modules use this instead of direct `splunk_client.connect()`.
+- `runtime_config.py` — reads dynamic config from KVStore with config.py fallback, 120s TTL cache. Layers: static defaults → KVStore overrides → storage/passwords secrets.
+- `config_handler.py` — REST handler for admin Setup page config CRUD, auto-detection, connectivity testing. Invalidates runtime cache and reconfigures log level on save.
+- `config_detection.py` — auto-detects Splunk settings (server info, HEC, email, temp index) for Setup page pre-population.
+- `config_secrets.py` — reads/writes secrets in Splunk `storage/passwords`. Uses static config directly (NOT `splunk_connect`) to avoid circular dependency with `runtime_config`.
+- `config_test_connectivity.py` — tests HEC and SMTP connectivity from Setup page.
 - `spl/spl_analyzer.py` — reads SPL only, never modifies
 - `spl/query_injector.py` — rewrites SPL, never runs it
 - `spl/query_executor.py` — executes SPL via splunklib
 - `spl/spl_normalizer.py` — SPL preprocessing before analysis
-- `data/data_indexer.py` — indexes events, cleanup
+- `data/data_indexer.py` — indexes events via HEC, cleanup via SPL delete. Reads HEC config dynamically via `_get_hec_config(session_key)`.
 - `data/lookup_manager.py` — temp CSV lookup create/delete
 - `data/sub_query_runner.py` — executes sub-queries for data inputs
 - `generators/event_generator.py` — expands GeneratorConfig, no file I/O or Splunk calls
 - `generators/` — per-type modules: numbered.py, pick_list.py, email.py, ip_address.py, unique_id.py, random_number.py, general_field.py
 - `validation/result_validator.py` — compares rows to conditions, never runs queries
 - `validation/condition_handlers.py` — registry of condition evaluation functions
+- `alert_email.py` — email building and SMTP delivery for scheduled test failures. Reads SMTP config dynamically via `_get_email_config(session_key)`. Auto-infers TLS mode from port (587=STARTTLS, 465=SSL).
+- `scheduled_runner.py` — scripted input (runs every 60s via inputs.conf). Checks cron schedules, runs due tests, writes history, sends failure emails. Re-reads fresh KVStore record before upsert to avoid clobbering user changes.
+- `scheduled_search_manager.py` — creates/updates/deletes backing Splunk saved searches for scheduled tests (UI visibility only).
+- `spl_drift.py` — SPL drift detection: compares current saved search SPL against last passed run.
+- `cron_matcher.py` — cron expression matching: `cron_matches(expr, dt_tuple)`, `is_enabled(record)`.
+- `logger.py` — file-based logging with `reconfigure_log_level(level_str)` for dynamic log level changes.
 
 **Bundled `splunklib/`** — no pip installs; closed network.
 
@@ -179,11 +191,42 @@ Only stdlib + splunklib. No pip installs — closed network.
 - All validation conditions evaluated — no short-circuit on first failure.
 - Per-scenario errors don't stop the loop. Fatal errors only on parse/SPL failures.
 
+### Splunk connection rules — CRITICAL
+- **All modules** use `splunk_connect.get_service(session_key)` for splunklib connections.
+- `splunk_connect.py` always connects to **localhost** via static `config.py` values. Session tokens are bound to the local splunkd — connecting to a different hostname (e.g. auto-detected FQDN) causes "not logged in" errors.
+- The `splunk_host` from the Setup page is for **display/URL purposes only** (e.g. email notification links), NOT for API connections.
+- **Two exceptions** that must use static config directly (NOT `splunk_connect`):
+  1. `kvstore_client.py` — runtime_config is stored in KVStore (circular dependency)
+  2. `config_secrets.py` — called by `runtime_config._read_secrets()` (circular dependency: runtime_config → config_secrets → splunk_connect → runtime_config)
+- Never add `runtime_config` imports to `splunk_connect.py`, `kvstore_client.py`, or `config_secrets.py`.
+
 ### File responsibilities (never cross these)
 - `spl_analyzer.py` reads SPL only — never modifies it
 - `query_injector.py` rewrites SPL — never runs it
 - `result_validator.py` compares rows to conditions — never runs queries
 - `event_generator.py` expands GeneratorConfig — no file I/O, no Splunk calls
+
+### Splunk web.conf expose patterns — MUST match restmap sub-paths
+`restmap.conf` prefix-matches (e.g. `match = /data/tester` catches `/data/tester/config/status`).
+`web.conf` expose patterns do NOT prefix-match — each sub-path needs its own entry.
+**Every time a new sub-path is added to a handler, a matching web.conf expose entry MUST be added.**
+Current required entries:
+```ini
+[expose:query_tester]
+pattern = data/tester
+[expose:query_tester_config]
+pattern = data/tester/config/*
+[expose:query_tester_command_policy]
+pattern = data/tester/command_policy/*
+```
+Missing expose entries cause 404 errors from the Splunk web proxy even though splunkd handles the route fine.
+
+### KVStore boolean string handling
+KVStore converts Python booleans to strings `"1"`/`"0"`. JavaScript `"0"` is truthy.
+- **Backend**: `scheduled_tests_handler.py` has `_normalize_bools()` that converts `"0"`/`"false"` → `False` on GET/PUT responses.
+- **Frontend**: `scheduledTestsApi.ts` has `normalizeScheduledTest()` as a safety net.
+- **scheduled_runner.py**: Checks `alertOnFailure` with `alert_flag in (True, "1", "true", "True")` instead of bare truthiness.
+- Always apply both backend and frontend normalization for boolean fields from KVStore.
 
 ### SPL data embedding — no single quotes ever
 Single quotes break silently in Splunk eval. Use JSON via `eval _raw=` with double-quote escaping.
@@ -204,9 +247,26 @@ Detailed specs live in `docs/` (32 spec files, spec-00 through spec-20+). Attach
 - **Dev:** Symlink `packages/query-tester/stage` to `$SPLUNK_HOME/etc/apps/query-tester`
 - **Python changes:** Just restart Splunk (no rebuild needed)
 - **Frontend changes:** Webpack rebuild required, then restart Splunk
-- **Config files:** `stage/bin/config.py` (backend), `src/config/env.ts` (frontend)
-- **Notable config.py entries:** `ADMIN_ROLES` (list of roles for admin bypass), `MAX_DEFINITION_SIZE_BYTES` (25 MB cap on saved test definition), `MAX_RUN_HISTORY_PER_TEST` (20 — must match savedsearches.conf janitor)
+- **Config files:** `stage/bin/config.py` (backend static defaults), `src/config/env.ts` (frontend)
 - See `DEPLOYMENT.md` for full deployment guide
+
+### Portable Configuration (Setup Page)
+The app is fully portable — all deployment config is editable from the admin Setup page (`#setup`). On first load, auto-detection pre-fills most fields from the local Splunk instance.
+
+**Runtime-configurable via Setup page** (stored in KVStore `query_tester_config` + `storage/passwords`):
+- Splunk connection: host, port, scheme, username, password (display/URL only — API always uses localhost)
+- HEC: host, port, scheme, token, SSL verify, timeout
+- Email/SMTP: server, port, from, auth method (none/password/oauth2/apikey), username, password, TLS mode (auto-inferred from port)
+- Splunk Web URL, default alert email
+- Log level (applied dynamically without restart via `reconfigure_log_level()`)
+- LLM: endpoint, API key, model, max tokens
+
+**Static config.py only** (not on Setup page — rarely need changing):
+- `ADMIN_ROLES` — list of roles for admin bypass. Only edit if custom SAML roles needed.
+- `MAX_QUERY_DATA_EVENTS` (10,000), `HEC_BATCH_SIZE` (1,000), `MAX_DEFINITION_SIZE_BYTES` (25 MB) — safety limits
+- `MAX_RUN_HISTORY_PER_TEST` (20) — must match savedsearches.conf janitor
+- `TEMP_INDEX` / `TEMP_SOURCETYPE` — hardcoded, shown read-only in UI
+- `LOG_FILE` — shown in UI but path only changes at startup (default: `$SPLUNK_HOME/var/log/splunk/query_tester.log`)
 
 ---
 
@@ -232,8 +292,7 @@ Following the same strict boundary rules as existing modules:
 - `scheduled_tests_handler.py` — REST handler for `/data/scheduled_tests`. Creates/updates/deletes both the KVStore record AND the backing Splunk saved search.
 - `run_history_handler.py` — REST handler for `/data/test_run_history`. Returns last 50 run records sorted by ranAt desc.
 - `alert_run_test.py` — Custom alert action entry point. Orchestration only — reads test_id, fetches test, checks SPL drift, runs test, writes result. No business logic.
-- `alert_email.py` — Email formatting and sending only. Uses smtplib, host=CASNLB, port=25, no TLS.
-- `kvstore_client.py` — Raw KVStore CRUD only. No business logic. Methods: get_all, get_by_id, upsert, delete. Returns plain dicts only.
+- `kvstore_client.py` — Raw KVStore CRUD only. No business logic. Methods: get_all, get_by_id, upsert, delete. Returns plain dicts only. Uses static config directly (circular dependency anchor).
 - `handler_utils.py` — Shared handler utilities (session key/username extraction, JSON response building, payload normalization, record ID extraction). Imported by handlers — never a handler itself. Contains legacy `is_admin_user(session_key, username)` — prefer `auth_utils.is_admin(session_key)` for new code.
 - `auth_utils.py` — Authentication/authorization utilities. `get_current_user_roles(session_key)` calls `authentication/current-context` via splunklib (works with SAML — no username needed). `is_admin(session_key)` checks roles against `ADMIN_ROLES` from `config.py`. Returns `False` on any error (safe default). See "Auth & Ownership Enforcement" section below.
 
@@ -289,7 +348,7 @@ Both `saved_tests` and `scheduled_tests` collections use a `version` integer fie
 
 **SAML consideration:** `get_username(request)` in `handler_utils.py` returns `session["user"]` — which Splunk populates from the SAML assertion. This may be an email or short name depending on IdP config. The `authentication/current-context` approach avoids this ambiguity entirely because it reads roles from the session token, not a username lookup.
 
-**Status:** `auth_utils.py` is written and tested but NOT yet wired into handlers. Handlers currently use the older `is_admin_user(session_key, username)` from `handler_utils.py` which does a `service.users[username]` lookup. The plan is to swap to `auth_utils.is_admin(session_key)` once validated in the SAML environment.
+**Status:** `auth_utils.is_admin(session_key)` is wired into `config_handler.py` (Setup page admin check). Ownership handlers (`saved_tests_handler.py`, `scheduled_tests_handler.py`) still use the older `is_admin_user(session_key, username)` from `handler_utils.py`. Both functions now use `splunk_connect.get_service()` for connections.
 
 ### Ownership enforcement on PUT and DELETE
 Both `saved_tests_handler.py` and `scheduled_tests_handler.py` enforce ownership:
@@ -373,13 +432,70 @@ The check is fire-and-forget (promise `.then/.catch`) inside a synchronous funct
 
 ## Library Page Filtering
 
-`LibraryPage.tsx` provides client-side filtering over the `savedTests` array:
+`LibraryPage.tsx` provides client-side filtering over the `savedTests` array via the `useLibraryFilters` hook (`features/library/useLibraryFilters.ts`):
 - **Search** — free-text, case-insensitive match on test `name`
 - **App** — exact match on `app` field. Options derived from unique apps in saved tests.
-- **Type** — matches against `testType` or `validationType`. Fixed options: Standard, Query Only, iJump.
+- **Type** — matches `validationType` only (NOT `testType`). Fixed options: Standard, iJump. iJump tests have `testType: 'standard'` so filtering by `testType` would incorrectly include them under Standard.
 - **Creator** — exact match on `createdBy`. Options derived from unique creators in saved tests.
+- **Status** — matches `lastRunStatus` from the linked `ScheduledTest`. Options: Passed, Failed, Error, Not run yet. "Not run yet" matches tests with no schedule or no runs (`lastRunStatus === null`).
 
-All filters combine with AND logic (all must match). Implemented in `LibraryFilters.tsx` (presentational) and `LibraryPage.tsx` (state + filtering via `useMemo`).
+All filters combine with AND logic (all must match). Filter state and memos are encapsulated in `useLibraryFilters.ts`; presentation in `LibraryFilters.tsx`.
+
+---
+
+## Test Name Editing
+
+Test name can be edited from two places:
+- **Builder page** — inline input in the setup bar (compact mode) or setup card (initial mode). Uses debounced `updateTestName` (300ms) via `localName` state in `StartPage.tsx`. Name is NOT in the TopBar/TestNavigation — only in the setup area.
+- **Library page → ScheduleModal** — the settings gear on each test row opens `ScheduleModal.tsx`, which includes a "Test Name" input. On save, if the name changed, it calls `updateSavedTest()` to rename. Note: `ScheduledTest.testName` is stale (set at creation) — always look up the current name from `savedTests.find()`.
+
+## SPL Linter (Dangerous Command Detection)
+
+`features/query/splLinter.ts` exports `lintSpl()` which detects dangerous SPL commands (`delete`, `outputlookup`, etc.). Warnings are shown as inline Ace markers + gutter annotations via `useAceMarkers` hook.
+
+Linting triggers:
+- **On editor blur** — `handleEditorBlur` in `QuerySection.tsx`
+- **On external SPL change** — `useEffect([spl])` re-lints when SPL changes programmatically (e.g., saved search selection), but only when the editor is NOT focused (avoids conflicting with focus/blur clearing)
+- **Cleared on editor focus** — `handleEditorFocus` clears warnings so user can edit without noise
+
+## Extracted Hooks and Components
+
+To keep files under 200 lines:
+- `src/hooks/useLoadTest.ts` — extracted from `StartPage.tsx`. Handles loading a saved test by ID (fetches saved tests if needed, calls `loadTestIntoBuilder` + `loadLastRun`).
+- `src/features/layout/SetupCard.tsx` — extracted from `StartPage.tsx`. The initial setup card shown when no app is selected (name input, app selector, test type selector).
+- `src/features/library/useLibraryFilters.ts` — extracted from `LibraryPage.tsx`. All filter state (search, app, type, creator, status) + derived memos (apps, creators, filtered).
+
+## AppShell Routing (`AppShell.tsx`)
+
+Single-page app with hash-based routing inside the `QueryTesterApp` Splunk page:
+- `#library` — Library page (default)
+- `#tester` or `#tester?test_id=xxx` — Builder/tester page
+- `#setup` — Admin Setup page
+- **Hash takes priority over URL query params.** If `#library` is set, it navigates to library even if `?test_id=xxx` is still in the URL (e.g. from an email link). This prevents the user from being stuck on the tester page.
+- Email notification links use `?test_id=xxx` (no hash) which routes to the tester on initial load.
+
+---
+
+## Scheduled Runner Details (`scheduled_runner.py`)
+
+Scripted input that runs every 60 seconds via `inputs.conf`. NOT the same as `alert_run_test.py` (alert action).
+
+**Key behaviors:**
+- Re-reads fresh KVStore record before upsert after test completion — avoids clobbering user changes (e.g. user disabled the test while it was running).
+- Passes `session_key` to `send_failure_emails()` so email config reads from runtime config (not static config.py).
+- Checks `alertOnFailure` with explicit string comparison: `alert_flag in (True, "1", "true", "True")` — KVStore stores booleans as strings.
+- SPL drift detection: compares current SPL against last passed run's snapshot.
+
+---
+
+## Email Configuration (`alert_email.py`)
+
+**TLS mode auto-inference:** When `tls_mode` is not explicitly stored in KVStore (the Setup page doesn't have a TLS selector), `_infer_tls_mode()` detects it from port:
+- Port 587 + password/oauth2 auth → `starttls`
+- Port 465 + password/oauth2 auth → `ssl`
+- Port 25 or no auth → no TLS
+
+**Config layering:** `_get_email_config(session_key)` reads from runtime_config (KVStore → config.py fallback). Falls back to static config.py if runtime_config is unavailable.
 
 ---
 
@@ -392,7 +508,7 @@ Not yet implemented. Planned approach:
 - **Role-based pipeline token** — dedicated Splunk role (e.g., `query_tester_pipeline`) with minimal permissions. Added to `ADMIN_ROLES` only if the pipeline needs to run tests owned by others.
 
 ### Remaining auth_utils.py wiring
-`auth_utils.is_admin(session_key)` needs to replace `handler_utils.is_admin_user(session_key, username)` in both `saved_tests_handler.py` and `scheduled_tests_handler.py` once validated in the SAML environment. The old function requires the username (fragile with SAML); the new one reads roles from the session token directly.
+`auth_utils.is_admin(session_key)` is used by `config_handler.py` for the Setup page admin check. `handler_utils.is_admin_user(session_key, username)` is still used by `saved_tests_handler.py` and `scheduled_tests_handler.py` for ownership checks. The plan is to swap handlers to `auth_utils.is_admin(session_key)` once validated in the SAML environment. The old function requires the username (fragile with SAML); the new one reads roles from the session token directly.
 
 ---
 
@@ -432,6 +548,9 @@ Fix all violations directly. Do not just report them.
 - `alert_run_test.py` entire flow in `try/except` — always writes a `TestRunRecord` even on failure.
 - `createdBy` always from session token, never request body.
 - No magic strings — `ALL_CAPS` constants at module level or imported from `config.py`.
+- **Splunk connections:** Use `splunk_connect.get_service(session_key)` — never raw `splunk_client.connect()` with `from config import SPLUNK_HOST, SPLUNK_PORT`. Only exceptions: `kvstore_client.py` and `config_secrets.py` (circular dependency with `runtime_config`).
+- **web.conf expose entries:** Every sub-path delegated in `query_tester.py` MUST have a matching `web.conf` expose entry. Missing = 404 from Splunk web proxy.
+- **KVStore booleans:** Always normalize with explicit string checks. Never use bare truthiness on KVStore values.
 
 ### Cross-stack
 - `snake_case` ↔ `camelCase` translation happens only in `api/` layer. Never leaks either direction.
