@@ -9,9 +9,7 @@ import difflib
 import hashlib
 from typing import Any, Dict, List, Optional, Tuple
 
-import splunklib.client as splunk_client
-
-from config import SPLUNK_HOST, SPLUNK_PORT
+from splunk_connect import get_service
 from logger import get_logger
 
 logger = get_logger(__name__)
@@ -29,10 +27,7 @@ def compute_spl_hash(spl):
 def fetch_current_spl(session_key, saved_search_name):
     # type: (str, str) -> Optional[str]
     """Fetch the current SPL from a Splunk saved search."""
-    service = splunk_client.connect(
-        host=SPLUNK_HOST, port=SPLUNK_PORT,
-        splunkToken=session_key, app="QueryTester", owner="admin",
-    )
+    service = get_service(session_key, app="QueryTester", owner="admin")
     try:
         search = service.saved_searches[saved_search_name]
         return search["search"]

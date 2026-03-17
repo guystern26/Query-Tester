@@ -17,6 +17,7 @@ const APP_CHANGE_MSG = 'You changed the app. Some lookups and saved searches may
 export function QuerySection() {
   const state = useTestStore();
   const test = selectActiveTest(state);
+  const commandPolicy = useTestStore((s) => s.commandPolicy);
   const app = test?.app ?? '';
   const spl = test?.query?.spl ?? '';
   const origin = test?.query?.savedSearchOrigin ?? '';
@@ -35,15 +36,15 @@ export function QuerySection() {
   }, []);
 
   const handleEditorBlur = useCallback(() => {
-    setSplWarnings(lintSpl(spl));
-  }, [spl]);
+    setSplWarnings(lintSpl(spl, commandPolicy));
+  }, [spl, commandPolicy]);
 
-  // Re-lint when SPL changes externally (e.g. saved search selection)
+  // Re-lint when SPL or policy changes externally
   useEffect(() => {
     if (!editorRef.current?.contains(document.activeElement)) {
-      setSplWarnings(lintSpl(spl));
+      setSplWarnings(lintSpl(spl, commandPolicy));
     }
-  }, [spl]);
+  }, [spl, commandPolicy]);
 
   // Apply inline Ace markers + gutter annotations + hover tooltips
   useAceMarkers(editorRef, splWarnings);

@@ -62,7 +62,7 @@ export function ResultsBar() {
   const handleRun = () => {
     if (!test) return;
     if (isRunning) { store.cancelTest(); return; }
-    const errs = validateBeforeRun(test);
+    const errs = validateBeforeRun(test, store.commandPolicy);
     if (errs.length > 0) {
       store.setTestResponse({
         status: 'error',

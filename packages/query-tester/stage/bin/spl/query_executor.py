@@ -13,7 +13,7 @@ import splunklib.results as splunk_results
 from splunklib.binding import HTTPError
 
 from logger import get_logger
-from config import SPLUNK_HOST, SPLUNK_PORT
+from splunk_connect import get_service
 
 
 logger = get_logger(__name__)
@@ -65,12 +65,7 @@ class QueryExecutor:
         self._cancelled = False
         start = time.time()
         try:
-            service = splunk_client.connect(
-                host=SPLUNK_HOST,
-                port=SPLUNK_PORT,
-                splunkToken=self._session_key,
-                app=app,
-            )
+            service = get_service(self._session_key, app=app, owner="nobody")
             search_kwargs = {
                 "earliest_time": earliest_time,
                 "latest_time": latest_time,

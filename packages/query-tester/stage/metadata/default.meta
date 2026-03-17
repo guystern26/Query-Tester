@@ -5,3 +5,9 @@ export = system
 [restmap]
 access = read : [ * ], write : [ admin ]
 export = system
+
+[kvstore/query_tester_config]
+access = read : [ admin ], write : [ admin ]
+
+[kvstore/query_tester_command_policy]
+access = read : [ admin ], write : [ admin ]

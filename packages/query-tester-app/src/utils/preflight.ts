@@ -1,4 +1,5 @@
 import type { TestDefinition, TestInput, InputEvent } from 'core/types';
+import type { CommandPolicyEntry } from 'core/types/config';
 
 function hasMissingRowIdentifier(input: TestInput): boolean {
   return input.rowIdentifier.trim() === '';
@@ -22,7 +23,10 @@ function hasInvalidJson(input: TestInput): boolean {
   }
 }
 
-export function validateBeforeRun(test: TestDefinition): string[] {
+export function validateBeforeRun(
+  test: TestDefinition,
+  commandPolicy?: CommandPolicyEntry[],
+): string[] {
   const errors: string[] = [];
 
   if (!test.app || test.app.trim() === '') {
@@ -31,6 +35,24 @@ export function validateBeforeRun(test: TestDefinition): string[] {
 
   if (!test.query.spl || test.query.spl.trim() === '') {
     errors.push('SPL query is required before running the test.');
+  }
+
+  // Check command policy
+  if (commandPolicy && commandPolicy.length > 0 && test.query.spl) {
+    const blockedCommands = commandPolicy
+      .filter((e) => !e.allowed)
+      .map((e) => e.command.toLowerCase());
+    const splLower = test.query.spl.toLowerCase();
+    const foundBlocked = blockedCommands.filter((cmd) =>
+      new RegExp('\\b' + cmd.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b').test(splLower)
+    );
+    if (foundBlocked.length > 0) {
+      errors.push(
+        'Query contains blocked command' + (foundBlocked.length > 1 ? 's' : '') + ': ' +
+        foundBlocked.map((c) => '`' + c + '`').join(', ') +
+        '. Contact your Splunk administrator.'
+      );
+    }
   }
 
   // Scenario / input validations only apply to standard mode

@@ -23,6 +23,13 @@ import type {
   TestRunRecord,
   SavedTestFull,
 } from '../types';
+import type {
+  AppConfig,
+  CommandPolicyEntry,
+  ConfigStatus,
+  ConnectionTestResult,
+  EmailDetectResult,
+} from '../types/config';
 import { createDefaultTest } from '../constants/defaults';
 import { testSlice } from './slices/testSlice';
 import { scenarioSlice } from './slices/scenarioSlice';
@@ -37,6 +44,8 @@ import type { ScheduledTestsState } from './slices/scheduledTestsSlice';
 import { testLibrarySlice, testLibraryInitialState } from './slices/testLibrarySlice';
 import type { TestLibraryState } from './slices/testLibrarySlice';
 import { testLoaderSlice } from './slices/testLoaderSlice';
+import { configSlice, configInitialState } from './slices/configSlice';
+import { commandPolicySlice, commandPolicyInitialState } from './slices/commandPolicySlice';
 
 export type { SavedState } from './slices/fileSlice';
 
@@ -171,6 +180,31 @@ export interface TestStoreState {
   clearSplDriftWarning: () => void;
   reloadDriftedSpl: () => Promise<void>;
 
+  // Config
+  appConfig: AppConfig | null;
+  configStatus: ConfigStatus | null;
+  isLoadingConfig: boolean;
+  configError: string | null;
+  isAdmin: boolean;
+  fetchAppConfig: () => Promise<void>;
+  fetchConfigStatus: () => Promise<void>;
+  saveConfigSection: (plain: Partial<AppConfig>, secrets?: Record<string, string>) => Promise<void>;
+  testConnection: () => Promise<ConnectionTestResult>;
+  detectEmailConfig: () => Promise<EmailDetectResult>;
+  getSecret: (name: string) => Promise<string>;
+
+  // Command policy
+  commandPolicy: CommandPolicyEntry[];
+  isLoadingPolicy: boolean;
+  policyError: string | null;
+  fetchCommandPolicy: () => Promise<void>;
+  saveCommandPolicy: (entries: CommandPolicyEntry[]) => Promise<void>;
+  saveCommandPolicyEntry: (entry: CommandPolicyEntry) => Promise<void>;
+  deleteCommandPolicyEntry: (command: string) => Promise<void>;
+
+  // Setup state
+  setupRequired: boolean;
+
   setFieldExtraction: (testId: EntityId, sources: ExtractedDataSource[]) => void;
   selectDataSource: (testId: EntityId, scenarioId: EntityId, inputId: EntityId, source: ExtractedDataSource) => void;
   applySuggestedValidationFields: (testId: EntityId, fields: string[]) => void;
@@ -209,6 +243,14 @@ export const useTestStore = create<TestStoreState>()(
     ...testLibraryInitialState,
     ...testLibrarySlice(set, get),
     ...testLoaderSlice(set, get),
+
+    ...configInitialState,
+    ...configSlice(set),
+
+    ...commandPolicyInitialState,
+    ...commandPolicySlice(set),
+
+    setupRequired: false,
   }))
 );
 

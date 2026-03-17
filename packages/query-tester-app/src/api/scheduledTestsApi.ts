@@ -72,6 +72,25 @@ async function request<T>(url: string, method: string, body?: unknown): Promise<
     return data as T;
 }
 
+// ─── Normalization ──────────────────────────────────────────────────────────
+
+/** KVStore may return booleans as "1"/"0" strings. Normalize to real booleans. */
+function toBool(val: unknown): boolean {
+    if (typeof val === 'boolean') return val;
+    if (typeof val === 'string') return val !== '0' && val !== 'false' && val !== '';
+    return Boolean(val);
+}
+
+function normalizeScheduledTest(raw: Record<string, unknown>): ScheduledTest {
+    return {
+        ...(raw as unknown as ScheduledTest),
+        enabled: toBool(raw.enabled),
+        alertOnFailure: toBool(raw.alertOnFailure),
+        emailRecipients: Array.isArray(raw.emailRecipients) ? raw.emailRecipients : [],
+        version: Number(raw.version) || 0,
+    };
+}
+
 // ─── Public API ─────────────────────────────────────────────────────────────
 
 type CreatePayload = Omit<ScheduledTest, 'id' | 'createdAt' | 'lastRunAt' | 'lastRunStatus'>;
@@ -79,17 +98,20 @@ type CreatePayload = Omit<ScheduledTest, 'id' | 'createdAt' | 'lastRunAt' | 'las
 export const scheduledTestsApi = {
     async getScheduledTests(): Promise<ScheduledTest[]> {
         const url = buildUrl('data/scheduled_tests');
-        return request<ScheduledTest[]>(url, 'GET');
+        const raw = await request<Array<Record<string, unknown>>>(url, 'GET');
+        return (Array.isArray(raw) ? raw : []).map(normalizeScheduledTest);
     },
 
     async createScheduledTest(payload: CreatePayload): Promise<ScheduledTest> {
         const url = buildUrl('data/scheduled_tests');
-        return request<ScheduledTest>(url, 'POST', payload);
+        const raw = await request<Record<string, unknown>>(url, 'POST', payload);
+        return normalizeScheduledTest(raw);
     },
 
     async updateScheduledTest(id: string, patch: Partial<ScheduledTest>): Promise<ScheduledTest> {
         const url = buildIdUrl('data/scheduled_tests', id);
-        return request<ScheduledTest>(url, 'PUT', patch);
+        const raw = await request<Record<string, unknown>>(url, 'PUT', patch);
+        return normalizeScheduledTest(raw);
     },
 
     async deleteScheduledTest(id: string): Promise<void> {

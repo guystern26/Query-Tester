@@ -95,6 +95,13 @@ class QueryTesterHandler(PersistentServerConnectionApplication):
         except Exception:
             return _json_response({"status": "error", "message": "Bad request"}, 400)
 
+        # Delegate sub-path requests to their dedicated handlers
+        rest_path = request.get("rest_path", "")
+        if "/config" in rest_path:
+            return self._delegate_config(in_string)
+        if "/command_policy" in rest_path:
+            return self._delegate_command_policy(in_string)
+
         method = request.get("method", "GET").upper()
 
         if method == "GET":
@@ -107,6 +114,18 @@ class QueryTesterHandler(PersistentServerConnectionApplication):
             return _json_response(
                 {"status": "error", "message": "Method not allowed: " + method}, 405
             )
+
+    def _delegate_config(self, in_string: str) -> Dict[str, Any]:
+        """Delegate to ConfigHandler."""
+        from config_handler import ConfigHandler
+        handler = ConfigHandler()
+        return handler.handle(in_string)
+
+    def _delegate_command_policy(self, in_string: str) -> Dict[str, Any]:
+        """Delegate to CommandPolicyHandler."""
+        from command_policy_handler import CommandPolicyHandler
+        handler = CommandPolicyHandler()
+        return handler.handle(in_string)
 
     def _handle_get(self, request: Dict[str, Any]) -> Dict[str, Any]:
         """Health check."""

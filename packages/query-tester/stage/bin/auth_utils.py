@@ -24,14 +24,9 @@ def get_current_user_roles(session_key):
     returns information about the currently authenticated session —
     no username lookup required.
     """
-    import splunklib.client as splunk_client
-    from config import SPLUNK_HOST, SPLUNK_PORT
+    from splunk_connect import get_service
 
-    service = splunk_client.connect(
-        host=SPLUNK_HOST,
-        port=int(SPLUNK_PORT),
-        splunkToken=session_key,
-    )
+    service = get_service(session_key, app="QueryTester", owner="nobody")
 
     # GET /services/authentication/current-context
     response = service.get("authentication/current-context", output_mode="json")

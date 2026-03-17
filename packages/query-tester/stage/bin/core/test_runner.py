@@ -14,6 +14,7 @@ from core.models import ParsedScenario, ScenarioResult, TestPayload
 from core.payload_parser import parse
 from core.response_builder import build_error_response, build_response
 from spl.spl_analyzer import analyze as analyze_spl
+from spl.preflight import check_blocked_commands
 from spl.spl_normalizer import normalize_spl
 from spl.query_injector import check_orphaned_filters, detect_strategy, inject
 from spl.query_executor import QueryExecutor
@@ -49,7 +50,10 @@ class TestRunner:
         try:
             payload = parse(raw_payload)
             spl = self._resolve_spl(payload)
-            analysis = analyze_spl(spl)
+
+            # Fetch command policy once per request
+            blocked_set = self._get_blocked_commands()
+            analysis = analyze_spl(spl, blocked_commands=blocked_set)
 
             if analysis.unauthorized_commands:
                 blocked = ", ".join(analysis.unauthorized_commands)
@@ -182,6 +186,22 @@ class TestRunner:
         raise ValueError(
             'Payload must include a non-empty "query" field.'
         )
+
+    def _get_blocked_commands(self):
+        # type: () -> set
+        """Fetch blocked commands from the command policy. Falls back to hardcoded set."""
+        try:
+            from command_policy_handler import get_cached_policy
+            policy = get_cached_policy(self._session_key)
+            return {
+                entry["command"]
+                for entry in policy
+                if entry.get("allowed") == "false"
+            }
+        except Exception as exc:
+            logger.warning("Failed to fetch command policy, using defaults: %s", exc)
+            from spl.spl_analyzer_rules import UNAUTHORIZED_COMMANDS
+            return UNAUTHORIZED_COMMANDS
 
     def cancel(self) -> None:
         """Cancel the currently running search job."""

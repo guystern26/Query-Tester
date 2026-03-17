@@ -5,7 +5,9 @@
  * a character range so the editor overlay can highlight the offending token.
  *
  * Runs on blur only — never while the user is typing.
+ * When commandPolicy is provided, it replaces the hardcoded COMMAND_WARNINGS.
  */
+import type { CommandPolicyEntry } from 'core/types/config';
 import { KNOWN_COMMANDS, TYPO_MAP, COMMAND_WARNINGS } from './splLinterRules';
 
 // ── Lint result ────────────────────────────────────────────────────────────────
@@ -21,19 +23,32 @@ export interface SplWarning {
     message: string;
     /** Severity — drives styling. */
     severity: 'error' | 'warning' | 'info';
+    /** Whether this command is blocked by policy. */
+    isBlocked: boolean;
 }
+
+// ── Severity mapping ─────────────────────────────────────────────────────────
+
+const POLICY_SEVERITY_MAP: Record<string, SplWarning['severity']> = {
+    danger: 'error',
+    warning: 'warning',
+    info: 'info',
+};
 
 // ── Linter ─────────────────────────────────────────────────────────────────────
 
 /**
  * Lint an SPL string and return a list of warnings with positions.
- * Designed to run on blur — call this only when the editor loses focus.
+ * When policy is provided and non-empty, command highlighting uses it
+ * exclusively instead of the hardcoded COMMAND_WARNINGS.
  */
-export function lintSpl(spl: string): SplWarning[] {
+export function lintSpl(spl: string, policy?: CommandPolicyEntry[]): SplWarning[] {
     if (!spl.trim()) return [];
 
     const warnings: SplWarning[] = [];
     const masked = maskQuotedStrings(spl);
+    const usePolicy = policy !== undefined && policy.length > 0;
+    const policyMap = usePolicy ? buildPolicyMap(policy!) : null;
 
     // 1. Find all pipe-command tokens
     const pipeCommandRe = /\|\s*([a-zA-Z_]+)/g;
@@ -47,55 +62,53 @@ export function lintSpl(spl: string): SplWarning[] {
 
         if (!KNOWN_COMMANDS.has(cmdLower) && TYPO_MAP[cmdLower]) {
             warnings.push({
-                start: cmdStart,
-                end: cmdEnd,
-                token: cmd,
+                start: cmdStart, end: cmdEnd, token: cmd,
                 message: 'Did you mean "' + TYPO_MAP[cmdLower] + '"?',
-                severity: 'warning',
+                severity: 'warning', isBlocked: false,
             });
         } else if (!KNOWN_COMMANDS.has(cmdLower)) {
             warnings.push({
-                start: cmdStart,
-                end: cmdEnd,
-                token: cmd,
+                start: cmdStart, end: cmdEnd, token: cmd,
                 message: 'Unknown command "' + cmd + '". Check for typos.',
-                severity: 'warning',
+                severity: 'warning', isBlocked: false,
             });
-        } else if (COMMAND_WARNINGS[cmdLower]) {
+        } else if (policyMap && policyMap[cmdLower]) {
+            const entry = policyMap[cmdLower];
+            const blocked = !entry.allowed;
+            const msg = buildPolicyMessage(entry);
             warnings.push({
-                start: cmdStart,
-                end: cmdEnd,
-                token: cmd,
+                start: cmdStart, end: cmdEnd, token: cmd,
+                message: msg,
+                severity: POLICY_SEVERITY_MAP[entry.severity] || 'warning',
+                isBlocked: blocked,
+            });
+        } else if (!usePolicy && COMMAND_WARNINGS[cmdLower]) {
+            warnings.push({
+                start: cmdStart, end: cmdEnd, token: cmd,
                 message: COMMAND_WARNINGS[cmdLower],
-                severity: COMMAND_WARNINGS[cmdLower].includes('blocked')
-                    ? 'error'
-                    : 'info',
+                severity: COMMAND_WARNINGS[cmdLower].includes('blocked') ? 'error' : 'info',
+                isBlocked: false,
             });
         }
     }
 
-    // 2. Trailing pipes (| at end, or | followed only by whitespace)
-    const trailingPipeRe = /\|\s*$/;
-    const trailingMatch = trailingPipeRe.exec(masked);
+    // 2. Trailing pipes
+    const trailingMatch = /\|\s*$/.exec(masked);
     if (trailingMatch) {
         warnings.push({
-            start: trailingMatch.index,
-            end: trailingMatch.index + 1,
-            token: '|',
-            message: 'Pipe without a command after it.',
-            severity: 'warning',
+            start: trailingMatch.index, end: trailingMatch.index + 1,
+            token: '|', message: 'Pipe without a command after it.',
+            severity: 'warning', isBlocked: false,
         });
     }
 
-    // 3. Empty pipes (| followed by another |)
+    // 3. Empty pipes
     const emptyPipeRe = /\|\s*(?=\|)/g;
     while ((match = emptyPipeRe.exec(masked)) !== null) {
         warnings.push({
-            start: match.index,
-            end: match.index + 1,
-            token: '|',
-            message: 'Empty pipe — no command between pipes.',
-            severity: 'warning',
+            start: match.index, end: match.index + 1,
+            token: '|', message: 'Empty pipe \u2014 no command between pipes.',
+            severity: 'warning', isBlocked: false,
         });
     }
 
@@ -104,6 +117,22 @@ export function lintSpl(spl: string): SplWarning[] {
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
+
+function buildPolicyMap(
+    policy: CommandPolicyEntry[],
+): Record<string, CommandPolicyEntry> {
+    const map: Record<string, CommandPolicyEntry> = {};
+    for (const e of policy) {
+        map[e.command.toLowerCase()] = e;
+    }
+    return map;
+}
+
+function buildPolicyMessage(entry: CommandPolicyEntry): string {
+    const prefix = entry.allowed ? '' : 'Blocked: ';
+    if (entry.label) return prefix + entry.label;
+    return entry.allowed ? 'Flagged command' : 'Blocked command';
+}
 
 /** Replace quoted string contents with spaces to avoid false positives. */
 function maskQuotedStrings(spl: string): string {

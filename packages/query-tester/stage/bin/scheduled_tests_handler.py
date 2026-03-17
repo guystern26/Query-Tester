@@ -33,6 +33,18 @@ logger = get_logger(__name__)
 
 COLLECTION_SCHEDULED_TESTS = "scheduled_tests"
 
+BOOL_FIELDS = ("enabled", "alertOnFailure")
+
+
+def _normalize_bools(record):
+    # type: (Dict[str, Any]) -> Dict[str, Any]
+    """KVStore stores booleans as '1'/'0' strings. Normalize back to bool."""
+    for field in BOOL_FIELDS:
+        val = record.get(field)
+        if isinstance(val, str):
+            record[field] = val not in ("0", "false", "False", "")
+    return record
+
 
 def _async_saved_search(fn, session_key, record):
     # type: (Any, str, Dict[str, Any]) -> None
@@ -110,6 +122,8 @@ class ScheduledTestsHandler(PersistentServerConnectionApplication):
         session_key = get_session_key(request)
         kv = KVStoreClient(session_key)
         records = kv.get_all(COLLECTION_SCHEDULED_TESTS)
+        for r in records:
+            _normalize_bools(r)
         return json_response(records)
 
     def _handle_post(self, request):
@@ -164,6 +178,7 @@ class ScheduledTestsHandler(PersistentServerConnectionApplication):
             args=(update_saved_search, session_key, existing),
             daemon=True,
         ).start()
+        _normalize_bools(existing)
         logger.info("Updated scheduled test: %s", record_id)
         return json_response(existing)
 

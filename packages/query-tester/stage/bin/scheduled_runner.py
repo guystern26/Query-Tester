@@ -97,16 +97,21 @@ def _run_single_test(kv, session_key, scheduled):
     )
 
     try:
-        scheduled["lastRunAt"] = ran_at
-        scheduled["lastRunStatus"] = status
-        kv.upsert(COLLECTION_SCHEDULED_TESTS, sched_id, scheduled)
+        # Re-read from KVStore to avoid clobbering changes made during the run
+        # (e.g. user disabled the test while it was running)
+        fresh = kv.get_by_id(COLLECTION_SCHEDULED_TESTS, sched_id)
+        fresh["lastRunAt"] = ran_at
+        fresh["lastRunStatus"] = status
+        kv.upsert(COLLECTION_SCHEDULED_TESTS, sched_id, fresh)
     except Exception as exc:
         logger.error("Failed to update scheduled test %s: %s", sched_id, exc)
 
     logger.info("Scheduled test %s completed: status=%s, duration=%dms",
                 sched_id, status, duration_ms)
 
-    if status in ("fail", "error") and scheduled.get("alertOnFailure"):
+    alert_flag = scheduled.get("alertOnFailure", False)
+    should_alert = alert_flag in (True, "1", "true", "True")
+    if status in ("fail", "error") and should_alert:
         try:
             from alert_email import send_failure_emails
             recipients = scheduled.get("emailRecipients", [])
@@ -120,6 +125,7 @@ def _run_single_test(kv, session_key, scheduled):
                 test_id=test_id,
                 definition=definition,
                 full_results=result if result else None,
+                session_key=session_key,
             )
         except Exception as exc:
             logger.error("Failed to send failure emails: %s", exc)

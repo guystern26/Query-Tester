@@ -29,15 +29,65 @@ EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 APP_ROUTE = "/app/QueryTester/QueryTesterApp"
 
 
+def _infer_tls_mode(tls_mode, smtp_port, auth_method):
+    # type: (str, int, str) -> str
+    """Auto-detect TLS mode from port when not explicitly configured."""
+    if tls_mode:
+        return tls_mode
+    if auth_method in ("password", "oauth2"):
+        if smtp_port == 465:
+            return "ssl"
+        if smtp_port == 587:
+            return "starttls"
+    return ""
+
+
+def _get_email_config(session_key=None):
+    # type: (Optional[str]) -> Dict[str, Any]
+    """Get email config from runtime config (KVStore) or fall back to config.py."""
+    if session_key:
+        try:
+            from runtime_config import get_runtime_config
+            cfg = get_runtime_config(session_key)
+            port = int(cfg.get("smtp_port", SMTP_PORT))
+            auth = cfg.get("email_auth_method", "none")
+            tls = _infer_tls_mode(cfg.get("tls_mode", ""), port, auth)
+            return {
+                "smtp_server": cfg.get("smtp_server", SMTP_SERVER),
+                "smtp_port": port,
+                "mail_from": cfg.get("mail_from", MAIL_FROM),
+                "default_alert_email": cfg.get("default_alert_email", DEFAULT_ALERT_EMAIL),
+                "splunk_web_url": cfg.get("splunk_web_url", SPLUNK_WEB_URL),
+                "smtp_password": cfg.get("smtp_password", ""),
+                "smtp_username": cfg.get("smtp_username", ""),
+                "email_auth_method": auth,
+                "tls_mode": tls,
+            }
+        except Exception as exc:
+            logger.warning("Runtime config unavailable, using static config: %s", exc)
+    logger.info("Using static SMTP config: server=%s port=%s", SMTP_SERVER, SMTP_PORT)
+    return {
+        "smtp_server": SMTP_SERVER,
+        "smtp_port": SMTP_PORT,
+        "mail_from": MAIL_FROM,
+        "default_alert_email": DEFAULT_ALERT_EMAIL,
+        "splunk_web_url": SPLUNK_WEB_URL,
+        "smtp_password": "",
+        "smtp_username": "",
+        "email_auth_method": "none",
+        "tls_mode": "",
+    }
+
+
 def _is_valid_email(address):
     # type: (str) -> bool
     return bool(EMAIL_PATTERN.match(address.strip()))
 
 
-def _build_test_link(test_id):
-    # type: (str) -> str
+def _build_test_link(test_id, splunk_web_url=SPLUNK_WEB_URL):
+    # type: (str, str) -> str
     return "{base}{route}?test_id={tid}".format(
-        base=SPLUNK_WEB_URL.rstrip("/"),
+        base=splunk_web_url.rstrip("/"),
         route=APP_ROUTE,
         tid=test_id,
     )
@@ -177,11 +227,26 @@ def send_failure_emails(
     test_id="",          # type: str
     definition=None,     # type: Optional[Dict[str, Any]]
     full_results=None,   # type: Optional[Dict[str, Any]]
+    session_key=None,    # type: Optional[str]
 ):
     # type: (...) -> None
     """Send failure notification to all valid recipients. Falls back to default."""
+    email_cfg = _get_email_config(session_key)
+    smtp_server = email_cfg["smtp_server"]
+    smtp_port = int(email_cfg["smtp_port"])
+    mail_from = email_cfg["mail_from"]
+    default_email = email_cfg["default_alert_email"]
+    smtp_password = email_cfg.get("smtp_password", "")
+    smtp_username = email_cfg.get("smtp_username", "")
+    auth_method = email_cfg.get("email_auth_method", "none")
+    tls_mode = email_cfg.get("tls_mode", "")
+    web_url = email_cfg.get("splunk_web_url", SPLUNK_WEB_URL)
+
+    logger.info("Email config: server=%s port=%s auth=%s tls=%s from=%s",
+                smtp_server, smtp_port, auth_method, tls_mode, mail_from)
+
     if not recipients:
-        recipients = [DEFAULT_ALERT_EMAIL]
+        recipients = [default_email]
 
     subject, html_body = build_failure_email(
         test_name, ran_at, status, scenario_results, spl_drift_detected,
@@ -198,7 +263,7 @@ def send_failure_emails(
 
         msg = MIMEMultipart()
         msg["Subject"] = subject
-        msg["From"] = MAIL_FROM
+        msg["From"] = mail_from
         msg["To"] = stripped
 
         msg.attach(MIMEText(html_body, "html", "utf-8"))
@@ -209,8 +274,15 @@ def send_failure_emails(
             ))
 
         try:
-            server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
-            server.sendmail(MAIL_FROM, [stripped], msg.as_string())
+            if tls_mode == "ssl":
+                server = smtplib.SMTP_SSL(smtp_server, smtp_port)
+            else:
+                server = smtplib.SMTP(smtp_server, smtp_port)
+                if tls_mode == "starttls":
+                    server.starttls()
+            if auth_method == "password" and smtp_username and smtp_password:
+                server.login(smtp_username, smtp_password)
+            server.sendmail(mail_from, [stripped], msg.as_string())
             server.quit()
             logger.info("Failure email sent to %s for test '%s'",
                         stripped, test_name)

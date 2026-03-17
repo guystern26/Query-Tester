@@ -8,6 +8,7 @@ import { useLibraryFilters } from './useLibraryFilters';
 import { ScheduleModal } from '../suites/ScheduleModal';
 import { RunHistoryDrawer } from '../suites/RunHistoryDrawer';
 import { BugReportButton } from '../../components/test-navigation/BugReportButton';
+import { GearIcon } from '../../components/GearIcon';
 
 export interface LibraryPageProps {
     onNavigateBuilder: (testId?: string) => void;
@@ -20,6 +21,7 @@ export function LibraryPage({ onNavigateBuilder }: LibraryPageProps) {
         fetchSavedTests, deleteSavedTest, clearLibraryError,
         scheduledTests, fetchScheduledTests, updateScheduledTest,
         isLoadingScheduled, togglingScheduleId, creatingScheduleForTestId, scheduledError,
+        isAdmin, setupRequired,
     } = store;
 
     const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
@@ -33,27 +35,18 @@ export function LibraryPage({ onNavigateBuilder }: LibraryPageProps) {
     // Run history drawer state
     const [historyTest, setHistoryTest] = useState<ScheduledTest | null>(null);
 
-    // Schedule save toast
     const [scheduleToast, setScheduleToast] = useState<string | null>(null);
     const prevLoadingRef = React.useRef(false);
     useEffect(() => {
         if (prevLoadingRef.current && !isLoadingScheduled) {
-            if (scheduledError) {
-                setScheduleToast('Failed to save');
-            } else {
-                setScheduleToast('Saved');
-            }
+            setScheduleToast(scheduledError ? 'Failed to save' : 'Saved');
             const timer = setTimeout(() => setScheduleToast(null), 2500);
             return () => clearTimeout(timer);
         }
         prevLoadingRef.current = isLoadingScheduled;
     }, [isLoadingScheduled, scheduledError]);
 
-    // Remove HTML loading overlay once React is rendering
-    useEffect(() => {
-        const el = document.getElementById('qt-loading');
-        if (el) el.remove();
-    }, []);
+    useEffect(() => { const el = document.getElementById('qt-loading'); if (el) el.remove(); }, []);
 
     useEffect(() => { fetchSavedTests(); fetchScheduledTests(); }, [fetchSavedTests, fetchScheduledTests]);
 
@@ -126,8 +119,20 @@ export function LibraryPage({ onNavigateBuilder }: LibraryPageProps) {
                     <div className="w-px h-5 bg-slate-700 mx-1" />
                     <button className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-accent-600/20 text-accent-300 cursor-pointer">Library</button>
                     <button className="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-400 hover:text-slate-200 hover:bg-navy-800 transition cursor-pointer" onClick={() => onNavigateBuilder()}>Builder</button>
+                    {isAdmin && (
+                        <button type="button" onClick={() => { window.location.hash = 'setup'; }} className="ml-1 p-1.5 text-slate-400 hover:text-slate-200 cursor-pointer rounded-lg hover:bg-navy-800">
+                            <GearIcon />
+                        </button>
+                    )}
                 </nav>
             </header>
+
+            {isAdmin && setupRequired && (
+                <div className="bg-amber-500/10 border-b border-amber-500/30 px-5 py-2 flex items-center justify-between shrink-0">
+                    <span className="text-xs text-amber-300">Initial setup required &mdash; configure your deployment settings</span>
+                    <button type="button" onClick={() => { window.location.hash = 'setup'; }} className="text-xs text-amber-400 hover:text-amber-200 font-semibold cursor-pointer">Go to Setup &rarr;</button>
+                </div>
+            )}
 
             <div className="flex-1 overflow-y-auto px-6 py-6">
                 <div className="max-w-7xl mx-auto flex flex-col gap-5">

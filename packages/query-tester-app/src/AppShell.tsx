@@ -1,34 +1,39 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { StartPage } from './StartPage';
 import { LibraryPage } from './features/library';
+import { SetupPage } from './features/setup/SetupPage';
+import { useTestStore } from 'core/store/testStore';
 
-type Page = 'library' | 'tester';
+type Page = 'library' | 'tester' | 'setup';
 
 function getRoute(): { page: Page; testId?: string } {
-    // Check hash first (client-side nav)
     const hash = window.location.hash.replace('#', '');
+    // Hash takes priority — once the user navigates away, respect it
+    if (hash === 'setup') return { page: 'setup' };
+    if (hash === 'library') return { page: 'library' };
     if (hash.startsWith('tester')) {
         const params = new URLSearchParams(hash.split('?')[1] || '');
         return { page: 'tester', testId: params.get('test_id') || undefined };
     }
-    // Check URL query param (initial load from old Library link)
+    // No hash set yet — check URL query params (e.g. email link with ?test_id=)
     const urlParams = new URLSearchParams(window.location.search);
     const testId = urlParams.get('test_id');
-    if (testId) {
-        return { page: 'tester', testId };
-    }
-    // Default to library
-    if (!hash || hash === 'library') return { page: 'library' };
+    if (testId) return { page: 'tester', testId };
     return { page: 'library' };
 }
 
 export function AppShell() {
     const [route, setRoute] = useState(getRoute);
 
-    // Remove the HTML loading overlay once React is rendering
     useEffect(() => {
         const el = document.getElementById('qt-loading');
         if (el) el.remove();
+    }, []);
+
+    useEffect(() => {
+        const { fetchConfigStatus, fetchCommandPolicy } = useTestStore.getState();
+        void fetchConfigStatus();
+        void fetchCommandPolicy();
     }, []);
 
     useEffect(() => {
@@ -41,6 +46,9 @@ export function AppShell() {
         window.location.hash = target;
     }, []);
 
+    if (route.page === 'setup') {
+        return <SetupPage onNavigateBack={() => navigateTo('library')} />;
+    }
     if (route.page === 'tester') {
         return <StartPage onNavigateLibrary={() => navigateTo('library')} loadTestId={route.testId} />;
     }

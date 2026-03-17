@@ -152,6 +152,7 @@ def run(payload_path, session_key):
                 test_id=scheduled.get("testId", test_id),
                 definition=definition if definition else None,
                 full_results=result if result else None,
+                session_key=session_key,
             )
 
     except Exception as exc:
