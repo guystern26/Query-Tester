@@ -627,6 +627,9 @@ video {
 .left-5 {
   left: 1.25rem;
 }
+.left-\[16px\] {
+  left: 16px;
+}
 .left-\[18px\] {
   left: 18px;
 }
@@ -681,6 +684,9 @@ video {
 .z-\[60\] {
   z-index: 60;
 }
+.col-span-2 {
+  grid-column: span 2 / span 2;
+}
 .m-0 {
   margin: 0px;
 }
@@ -717,6 +723,9 @@ video {
 .mb-1 {
   margin-bottom: 0.25rem;
 }
+.mb-1\.5 {
+  margin-bottom: 0.375rem;
+}
 .mb-2 {
   margin-bottom: 0.5rem;
 }
@@ -740,6 +749,9 @@ video {
 }
 .mr-1 {
   margin-right: 0.25rem;
+}
+.mr-1\.5 {
+  margin-right: 0.375rem;
 }
 .mt-0\.5 {
   margin-top: 0.125rem;
@@ -773,6 +785,9 @@ video {
 }
 .table {
   display: table;
+}
+.grid {
+  display: grid;
 }
 .contents {
   display: contents;
@@ -821,6 +836,9 @@ video {
 }
 .h-9 {
   height: 2.25rem;
+}
+.h-\[14px\] {
+  height: 14px;
 }
 .h-\[18px\] {
   height: 18px;
@@ -930,8 +948,14 @@ video {
 .w-\[140px\] {
   width: 140px;
 }
+.w-\[14px\] {
+  width: 14px;
+}
 .w-\[150px\] {
   width: 150px;
+}
+.w-\[180px\] {
+  width: 180px;
 }
 .w-\[18px\] {
   width: 18px;
@@ -955,6 +979,9 @@ video {
 .min-w-0 {
   min-width: 0px;
 }
+.min-w-\[120px\] {
+  min-width: 120px;
+}
 .min-w-\[140px\] {
   min-width: 140px;
 }
@@ -975,6 +1002,9 @@ video {
 }
 .min-w-\[360px\] {
   min-width: 360px;
+}
+.max-w-3xl {
+  max-width: 48rem;
 }
 .max-w-7xl {
   max-width: 80rem;
@@ -1085,6 +1115,9 @@ video {
 .resize-y {
   resize: vertical;
 }
+.grid-cols-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
 .flex-col {
   flex-direction: column;
 }
@@ -1141,6 +1174,13 @@ video {
 }
 .gap-6 {
   gap: 1.5rem;
+}
+.gap-x-6 {
+  -moz-column-gap: 1.5rem;
+       column-gap: 1.5rem;
+}
+.gap-y-4 {
+  row-gap: 1rem;
 }
 .space-y-2 > :not([hidden]) ~ :not([hidden]) {
   --tw-space-y-reverse: 0;
@@ -1520,6 +1560,9 @@ video {
 .bg-amber-500\/10 {
   background-color: rgb(245 158 11 / 0.1);
 }
+.bg-amber-500\/15 {
+  background-color: rgb(245 158 11 / 0.15);
+}
 .bg-amber-500\/5 {
   background-color: rgb(245 158 11 / 0.05);
 }
@@ -1600,6 +1643,9 @@ video {
   --tw-bg-opacity: 1;
   background-color: rgb(34 197 94 / var(--tw-bg-opacity, 1));
 }
+.bg-green-500\/10 {
+  background-color: rgb(34 197 94 / 0.1);
+}
 .bg-green-500\/5 {
   background-color: rgb(34 197 94 / 0.05);
 }
@@ -1654,6 +1700,9 @@ video {
 }
 .bg-navy-900\/40 {
   background-color: rgb(22 32 51 / 0.4);
+}
+.bg-navy-900\/60 {
+  background-color: rgb(22 32 51 / 0.6);
 }
 .bg-navy-900\/90 {
   background-color: rgb(22 32 51 / 0.9);

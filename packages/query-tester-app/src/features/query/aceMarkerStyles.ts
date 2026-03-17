@@ -34,9 +34,12 @@ const MARKER_CSS = `
     .spl-lint-info {
       position: absolute;
       background: rgba(96,165,250,0.15);
-      border-bottom: 2px dashed rgba(96,165,250,0.6);
+      border-bottom: 2px dotted rgba(96,165,250,0.6);
       border-radius: 2px;
       z-index: 4;
+    }
+    .spl-lint-blocked {
+      border-bottom-style: dashed !important;
     }
     .spl-lint-tooltip {
       position: absolute;

@@ -90,3 +90,21 @@ def get_logger(name):
         logger.addHandler(file_handler)
 
     return logger
+
+
+def reconfigure_log_level(level_str):
+    # type: (str) -> None
+    """Update the log level for all query_tester loggers at runtime.
+
+    Called after config save so that log_level changes take effect
+    without restarting Splunk.
+    """
+    level = _LOG_LEVEL_MAP.get(level_str.upper(), logging.INFO)
+    # Update all loggers that were created by get_logger()
+    for name in list(logging.Logger.manager.loggerDict):
+        lg = logging.getLogger(name)
+        if lg.handlers:
+            for handler in lg.handlers:
+                if hasattr(handler, "_query_tester_log_path"):
+                    lg.setLevel(level)
+                    break

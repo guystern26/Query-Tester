@@ -12,9 +12,7 @@ from __future__ import annotations
 import threading
 from typing import Any, Dict, Optional
 
-import splunklib.client as splunk_client
-
-from config import SPLUNK_HOST, SPLUNK_PORT
+from splunk_connect import get_service
 from logger import get_logger
 
 logger = get_logger(__name__)
@@ -35,10 +33,7 @@ def _connect(session_key, owner="nobody"):
         if cached is not None:
             return cached
     # Build connection outside lock to avoid blocking other threads
-    service = splunk_client.connect(
-        host=SPLUNK_HOST, port=SPLUNK_PORT,
-        splunkToken=session_key, app="QueryTester", owner=owner,
-    )
+    service = get_service(session_key, app="QueryTester", owner=owner)
     with _conn_lock:
         _conn_cache[cache_key] = service
     return service

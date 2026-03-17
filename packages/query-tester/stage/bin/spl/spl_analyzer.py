@@ -27,17 +27,21 @@ class SplAnalysis:
     warnings: List[Dict[str, Any]] = field(default_factory=list)
 
 
-def analyze(spl: str) -> SplAnalysis:
-    """
-    Inspect SPL text and return an SplAnalysis describing detected commands and warnings.
+def analyze(spl, blocked_commands=None):
+    # type: (str, Optional[set]) -> SplAnalysis
+    """Inspect SPL text and return an SplAnalysis describing detected commands and warnings.
+
+    *blocked_commands* overrides the hardcoded UNAUTHORIZED_COMMANDS set when
+    provided (e.g. from the command policy KVStore collection).
     """
     spl_clean = spl or ""
+    unauthorized_set = blocked_commands if blocked_commands is not None else UNAUTHORIZED_COMMANDS
 
     # Extract commands from outer query (for general command listing)
     commands = _extract_commands(spl_clean)
     # Also extract commands from the FULL SPL (including subsearches) for safety checks
     all_commands = _extract_all_commands(spl_clean)
-    unauthorized = [cmd for cmd in all_commands if cmd in UNAUTHORIZED_COMMANDS]
+    unauthorized = [cmd for cmd in all_commands if cmd in unauthorized_set]
     unusual = [cmd for cmd in commands if cmd in UNUSUAL_COMMANDS]
 
     warnings = []  # type: List[Dict[str, Any]]

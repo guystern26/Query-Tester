@@ -4,14 +4,18 @@ import { selectActiveTest } from 'core/store/selectors';
 import { Button } from '../../common';
 import { TestNavigation } from './TestNavigation';
 import { BugReportButton } from './BugReportButton';
+import { GearIcon } from '../GearIcon';
 import { SaveTestModal } from './SaveTestModal';
 
 export interface TopBarProps {
   onNavigateLibrary?: () => void;
+  onNavigateSetup?: () => void;
 }
 
-export function TopBar({ onNavigateLibrary }: TopBarProps = {}) {
+export function TopBar({ onNavigateLibrary, onNavigateSetup }: TopBarProps = {}) {
   const state = useTestStore();
+  const isAdmin = useTestStore((s) => s.isAdmin);
+  const setupRequired = useTestStore((s) => s.setupRequired);
   const activeTest = selectActiveTest(state);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [saveModalOpen, setSaveModalOpen] = useState(false);
@@ -98,10 +102,27 @@ export function TopBar({ onNavigateLibrary }: TopBarProps = {}) {
               <button className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-accent-600/20 text-accent-300 cursor-pointer">
                 Builder
               </button>
+              {isAdmin && onNavigateSetup && (
+                <button type="button" onClick={onNavigateSetup} className="ml-1 p-1.5 text-slate-400 hover:text-slate-200 cursor-pointer rounded-lg hover:bg-navy-800">
+                  <GearIcon />
+                </button>
+              )}
             </nav>
           )}
         </div>
       </header>
+
+      {/* Setup required banner (admin only) */}
+      {isAdmin && setupRequired && onNavigateSetup && (
+        <div className="bg-amber-500/10 border-b border-amber-500/30 px-5 py-2 flex items-center justify-between">
+          <span className="text-xs text-amber-300">
+            Initial setup required &mdash; configure your deployment settings
+          </span>
+          <button type="button" onClick={onNavigateSetup} className="text-xs text-amber-400 hover:text-amber-200 font-semibold cursor-pointer">
+            Go to Setup &rarr;
+          </button>
+        </div>
+      )}
 
       {/* Success toast */}
       {toast && (

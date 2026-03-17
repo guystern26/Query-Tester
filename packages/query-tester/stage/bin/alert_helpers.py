@@ -56,9 +56,22 @@ def extract_scenario_results(result):
     return scenario_results
 
 
-def send_failure_email(recipient, test_name, result_summary):
-    # type: (str, str, str) -> None
+def send_failure_email(recipient, test_name, result_summary, session_key=None):
+    # type: (str, str, str, Optional[str]) -> None
     """Send a failure notification email via SMTP."""
+    smtp_srv = SMTP_SERVER
+    smtp_pt = SMTP_PORT
+    from_addr = MAIL_FROM
+    if session_key:
+        try:
+            from runtime_config import get_runtime_config
+            cfg = get_runtime_config(session_key)
+            smtp_srv = cfg.get("smtp_server", SMTP_SERVER)
+            smtp_pt = int(cfg.get("smtp_port", SMTP_PORT))
+            from_addr = cfg.get("mail_from", MAIL_FROM)
+        except Exception:
+            pass
+
     subject = "Scheduled Test Failed: {0}".format(test_name)
     body = (
         "Scheduled test '{0}' has failed.\n\n"
@@ -68,12 +81,12 @@ def send_failure_email(recipient, test_name, result_summary):
 
     msg = MIMEText(body)
     msg["Subject"] = subject
-    msg["From"] = MAIL_FROM
+    msg["From"] = from_addr
     msg["To"] = recipient
 
     try:
-        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
-        server.sendmail(MAIL_FROM, [recipient], msg.as_string())
+        server = smtplib.SMTP(smtp_srv, smtp_pt)
+        server.sendmail(from_addr, [recipient], msg.as_string())
         server.quit()
         logger.info("Failure email sent to %s", recipient)
     except Exception as exc:

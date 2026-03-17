@@ -115,13 +115,8 @@ def is_admin_user(session_key, username):
     # type: (str, str) -> bool
     """Check if the user has the 'admin' role via splunklib."""
     try:
-        import splunklib.client as splunk_client
-        from config import SPLUNK_HOST, SPLUNK_PORT
-        service = splunk_client.connect(
-            host=SPLUNK_HOST,
-            port=int(SPLUNK_PORT),
-            splunkToken=session_key,
-        )
+        from splunk_connect import get_service
+        service = get_service(session_key, app="QueryTester", owner="nobody")
         user = service.users[username]
         roles = user.content.get("roles", [])
         return "admin" in roles

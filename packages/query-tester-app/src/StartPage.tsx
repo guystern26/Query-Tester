@@ -94,7 +94,7 @@ export function StartPage({ onNavigateLibrary, loadTestId }: StartPageProps = {}
             className="h-screen flex flex-col bg-gradient-to-br from-navy-900 to-navy-800 text-slate-100 overflow-hidden"
             style={{ paddingBottom: barExpanded ? '45vh' : '48px' }}
         >
-            <TopBar onNavigateLibrary={onNavigateLibrary} />
+            <TopBar onNavigateLibrary={onNavigateLibrary} onNavigateSetup={() => { window.location.hash = 'setup'; }} />
 
             {hasApp ? (
                 <>
