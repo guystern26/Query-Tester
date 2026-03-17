@@ -19,7 +19,7 @@ export function SetupPage({ onNavigateBack }: SetupPageProps) {
     const { appConfig, isLoadingConfig, configError } = useSetupPage();
 
     return (
-        <div className="h-screen flex flex-col bg-gradient-to-br from-navy-900 to-navy-800 text-slate-100 overflow-hidden">
+        <div className="min-h-screen flex flex-col bg-gradient-to-br from-navy-900 to-navy-800 text-slate-100">
             <header className="sticky top-0 z-50 h-14 bg-navy-900 border-b border-slate-800 px-5 flex items-center justify-between shrink-0 shadow-lg shadow-black/20">
                 <div className="flex items-center gap-3">
                     <button
@@ -35,7 +35,7 @@ export function SetupPage({ onNavigateBack }: SetupPageProps) {
                 <BugReportButton />
             </header>
 
-            <div className="flex-1 overflow-y-auto px-6 py-6">
+            <div className="px-6 py-6">
                 <div className="max-w-3xl mx-auto flex flex-col gap-5">
                     {configError && (
                         <div className="px-3 py-2 rounded-md border-l-4 border-red-500 bg-red-500/10 text-xs text-red-300">
