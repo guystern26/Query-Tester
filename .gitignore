@@ -13,3 +13,4 @@ dist/
 packages/*/types/
 __pycache__
 .env.local
+*.png

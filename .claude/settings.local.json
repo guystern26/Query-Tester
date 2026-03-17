@@ -149,7 +149,11 @@
       "Bash(\"/c/Program Files/Splunk/bin/splunk\" btool web list --debug 2>/dev/null | grep -A3 \"\\\\[expose:query_tester\")",
       "Bash(find \"/c/Program Files/Splunk/lib\" -name \"*.py\" -path \"*expose*\" 2>/dev/null | head -5 ; find \"/c/Program Files/Splunk/lib\" -name \"*.py\" 2>/dev/null | xargs grep -l \"expose\" 2>/dev/null | head -10)",
       "Bash(find \"/c/Program Files/Splunk\" -path \"*/search_mrsparkle*\" -name \"*.py\" 2>/dev/null | xargs grep -l \"expose\" 2>/dev/null | head -10)",
-      "Bash(find \"/c/Program Files/Splunk\" -path \"*mrsparkle*\" -type d 2>/dev/null | head -5)"
+      "Bash(find \"/c/Program Files/Splunk\" -path \"*mrsparkle*\" -type d 2>/dev/null | head -5)",
+      "Bash(file *.py core/*.py spl/*.py data/*.py generators/*.py validation/*.py 2>/dev/null | grep CRLF | wc -l)",
+      "Bash(file tests/*.py 2>/dev/null | grep CRLF)",
+      "Bash(file tests/*.py 2>/dev/null | grep CRLF || echo \"No CRLF in test files\")",
+      "Bash(cd /c/Users/guyst/splunk-ui-toolkit-apps/packages/query-tester/stage/bin && py -m py_compile query_tester.py && py -m py_compile alert_run_test.py && py -m py_compile scheduled_tests_handler.py && py -m py_compile core/test_runner.py && py -m py_compile spl/spl_analyzer.py && echo \"All compiled OK\")"
     ]
   }
 }
