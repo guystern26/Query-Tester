@@ -982,6 +982,9 @@ video {
 .w-px {
   width: 1px;
 }
+.w-\[52px\] {
+  width: 52px;
+}
 .min-w-0 {
   min-width: 0px;
 }
@@ -1123,6 +1126,9 @@ video {
 }
 .grid-cols-2 {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.grid-cols-\[80px_100px_120px_1fr_auto_auto\] {
+  grid-template-columns: 80px 100px 120px 1fr auto auto;
 }
 .flex-col {
   flex-direction: column;
