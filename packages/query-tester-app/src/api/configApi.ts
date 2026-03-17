@@ -127,6 +127,13 @@ export const configApi = {
         });
     },
 
+    async resetCommandPolicy(): Promise<CommandPolicyEntry[]> {
+        const raw = await request<Array<Record<string, unknown>>>(
+            buildUrl('data/tester/command_policy'), 'POST', { reset: true },
+        );
+        return raw.map(mapPolicyEntry);
+    },
+
     async saveCommandPolicyEntry(entry: CommandPolicyEntry): Promise<void> {
         await request<unknown>(buildUrl('data/tester/command_policy/single'), 'POST', policyEntryToSnake(entry));
     },

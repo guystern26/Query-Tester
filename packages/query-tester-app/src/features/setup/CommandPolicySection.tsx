@@ -7,22 +7,22 @@ import { PolicyRow } from './PolicyRow';
 
 export function CommandPolicySection() {
     const commandPolicy = useTestStore((s) => s.commandPolicy);
-    const savePolicy = useTestStore((s) => s.saveCommandPolicy);
+    const isLoadingPolicy = useTestStore((s) => s.isLoadingPolicy);
+    const resetPolicy = useTestStore((s) => s.resetCommandPolicy);
     const saveEntry = useTestStore((s) => s.saveCommandPolicyEntry);
-    const fetchPolicy = useTestStore((s) => s.fetchCommandPolicy);
     const [resetOpen, setResetOpen] = useState(false);
     const [addingCommand, setAddingCommand] = useState(false);
     const [newCommand, setNewCommand] = useState('');
     const [lastAddedId, setLastAddedId] = useState<string | null>(null);
+    const [isSavingNew, setIsSavingNew] = useState(false);
 
     const builtIn = useMemo(() => commandPolicy.filter((e) => e.isDefault), [commandPolicy]);
     const custom = useMemo(() => commandPolicy.filter((e) => !e.isDefault), [commandPolicy]);
 
-    const handleReset = useCallback(async () => {
-        await savePolicy([]);
-        await fetchPolicy();
+    const handleReset = useCallback(() => {
         setResetOpen(false);
-    }, [savePolicy, fetchPolicy]);
+        void resetPolicy();
+    }, [resetPolicy]);
 
     const handleAddCommand = useCallback(async () => {
         const cmd = newCommand.trim().toLowerCase().replace(/\s+/g, '');
@@ -37,14 +37,19 @@ export function CommandPolicySection() {
             isDefault: false,
             isDestructive: DESTRUCTIVE_COMMANDS.includes(cmd),
         };
-        await saveEntry(entry);
-        setLastAddedId(entry.id);
-        setNewCommand('');
-        setAddingCommand(false);
+        setIsSavingNew(true);
+        try {
+            await saveEntry(entry);
+            setLastAddedId(entry.id);
+            setNewCommand('');
+            setAddingCommand(false);
+        } finally {
+            setIsSavingNew(false);
+        }
     }, [newCommand, commandPolicy, saveEntry]);
 
     return (
-        <section className="border border-slate-700 rounded-lg bg-navy-900 p-5">
+        <section className={'border border-slate-700 rounded-lg bg-navy-900 p-5' + (isLoadingPolicy ? ' opacity-50 pointer-events-none' : '')}>
             <div className="flex items-center justify-between mb-1">
                 <h2 className="text-sm font-semibold text-slate-200">SPL Command Policy</h2>
                 <button type="button" onClick={() => setResetOpen(true)} className="text-[11px] text-slate-500 hover:text-slate-300 cursor-pointer">
@@ -76,7 +81,7 @@ export function CommandPolicySection() {
                     ))}
                 </div>
                 {addingCommand ? (
-                    <div className="flex items-center gap-2 mt-2">
+                    <div className={'flex items-center gap-2 mt-2' + (isSavingNew ? ' opacity-50 pointer-events-none' : '')}>
                         <input
                             type="text"
                             value={newCommand}
@@ -86,8 +91,12 @@ export function CommandPolicySection() {
                             autoFocus
                             onKeyDown={(e) => { if (e.key === 'Enter') void handleAddCommand(); if (e.key === 'Escape') setAddingCommand(false); }}
                         />
-                        <button type="button" onClick={() => void handleAddCommand()} className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-btnprimary hover:bg-btnprimary-hover text-white cursor-pointer">Add</button>
-                        <button type="button" onClick={() => setAddingCommand(false)} className="px-3 py-1.5 text-xs text-slate-400 hover:text-slate-200 cursor-pointer">Cancel</button>
+                        <button type="button" onClick={() => void handleAddCommand()} className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-btnprimary hover:bg-btnprimary-hover text-white cursor-pointer">
+                            {isSavingNew ? 'Saving...' : 'Add'}
+                        </button>
+                        {!isSavingNew && (
+                            <button type="button" onClick={() => setAddingCommand(false)} className="px-3 py-1.5 text-xs text-slate-400 hover:text-slate-200 cursor-pointer">Cancel</button>
+                        )}
                     </div>
                 ) : (
                     <button type="button" onClick={() => setAddingCommand(true)} className="mt-2 text-xs text-accent-400 hover:text-accent-300 font-semibold cursor-pointer">

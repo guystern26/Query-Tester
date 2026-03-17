@@ -59,8 +59,39 @@ export function commandPolicySlice(set: SetState) {
             }
         },
 
+        resetCommandPolicy: async (): Promise<void> => {
+            set((draft) => {
+                draft.isLoadingPolicy = true;
+                draft.policyError = null;
+            });
+            try {
+                const defaults = await configApi.resetCommandPolicy();
+                set((draft) => {
+                    draft.commandPolicy = defaults.map(enrichEntry);
+                    draft.isLoadingPolicy = false;
+                });
+            } catch (e) {
+                set((draft) => {
+                    draft.isLoadingPolicy = false;
+                    draft.policyError = errMsg(e);
+                });
+            }
+        },
+
         saveCommandPolicyEntry: async (entry: CommandPolicyEntry): Promise<void> => {
-            set((draft) => { draft.policyError = null; });
+            // Snapshot for rollback, then apply optimistically
+            let snapshot: CommandPolicyEntry[] = [];
+            const enriched = enrichEntry(entry);
+            set((draft) => {
+                draft.policyError = null;
+                snapshot = draft.commandPolicy.map((e) => ({ ...e }));
+                const idx = draft.commandPolicy.findIndex((e) => e.command === entry.command);
+                if (idx >= 0) {
+                    draft.commandPolicy[idx] = enriched;
+                } else {
+                    draft.commandPolicy.push(enriched);
+                }
+            });
             try {
                 await configApi.saveCommandPolicyEntry(entry);
                 const refreshed = await configApi.getCommandPolicy();
@@ -68,21 +99,30 @@ export function commandPolicySlice(set: SetState) {
                     draft.commandPolicy = refreshed.map(enrichEntry);
                 });
             } catch (e) {
-                set((draft) => { draft.policyError = errMsg(e); });
+                set((draft) => {
+                    draft.commandPolicy = snapshot;
+                    draft.policyError = errMsg(e);
+                });
             }
         },
 
         deleteCommandPolicyEntry: async (command: string): Promise<void> => {
-            set((draft) => { draft.policyError = null; });
+            // Snapshot for rollback, then remove optimistically
+            let snapshot: CommandPolicyEntry[] = [];
+            set((draft) => {
+                draft.policyError = null;
+                snapshot = draft.commandPolicy.map((e) => ({ ...e }));
+                draft.commandPolicy = draft.commandPolicy.filter(
+                    (e) => e.command !== command
+                );
+            });
             try {
                 await configApi.deleteCommandPolicyEntry(command);
-                set((draft) => {
-                    draft.commandPolicy = draft.commandPolicy.filter(
-                        (e) => e.command !== command
-                    );
-                });
             } catch (e) {
-                set((draft) => { draft.policyError = errMsg(e); });
+                set((draft) => {
+                    draft.commandPolicy = snapshot;
+                    draft.policyError = errMsg(e);
+                });
             }
         },
     };

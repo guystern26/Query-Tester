@@ -199,6 +199,7 @@ export interface TestStoreState {
   policyError: string | null;
   fetchCommandPolicy: () => Promise<void>;
   saveCommandPolicy: (entries: CommandPolicyEntry[]) => Promise<void>;
+  resetCommandPolicy: () => Promise<void>;
   saveCommandPolicyEntry: (entry: CommandPolicyEntry) => Promise<void>;
   deleteCommandPolicyEntry: (command: string) => Promise<void>;
 
