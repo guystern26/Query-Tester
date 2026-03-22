@@ -104,6 +104,7 @@ def _scenario_result_to_dict(result: ScenarioResult) -> Dict[str, Any]:
         ],
         "resultRows": result.result_rows,
         "error": result.error,
+        "warnings": result.warnings,
     }
 
 

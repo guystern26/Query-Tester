@@ -86,7 +86,9 @@ class QueryExecutor:
                 self._finalize_job(job)
                 raise RuntimeError("Search cancelled by user.")
 
-            reader = splunk_results.JSONResultsReader(job.results(output_mode="json"))
+            reader = splunk_results.JSONResultsReader(
+                job.results(output_mode="json", count=0)
+            )
 
             rows = []  # type: List[Dict[str, Any]]
             for item in reader:
