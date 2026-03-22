@@ -114,6 +114,17 @@ export function ScenarioResultCard({ result }: ScenarioResultCardProps) {
             </div>
           )}
 
+          {/* Scenario warnings (e.g. query_data truncation, non-tabular data) */}
+          {result.warnings && result.warnings.length > 0 && (
+            <div className="flex flex-col gap-1.5 mt-3">
+              {result.warnings.map((w, i) => (
+                <div key={i} className="px-3 py-2 rounded border-l-4 border-amber-500 bg-amber-500/5 text-[13px] text-amber-300/90">
+                  {w}
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Validations */}
           {result.validations.length > 0 && (
             <div className="flex flex-col gap-1.5 mt-2">

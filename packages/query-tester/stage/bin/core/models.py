@@ -142,3 +142,4 @@ class ScenarioResult:
     validations: List[ValidationDetail] = field(default_factory=list)
     result_rows: List[Dict[str, Any]] = field(default_factory=list)
     error: Optional[str] = None
+    warnings: List[str] = field(default_factory=list)

@@ -5,7 +5,7 @@ Coordinate end-to-end execution of Splunk Query Tester scenarios.
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from uuid import uuid4
 import time
 
@@ -125,17 +125,19 @@ class TestRunner:
         run_id: str, strategy: str, injected_spl: str,
     ) -> ScenarioResult:
         all_events = []  # type: List[Dict[str, Any]]
+        scenario_warnings = []  # type: List[str]
         for inp in scenario.inputs:
             if inp.input_mode == "query_data" and inp.query_data_config is not None:
                 # Run sub-query to fetch events as test data
                 qd = inp.query_data_config
-                sub_events = run_sub_query(
+                sub_events, sub_warnings = run_sub_query(
                     spl=qd.spl,
                     session_key=self._session_key,
                     app=payload.app,
                     earliest_time=qd.earliest_time,
                     latest_time=qd.latest_time,
                 )
+                scenario_warnings.extend(sub_warnings)
                 logger.info(
                     "query_data sub-query returned %d events for scenario '%s'",
                     len(sub_events),
@@ -154,6 +156,7 @@ class TestRunner:
 
         return self._execute_and_validate(
             payload, scenario, injected_spl, scenario.name,
+            warnings=scenario_warnings,
         )
 
     def _run_query_only(self, payload: TestPayload, spl: str) -> ScenarioResult:
@@ -164,6 +167,7 @@ class TestRunner:
     def _execute_and_validate(
         self, payload: TestPayload, scenario: ParsedScenario,
         run_spl: str, name: str,
+        warnings: Optional[List[str]] = None,
     ) -> ScenarioResult:
         start_ms = int(time.time() * 1000)
         results = self._executor.run(
@@ -177,6 +181,7 @@ class TestRunner:
             execution_time_ms=elapsed_ms, result_count=len(results),
             injected_spl=run_spl, validations=validations,
             result_rows=results, error=None,
+            warnings=warnings or [],
         )
 
     def _resolve_spl(self, payload: TestPayload) -> str:

@@ -244,11 +244,35 @@ Detailed specs live in `docs/` (32 spec files, spec-00 through spec-20+). Attach
 
 ## Deployment
 
-- **Dev:** Symlink `packages/query-tester/stage` to `$SPLUNK_HOME/etc/apps/query-tester`
+### Dev environment
+- **Symlink** `packages/query-tester/stage` to `$SPLUNK_HOME/etc/apps/query-tester`
 - **Python changes:** Just restart Splunk (no rebuild needed)
 - **Frontend changes:** Webpack rebuild required, then restart Splunk
 - **Config files:** `stage/bin/config.py` (backend static defaults), `src/config/env.ts` (frontend)
-- See `DEPLOYMENT.md` for full deployment guide
+
+### Production — Three Splunk Apps
+The release zip (`bash build-release.sh`) produces `QueryTester-{version}.zip` containing:
+
+| App directory | Deploy to | Via | Purpose |
+|---------------|-----------|-----|---------|
+| `query-tester/` | Search head | `etc/apps/` or SHC deployer | Full app — UI, REST handlers, KVStore |
+| `query-tester-indexer/` | Indexers | Cluster master `etc/master-apps/` | Creates `temp_query_tester` index |
+| `query-tester-fwd/` | Heavy forwarder | Deployment server `etc/deployment-apps/` | HEC token linked to the temp index |
+
+**Why split:** Search heads should not index data. The app injects synthetic test events via HEC → heavy forwarder → indexers. The index lives on the indexers, the HEC token on the heavy forwarder, and the app logic on the search head.
+
+**Build script:** `packages/query-tester/build-release.sh`
+- Copies `stage/` → `query-tester/`, strips `local/`, `metadata/local.meta`, `__pycache__/`, `.pytest_cache/`, `tests/`
+- Sanitizes `config.py` (removes real passwords/tokens)
+- Packages `stage-indexer/` and `stage-fwd/` alongside
+- Adds `DEPLOY.txt` with step-by-step instructions
+
+**Source directories:**
+- `stage/` — search head app (main)
+- `stage-indexer/` — indexer app (`indexes.conf` only)
+- `stage-fwd/` — heavy forwarder app (`inputs.conf` with HEC token)
+
+**IMPORTANT:** `stage/default/` conf files are overwritten by webpack on every build (CopyWebpackPlugin copies from `src/main/resources/splunk/default/`). Always edit the **source** at `src/main/resources/splunk/default/`, not the stage copy directly.
 
 ### Portable Configuration (Setup Page)
 The app is fully portable — all deployment config is editable from the admin Setup page (`#setup`). On first load, auto-detection pre-fills most fields from the local Splunk instance.

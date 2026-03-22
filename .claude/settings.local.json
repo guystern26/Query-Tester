@@ -153,7 +153,18 @@
       "Bash(file *.py core/*.py spl/*.py data/*.py generators/*.py validation/*.py 2>/dev/null | grep CRLF | wc -l)",
       "Bash(file tests/*.py 2>/dev/null | grep CRLF)",
       "Bash(file tests/*.py 2>/dev/null | grep CRLF || echo \"No CRLF in test files\")",
-      "Bash(cd /c/Users/guyst/splunk-ui-toolkit-apps/packages/query-tester/stage/bin && py -m py_compile query_tester.py && py -m py_compile alert_run_test.py && py -m py_compile scheduled_tests_handler.py && py -m py_compile core/test_runner.py && py -m py_compile spl/spl_analyzer.py && echo \"All compiled OK\")"
+      "Bash(cd /c/Users/guyst/splunk-ui-toolkit-apps/packages/query-tester/stage/bin && py -m py_compile query_tester.py && py -m py_compile alert_run_test.py && py -m py_compile scheduled_tests_handler.py && py -m py_compile core/test_runner.py && py -m py_compile spl/spl_analyzer.py && echo \"All compiled OK\")",
+      "Bash(find /c/Users/guyst/splunk-ui-toolkit-apps/packages/query-tester/stage/bin -name \"*.pyc\" -o -name \"__pycache__\" 2>/dev/null | head -20)",
+      "Bash(cd /c/Users/guyst/splunk-ui-toolkit-apps/packages/query-tester && bash build-release.sh)",
+      "Bash(powershell -Command \"Expand-Archive -Path 'C:\\\\Users\\\\guyst\\\\splunk-ui-toolkit-apps\\\\packages\\\\query-tester\\\\QueryTester-0.1.0.zip' -DestinationPath 'C:\\\\Users\\\\guyst\\\\splunk-ui-toolkit-apps\\\\packages\\\\query-tester\\\\build\\\\verify' -Force\" && find /c/Users/guyst/splunk-ui-toolkit-apps/packages/query-tester/build/verify -type f | sort)",
+      "Bash(bash build-release.sh)",
+      "Bash(cd /c/Users/guyst/splunk-ui-toolkit-apps/packages/query-tester/stage/bin && py -m py_compile core/test_runner.py && echo \"OK\" && py -m py_compile core/response_builder.py && echo \"OK\" && py -m py_compile data/sub_query_runner.py && echo \"OK\")",
+      "Bash(py -m pytest tests/ -v 2>&1 | tail -40)",
+      "Bash(py -m py_compile data/sub_query_runner.py && echo \"OK\" && py -m py_compile core/test_runner.py && echo \"OK\" && py -m py_compile spl/query_executor.py && echo \"OK\")",
+      "Bash(py -m pytest tests/ -v 2>&1 | tail -15)",
+      "Bash(py -m py_compile data/sub_query_runner.py && echo \"OK\" && py -m py_compile core/test_runner.py && echo \"OK\" && py -m pytest tests/ -v 2>&1 | tail -5)",
+      "Bash(git remote:*)",
+      "Bash(git push:*)"
     ]
   }
 }

@@ -86,6 +86,7 @@ export function ScheduleModal({ open, onClose, editingTest, preselectedTestId }:
                 enabled,
                 alertOnFailure: alertOn,
                 emailRecipients: finalRecipients,
+                version: 1,
             });
         }
     };

@@ -6,10 +6,9 @@ Used by the 'query_data' input mode.
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 from logger import get_logger
-from config import MAX_QUERY_DATA_EVENTS
 from spl.query_executor import QueryExecutor
 
 logger = get_logger(__name__)
@@ -22,15 +21,17 @@ def run_sub_query(
     earliest_time,  # type: str
     latest_time,    # type: str
 ):
-    # type: (...) -> List[Dict[str, Any]]
+    # type: (...) -> Tuple[List[Dict[str, Any]], List[str]]
     """
-    Execute the sub-query SPL and return up to MAX_QUERY_DATA_EVENTS result rows.
+    Execute the sub-query SPL and return (events, warnings).
 
-    Each row is a plain dict suitable for indexing via HEC.
+    All events are returned for indexing — no truncation.
     Internal Splunk fields (keys starting with '_') are stripped.
     """
     if not spl or not spl.strip():
         raise ValueError("query_data input has an empty sub-query SPL.")
+
+    warnings = []  # type: List[str]
 
     executor = QueryExecutor(session_key)
     results = executor.run(
@@ -40,19 +41,15 @@ def run_sub_query(
         latest_time=latest_time,
     )
 
-    logger.info(
-        "Sub-query returned %d rows (cap=%d).",
-        len(results),
-        MAX_QUERY_DATA_EVENTS,
-    )
+    logger.info("Sub-query returned %d rows.", len(results))
 
-    if len(results) > MAX_QUERY_DATA_EVENTS:
-        logger.warning(
-            "Sub-query returned %d rows, truncating to %d.",
-            len(results),
-            MAX_QUERY_DATA_EVENTS,
+    # --- Non-tabular data warning ---
+    if results and _is_raw_data(results):
+        warnings.append(
+            "The sub-query returned raw (non-tabular) events. "
+            "For best results, add '| table *' or '| table field1, field2, ...' "
+            "to the end of your query to produce structured fields."
         )
-        results = results[:MAX_QUERY_DATA_EVENTS]
 
     # Strip Splunk internal fields — keep only user-visible data
     cleaned = []  # type: List[Dict[str, Any]]
@@ -61,4 +58,25 @@ def run_sub_query(
         if clean:
             cleaned.append(clean)
 
-    return cleaned
+    return cleaned, warnings
+
+
+def _is_raw_data(results):
+    # type: (List[Dict[str, Any]]) -> bool
+    """Check if results look like raw events rather than tabular data.
+
+    Heuristic: if most rows have '_raw' but very few non-internal fields,
+    the user probably forgot to pipe through '| table'.
+    """
+    sample = results[:20]
+    raw_count = 0
+    low_field_count = 0
+    for row in sample:
+        if "_raw" in row:
+            raw_count += 1
+        user_fields = [k for k in row if not k.startswith("_")]
+        if len(user_fields) <= 2:
+            low_field_count += 1
+    # If >50% of sampled rows have _raw AND >50% have very few user fields
+    threshold = len(sample) / 2
+    return raw_count > threshold and low_field_count > threshold
