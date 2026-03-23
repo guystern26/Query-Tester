@@ -101,6 +101,8 @@ class QueryTesterHandler(PersistentServerConnectionApplication):
             return self._delegate_config(in_string)
         if "/command_policy" in rest_path:
             return self._delegate_command_policy(in_string)
+        if "/bug_report" in rest_path:
+            return self._handle_bug_report(request)
 
         method = request.get("method", "GET").upper()
 
@@ -126,6 +128,43 @@ class QueryTesterHandler(PersistentServerConnectionApplication):
         from command_policy_handler import CommandPolicyHandler
         handler = CommandPolicyHandler()
         return handler.handle(in_string)
+
+    def _handle_bug_report(self, request: Dict[str, Any]) -> Dict[str, Any]:
+        """Send a bug report / feature request email."""
+        if request.get("method", "GET").upper() != "POST":
+            return _json_response({"error": "Method not allowed"}, 405)
+        try:
+            session_key = _get_session_key(request)
+            payload = _normalize_payload(request.get("payload"))
+
+            report_type = payload.get("reportType", "bug")
+            description = str(payload.get("description", "")).strip()
+            if not description:
+                return _json_response({"error": "Description is required."}, 400)
+
+            username = (request.get("session") or {}).get("user", "unknown")
+            attachment = {
+                "reportGeneratedAt": payload.get("reportGeneratedAt", ""),
+                "reportType": report_type,
+                "description": description,
+                "currentTest": payload.get("currentTest"),
+                "allTests": payload.get("allTests"),
+                "testResponse": payload.get("testResponse"),
+            }
+
+            from bug_report_handler import send_bug_report
+            send_bug_report(
+                session_key, report_type, description, username, attachment,
+            )
+            return _json_response({"status": "ok", "message": "Report sent."})
+        except ValueError as exc:
+            logger.warning("Bug report validation error: %s", exc)
+            return _json_response({"error": str(exc)}, 400)
+        except Exception as exc:
+            logger.error("Failed to send bug report: %s", exc, exc_info=True)
+            return _json_response(
+                {"error": "Failed to send report: {0}".format(exc)}, 500,
+            )
 
     def _handle_get(self, request: Dict[str, Any]) -> Dict[str, Any]:
         """Health check."""

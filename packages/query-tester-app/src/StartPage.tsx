@@ -26,7 +26,7 @@ export function StartPage({ onNavigateLibrary, loadTestId }: StartPageProps = {}
     const state = useTestStore();
     const activeTest = selectActiveTest(state);
     const activeTestId = selectActiveTestId(state);
-    const isLoadingTest = useLoadTest(loadTestId);
+    const { isLoadingTest, loadError } = useLoadTest(loadTestId);
 
     const [localName, setLocalName] = useState(activeTest?.name ?? '');
     useEffect(() => { setLocalName(activeTest?.name ?? ''); }, [activeTestId, activeTest?.name]);
@@ -143,6 +143,26 @@ export function StartPage({ onNavigateLibrary, loadTestId }: StartPageProps = {}
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z" />
                         </svg>
                         <span className="text-sm text-slate-400">Loading test...</span>
+                    </div>
+                </div>
+            ) : loadError ? (
+                <div className="flex-1 flex items-center justify-center px-5 pt-4 animate-fadeIn">
+                    <div className="flex flex-col items-center gap-4 max-w-md text-center">
+                        <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center">
+                            <svg className="w-6 h-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <p className="text-sm text-red-400">{loadError}</p>
+                        {onNavigateLibrary && (
+                            <button
+                                type="button"
+                                onClick={onNavigateLibrary}
+                                className="px-4 py-2 text-sm font-medium rounded-lg bg-btnprimary text-white hover:bg-btnprimary-hover cursor-pointer transition-colors"
+                            >
+                                Go to Library
+                            </button>
+                        )}
                     </div>
                 </div>
             ) : (

@@ -167,7 +167,9 @@
       "Bash(git push:*)",
       "Bash(py -m py_compile core/test_runner.py && echo \"OK\")",
       "Bash(cd /c/Users/guyst/splunk-ui-toolkit-apps/packages/query-tester/stage/bin && py -m py_compile core/test_runner.py && echo \"OK\")",
-      "Bash(py -m py_compile alert_run_test.py && echo \"OK\")"
+      "Bash(py -m py_compile alert_run_test.py && echo \"OK\")",
+      "Bash(cd C:/Users/guyst/splunk-ui-toolkit-apps/packages/query-tester/stage/bin && py -m py_compile bug_report_handler.py 2>&1)",
+      "Bash(cd C:/Users/guyst/splunk-ui-toolkit-apps/packages/query-tester/stage/bin && py -m py_compile query_tester.py 2>&1)"
     ]
   }
 }
