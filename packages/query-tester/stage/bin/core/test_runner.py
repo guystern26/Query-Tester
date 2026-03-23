@@ -9,6 +9,10 @@ from typing import Any, Dict, List, Optional, Tuple
 from uuid import uuid4
 import time
 
+# Seconds to wait after HEC indexing before running the query.
+# Gives Splunk time to make newly indexed data searchable.
+INDEX_SETTLE_SECS = 3
+
 from logger import get_logger
 from core.models import ParsedScenario, ScenarioResult, TestPayload
 from core.payload_parser import parse
@@ -150,6 +154,11 @@ class TestRunner:
         if payload.test_type != "query_only" and strategy not in ("inputlookup", "tstats"):
             if all_events:
                 index_events(all_events, run_id, self._session_key)
+                logger.info(
+                    "Waiting %ds for indexed data to become searchable.",
+                    INDEX_SETTLE_SECS,
+                )
+                time.sleep(INDEX_SETTLE_SECS)
 
         if strategy == "lookup" and all_events:
             create_temp_lookup(run_id, all_events, payload.app)
