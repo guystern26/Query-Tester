@@ -104,6 +104,7 @@ def build_failure_email(
     spl_drift_detected,  # type: bool
     test_id="",          # type: str
     full_results=None,   # type: Optional[Dict[str, Any]]
+    splunk_web_url="",   # type: str
 ):
     # type: (...) -> Tuple[str, str]
     """Build subject and HTML body for a failure notification email."""
@@ -125,7 +126,7 @@ def build_failure_email(
 
     link_html = ""
     if test_id:
-        url = _build_test_link(test_id)
+        url = _build_test_link(test_id, splunk_web_url or SPLUNK_WEB_URL)
         link_html = (
             '<a href="{url}" style="display:inline-block;margin-top:16px;'
             "padding:8px 20px;background:#2563eb;color:#fff;text-decoration:none;"
@@ -251,6 +252,7 @@ def send_failure_emails(
     subject, html_body = build_failure_email(
         test_name, ran_at, status, scenario_results, spl_drift_detected,
         test_id=test_id, full_results=full_results,
+        splunk_web_url=web_url,
     )
 
     for recipient in recipients:
