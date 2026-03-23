@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-alert_email_html.py — HTML rendering for failure notification emails.
+alert_email_html.py — Outlook-compatible HTML rendering for failure emails.
 
-Builds scenario blocks with validation summaries and result row tables.
-Mirrors the frontend display logic (column filtering, failed-rows-first sort).
+Uses table-based layout only. No divs for layout, no border-radius, no flex,
+no CSS shorthand. Works in Outlook 2013+, Outlook 365, OWA, Gmail, Apple Mail.
+Neutral light design that renders correctly in both light and dark modes.
 """
 from __future__ import annotations
 
@@ -20,22 +21,11 @@ HIDDEN_SPLUNK_FIELDS = frozenset([
     "eventtype", "tag", "tag::eventtype",
 ])
 
-TH_STYLE = (
-    "padding:4px 8px;text-align:left;font-size:11px;font-weight:600;"
-    "color:#94a3b8;border-bottom:1px solid #334155;white-space:nowrap"
-)
-TD_STYLE = (
-    "padding:3px 8px;font-size:12px;border-bottom:1px solid #1e293b;"
-    "white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis"
-)
-
-
 # ─── Shared helpers ──────────────────────────────────────────────────────────
 
 
 def esc(text):
     # type: (str) -> str
-    """Escape HTML special characters."""
     return (
         text.replace("&", "&amp;")
         .replace("<", "&lt;")
@@ -63,7 +53,7 @@ def _cell_value(raw):
     return s.replace("\n", " ")
 
 
-# ─── Row-level validation (mirrors frontend getRowValidation) ────────────────
+# ─── Row-level validation ───────────────────────────────────────────────────
 
 
 def _evaluate_condition(condition, actual, expected):
@@ -100,7 +90,7 @@ def _evaluate_condition(condition, actual, expected):
             return bool(re.search(expected, actual))
         except re.error:
             return False
-    return True  # unknown condition — don't penalise
+    return True
 
 
 def _get_row_validation(row, validations):
@@ -129,7 +119,9 @@ def _sort_rows_failed_first(rows, validations):
     # type: (List[Dict[str, Any]], List[Dict[str, Any]]) -> List[Dict[str, Any]]
     if not validations:
         return rows
-    field_validations = [v for v in validations if not v.get("field", "").startswith("_")]
+    field_validations = [
+        v for v in validations if not v.get("field", "").startswith("_")
+    ]
     if not field_validations:
         return rows
 
@@ -146,10 +138,6 @@ def _sort_rows_failed_first(rows, validations):
 
 def format_result_rows_table(scenario):
     # type: (Dict[str, Any]) -> str
-    """Build an HTML table of up to MAX_EMAIL_ROWS result rows for a scenario.
-
-    Failed rows sorted to the top. Columns match the frontend display.
-    """
     result_rows = scenario.get("resultRows", [])
     if not result_rows:
         return ""
@@ -168,79 +156,95 @@ def format_result_rows_table(scenario):
     sorted_rows = _sort_rows_failed_first(result_rows, validations)
     display_rows = sorted_rows[:MAX_EMAIL_ROWS]
     total = len(result_rows)
+    field_vals = [
+        v for v in validations if not v.get("field", "").startswith("_")
+    ]
 
-    field_validations = [v for v in validations if not v.get("field", "").startswith("_")]
-
-    header_cells = ['<th style="{s}">#</th>'.format(s=TH_STYLE)]
+    # Header
+    th = (
+        'class="em-muted em-border" style="padding:6px 10px;text-align:left;'
+        'font-size:11px;font-weight:bold;color:#6b7280;'
+        'border-bottom:2px solid #d1d5db;font-family:Arial,sans-serif"'
+    )
+    hcells = '<th {s}>#</th>'.format(s=th)
     for col in col_set_ordered:
         has_fail = any(
             v.get("field") == col and not v.get("passed", True)
             for v in validations
         )
-        color = "color:#f87171" if has_fail else "color:#94a3b8"
-        header_cells.append(
-            '<th style="{s};{c}">{name}</th>'.format(
-                s=TH_STYLE, c=color, name=esc(col))
-        )
-    header = "<tr>" + "".join(header_cells) + "</tr>"
+        color = "color:#dc2626" if has_fail else "color:#6b7280"
+        cls = "" if has_fail else 'class="em-muted em-border"'
+        hcells += (
+            '<th {cls} style="padding:6px 10px;text-align:left;font-size:11px;'
+            'font-weight:bold;{c};border-bottom:2px solid #d1d5db;'
+            'font-family:Arial,sans-serif">{n}</th>'
+        ).format(cls=cls, c=color, n=esc(col))
+    header = "<tr>" + hcells + "</tr>"
 
-    body_rows = []
+    # Body rows
+    rows_html = []
     for idx, row in enumerate(display_rows):
         row_passed = True
-        if field_validations:
-            row_passed, _ = _get_row_validation(row, field_validations)
+        if field_vals:
+            row_passed, _ = _get_row_validation(row, field_vals)
 
-        row_bg = "#1a0f0f" if not row_passed else (
-            "#0f172a" if idx % 2 == 0 else "#111827"
-        )
+        if not row_passed:
+            row_bg = "#fef2f2"
+            row_cls = "em-row-fail"
+        elif idx % 2 == 0:
+            row_bg = "#ffffff"
+            row_cls = "em-row-even"
+        else:
+            row_bg = "#f9fafb"
+            row_cls = "em-row-odd"
 
-        cells = [
-            '<td style="{s};color:#475569">{n}</td>'.format(
-                s=TD_STYLE, n=idx + 1)
-        ]
+        cells = (
+            '<td class="em-muted em-border" style="padding:4px 10px;'
+            'font-size:12px;color:#9ca3af;border-bottom:1px solid #e5e7eb;'
+            'font-family:Arial,sans-serif">{n}</td>'
+        ).format(n=idx + 1)
+
         for col in col_set_ordered:
             val = _cell_value(row.get(col))
             has_fail = any(
                 v.get("field") == col and not v.get("passed", True)
                 for v in validations
             )
-            text_color = "#fca5a5" if has_fail else "#cbd5e1"
-            cells.append(
-                '<td style="{s};color:{c}" title="{t}">{v}</td>'.format(
-                    s=TD_STYLE, c=text_color,
-                    t=esc(val), v=esc(val[:80]),
-                )
+            tc = "color:#dc2626" if has_fail else "color:#374151"
+            cls = "" if has_fail else 'class="em-text em-border"'
+            cells += (
+                '<td {cls} style="padding:4px 10px;font-size:12px;{c};'
+                'border-bottom:1px solid #e5e7eb;font-family:Arial,sans-serif"'
+                ' title="{t}">{v}</td>'
+            ).format(cls=cls, c=tc, t=esc(val), v=esc(val[:80]))
+
+        rows_html.append(
+            '<tr class="{rc}" bgcolor="{bg}">{cells}</tr>'.format(
+                rc=row_cls, bg=row_bg, cells=cells,
             )
-        body_rows.append(
-            '<tr style="background:{bg}">{cells}</tr>'.format(
-                bg=row_bg, cells="".join(cells))
         )
 
-    truncation_note = ""
+    trunc = ""
     if total > MAX_EMAIL_ROWS:
-        truncation_note = (
-            '<div style="padding:4px 8px;font-size:11px;color:#94a3b8">'
+        trunc = (
+            '<tr><td colspan="{cols}" class="em-muted"'
+            ' style="padding:6px 10px;font-size:11px;'
+            'color:#9ca3af;font-family:Arial,sans-serif">'
             "Showing {shown} of {total} rows (failed rows first)"
-            "</div>"
-        ).format(shown=MAX_EMAIL_ROWS, total=total)
+            "</td></tr>"
+        ).format(cols=len(col_set_ordered) + 1, shown=MAX_EMAIL_ROWS, total=total)
 
     return (
-        '<div style="padding:4px 12px 8px">'
-        '<div style="font-size:11px;font-weight:600;color:#94a3b8;'
-        'text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">'
-        "Query Results</div>"
-        '<div style="overflow-x:auto;border:1px solid #334155;border-radius:6px">'
-        '<table style="width:100%;border-collapse:collapse">'
+        '<table cellpadding="0" cellspacing="0" border="0" width="100%">'
+        "<tr><td>"
+        '<table cellpadding="0" cellspacing="0" border="0" width="100%"'
+        ' class="em-scen-border"'
+        ' style="border:1px solid #d1d5db;border-collapse:collapse">'
         "<thead>{header}</thead>"
-        "<tbody>{body}</tbody>"
-        "</table></div>"
-        "{trunc}"
-        "</div>"
-    ).format(
-        header=header,
-        body="\n".join(body_rows),
-        trunc=truncation_note,
-    )
+        "<tbody>{body}{trunc}</tbody>"
+        "</table>"
+        "</td></tr></table>"
+    ).format(header=header, body="\n".join(rows_html), trunc=trunc)
 
 
 # ─── Validation row + scenario block ────────────────────────────────────────
@@ -250,19 +254,26 @@ def _format_validation_row(v):
     # type: (Dict[str, Any]) -> str
     passed = v.get("passed", False)
     icon = "&#10003;" if passed else "&#10007;"
-    color = "#4ade80" if passed else "#f87171"
+    color = "#16a34a" if passed else "#dc2626"
+    td = (
+        'class="em-text em-border" style="padding:5px 10px;font-size:12px;'
+        'border-bottom:1px solid #e5e7eb;color:#374151;'
+        'font-family:Arial,sans-serif"'
+    )
     return (
         "<tr>"
-        '<td style="padding:4px 8px;color:{color}">{icon}</td>'
-        '<td style="padding:4px 8px">{field}</td>'
-        '<td style="padding:4px 8px">{condition}</td>'
-        '<td style="padding:4px 8px">{expected}</td>'
-        '<td style="padding:4px 8px">{actual}</td>'
-        '<td style="padding:4px 8px">{msg}</td>'
+        '<td class="em-border" style="padding:5px 10px;font-size:14px;'
+        'border-bottom:1px solid #e5e7eb;color:{color};'
+        'font-family:Arial,sans-serif;text-align:center"'
+        ">{icon}</td>"
+        "<td {td}>{field}</td>"
+        "<td {td}>{condition}</td>"
+        "<td {td}>{expected}</td>"
+        "<td {td}>{actual}</td>"
+        "<td {td}>{msg}</td>"
         "</tr>"
     ).format(
-        color=color,
-        icon=icon,
+        color=color, icon=icon, td=td,
         field=esc(str(v.get("field", ""))),
         condition=esc(str(v.get("condition", ""))),
         expected=esc(str(v.get("expected", ""))),
@@ -273,75 +284,91 @@ def _format_validation_row(v):
 
 def format_scenario_block(scenario):
     # type: (Dict[str, Any]) -> str
-    """Build an HTML block for one scenario result.
-
-    For failed scenarios, includes validation summary AND a result rows
-    table (first 20 rows, failed rows sorted to the top).
-    """
     passed = scenario.get("passed", False)
     name = esc(scenario.get("scenarioName", "Unknown"))
-    badge_bg = "#166534" if passed else "#991b1b"
+    badge_bg = "#16a34a" if passed else "#dc2626"
     badge_text = "PASS" if passed else "FAIL"
     error = scenario.get("error", "")
 
+    # Scenario header
     header = (
-        '<div style="margin-bottom:16px;border:1px solid #334155;'
-        'border-radius:8px;overflow:hidden">'
-        '<div style="padding:8px 12px;background:#1e293b;'
-        'display:flex;align-items:center;gap:8px">'
-        '<span style="padding:2px 8px;border-radius:4px;font-size:11px;'
-        'font-weight:bold;color:#fff;background:{bg}">{badge}</span>'
-        '<span style="font-weight:600;color:#e2e8f0">{name}</span>'
-        "</div>"
+        '<table cellpadding="0" cellspacing="0" border="0" width="100%"'
+        ' class="em-scen-border"'
+        ' style="margin-bottom:16px;border:1px solid #d1d5db">'
+        '<tr><td class="em-scen-head" bgcolor="#f3f4f6"'
+        ' style="padding:10px 12px;font-family:Arial,sans-serif">'
+        '<table cellpadding="0" cellspacing="0" border="0"><tr>'
+        '<td bgcolor="{bg}" style="padding:3px 10px;font-size:11px;'
+        'font-weight:bold;color:#ffffff;font-family:Arial,sans-serif;'
+        'letter-spacing:0.5px">{badge}</td>'
+        '<td class="em-head" style="padding-left:10px;font-size:14px;'
+        'font-weight:bold;color:#1f2937;'
+        'font-family:Arial,sans-serif">{name}</td>'
+        "</tr></table>"
+        "</td></tr>"
     ).format(bg=badge_bg, badge=badge_text, name=name)
 
     body_parts = []
 
     if error:
         body_parts.append(
-            '<div style="padding:8px 12px;color:#fca5a5;font-size:13px">'
-            "Error: {0}</div>".format(esc(error))
+            '<tr><td style="padding:8px 12px;color:#dc2626;font-size:13px;'
+            'font-family:Arial,sans-serif">Error: {0}</td></tr>'.format(
+                esc(error),
+            )
         )
 
+    # Validation table
     validations = scenario.get("validations", [])
     if validations:
+        th = (
+            'class="em-muted em-border" style="padding:5px 10px;'
+            'text-align:left;font-size:11px;font-weight:bold;color:#6b7280;'
+            'border-bottom:2px solid #d1d5db;font-family:Arial,sans-serif"'
+        )
         rows = "\n".join(_format_validation_row(v) for v in validations)
         body_parts.append(
-            '<table style="width:100%;border-collapse:collapse;font-size:12px;'
-            'color:#cbd5e1">'
+            "<tr><td>"
+            '<table cellpadding="0" cellspacing="0" border="0" width="100%"'
+            ' style="border-collapse:collapse">'
             "<thead><tr>"
-            '<th style="padding:4px 8px;text-align:left;color:#94a3b8;'
-            'border-bottom:1px solid #334155"></th>'
-            '<th style="padding:4px 8px;text-align:left;color:#94a3b8;'
-            'border-bottom:1px solid #334155">Field</th>'
-            '<th style="padding:4px 8px;text-align:left;color:#94a3b8;'
-            'border-bottom:1px solid #334155">Condition</th>'
-            '<th style="padding:4px 8px;text-align:left;color:#94a3b8;'
-            'border-bottom:1px solid #334155">Expected</th>'
-            '<th style="padding:4px 8px;text-align:left;color:#94a3b8;'
-            'border-bottom:1px solid #334155">Actual</th>'
-            '<th style="padding:4px 8px;text-align:left;color:#94a3b8;'
-            'border-bottom:1px solid #334155">Message</th>'
+            "<th {th}></th>"
+            "<th {th}>Field</th>"
+            "<th {th}>Condition</th>"
+            "<th {th}>Expected</th>"
+            "<th {th}>Actual</th>"
+            "<th {th}>Message</th>"
             "</tr></thead>"
-            "<tbody>{rows}</tbody></table>".format(rows=rows)
+            "<tbody>{rows}</tbody></table>"
+            "</td></tr>".format(th=th, rows=rows)
         )
 
+    # Result count
     result_count = scenario.get("resultCount")
     if result_count is not None:
         body_parts.append(
-            '<div style="padding:4px 12px;color:#94a3b8;font-size:11px">'
-            "Result rows: {0}</div>".format(result_count)
+            '<tr><td class="em-muted" style="padding:6px 12px;color:#9ca3af;'
+            'font-size:11px;font-family:Arial,sans-serif">'
+            "Result rows: {0}</td></tr>".format(result_count)
         )
 
-    # For failed scenarios, include the actual result rows table
+    # Result rows table for failed scenarios
     if not passed:
         rows_table = format_result_rows_table(scenario)
         if rows_table:
-            body_parts.append(rows_table)
+            body_parts.append(
+                "<tr><td style=\"padding:4px 12px 8px\">"
+                "{0}</td></tr>".format(rows_table)
+            )
 
     body_html = "\n".join(body_parts) if body_parts else (
-        '<div style="padding:8px 12px;color:#94a3b8;font-size:12px">'
-        "No validation details</div>"
+        '<tr><td class="em-muted" style="padding:8px 12px;color:#9ca3af;'
+        'font-size:12px;font-family:Arial,sans-serif">'
+        "No validation details</td></tr>"
     )
 
-    return header + '<div style="padding:8px 0">' + body_html + "</div></div>"
+    return (
+        header
+        + '<tr><td><table cellpadding="0" cellspacing="0" border="0"'
+        ' width="100%">' + body_html + "</table></td></tr></table>"
+    )

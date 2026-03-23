@@ -88,34 +88,67 @@ def _build_attachment(payload):
 
 def _build_html(report_type, description, username):
     # type: (str, str, str) -> str
+    """Outlook-compatible table-based HTML for bug report emails."""
     label = "Bug Report" if report_type == "bug" else "Feature Request"
-    color = "#f87171" if report_type == "bug" else "#60a5fa"
+    color = "#dc2626" if report_type == "bug" else "#2563eb"
+    accent_bg = "#fef2f2" if report_type == "bug" else "#eff6ff"
     return (
-        '<div style="font-family:Arial,sans-serif;max-width:600px;'
-        'margin:0 auto;padding:20px">'
-        '<h2 style="color:{color};margin:0 0 16px">'
-        "Query Tester {label}</h2>"
-        '<table style="width:100%;border-collapse:collapse;'
-        'font-size:14px;margin-bottom:16px">'
+        "<!DOCTYPE html>"
+        '<html><head><meta charset="utf-8">'
+        '<meta name="color-scheme" content="light dark">'
+        "</head><body style=\"margin:0;padding:0;background-color:#f3f4f6;"
+        'font-family:Arial,sans-serif">'
+        "<!--[if mso]>"
+        '<table cellpadding="0" cellspacing="0" border="0" width="600"'
+        ' align="center"><tr><td>'
+        "<![endif]-->"
+        '<table cellpadding="0" cellspacing="0" border="0" width="100%"'
+        ' style="max-width:600px;margin:0 auto">'
+        # Accent bar
+        '<tr><td bgcolor="{color}" style="padding:0;height:4px;font-size:0;'
+        'line-height:0">&nbsp;</td></tr>'
+        # Header
+        '<tr bgcolor="#ffffff"><td style="padding:24px 24px 16px">'
+        '<table cellpadding="0" cellspacing="0" border="0"><tr>'
+        '<td bgcolor="{accent_bg}" style="padding:4px 12px;font-size:11px;'
+        'font-weight:bold;color:{color};font-family:Arial,sans-serif;'
+        'letter-spacing:0.5px">{label}</td>'
+        "</tr></table>"
+        '<table cellpadding="0" cellspacing="0" border="0" width="100%"'
+        ' style="margin-top:12px">'
+        '<tr><td style="font-size:20px;font-weight:bold;color:#1f2937;'
+        'font-family:Arial,sans-serif">Query Tester {label}</td></tr>'
+        "</table></td></tr>"
+        # Info rows
+        '<tr bgcolor="#ffffff"><td style="padding:0 24px 16px">'
+        '<table cellpadding="0" cellspacing="0" border="0">'
         "<tr>"
-        '<td style="padding:6px 12px;color:#94a3b8;width:100px">'
-        "Type</td>"
-        '<td style="padding:6px 12px;color:#e2e8f0">{label}</td>'
-        "</tr>"
-        "<tr>"
-        '<td style="padding:6px 12px;color:#94a3b8">Reported by</td>'
-        '<td style="padding:6px 12px;color:#e2e8f0">{user}</td>'
-        "</tr>"
-        "</table>"
-        '<div style="padding:12px;background:#1e293b;border:1px solid #334155;'
-        'border-radius:8px;color:#e2e8f0;font-size:14px;'
-        'white-space:pre-wrap">{desc}</div>'
-        '<p style="margin-top:16px;font-size:12px;color:#64748b">'
+        '<td style="padding:4px 0;font-size:13px;color:#6b7280;'
+        'font-weight:bold;font-family:Arial,sans-serif;width:100px">'
+        "Reported by:</td>"
+        '<td style="padding:4px 12px;font-size:13px;color:#374151;'
+        'font-family:Arial,sans-serif">{user}</td>'
+        "</tr></table></td></tr>"
+        # Description
+        '<tr bgcolor="#ffffff"><td style="padding:0 24px 24px">'
+        '<table cellpadding="0" cellspacing="0" border="0" width="100%">'
+        '<tr><td style="padding:0 0 6px;font-size:12px;font-weight:bold;'
+        'color:#6b7280;font-family:Arial,sans-serif">Description</td></tr>'
+        '<tr><td bgcolor="#f9fafb" style="padding:12px;font-size:14px;'
+        "color:#374151;font-family:Arial,sans-serif;border:1px solid #e5e7eb;"
+        'white-space:pre-wrap">{desc}</td></tr>'
+        "</table></td></tr>"
+        # Footer
+        '<tr><td bgcolor="#f9fafb" style="padding:14px 24px;border-top:1px '
+        'solid #e5e7eb;font-size:11px;color:#9ca3af;'
+        'font-family:Arial,sans-serif">'
         "The full test definition and results are attached as a JSON file."
-        "</p>"
-        "</div>"
+        "</td></tr>"
+        "</table>"
+        "<!--[if mso]></td></tr></table><![endif]-->"
+        "</body></html>"
     ).format(
-        color=color, label=label,
+        color=color, accent_bg=accent_bg, label=label,
         user=_esc(username), desc=_esc(description),
     )
 
