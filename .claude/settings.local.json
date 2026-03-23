@@ -164,7 +164,10 @@
       "Bash(py -m pytest tests/ -v 2>&1 | tail -15)",
       "Bash(py -m py_compile data/sub_query_runner.py && echo \"OK\" && py -m py_compile core/test_runner.py && echo \"OK\" && py -m pytest tests/ -v 2>&1 | tail -5)",
       "Bash(git remote:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(py -m py_compile core/test_runner.py && echo \"OK\")",
+      "Bash(cd /c/Users/guyst/splunk-ui-toolkit-apps/packages/query-tester/stage/bin && py -m py_compile core/test_runner.py && echo \"OK\")",
+      "Bash(py -m py_compile alert_run_test.py && echo \"OK\")"
     ]
   }
 }

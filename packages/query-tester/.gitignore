@@ -1,2 +1,4 @@
 
 types
+build/
+*.zip

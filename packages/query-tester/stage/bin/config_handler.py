@@ -113,7 +113,7 @@ class ConfigHandler(PersistentServerConnectionApplication):
         safe = dict(config)
         secrets = read_all_secrets(service)
         for field in SECRET_FIELDS:
-            safe[field] = {"set": field in secrets and len(secrets[field]) > 0}
+            safe[field] = {"set": field in secrets and bool(secrets[field])}
         return json_response(safe)
 
     def _handle_post(self, request):

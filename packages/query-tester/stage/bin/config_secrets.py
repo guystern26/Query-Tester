@@ -56,11 +56,24 @@ def read_all_secrets(service):
 def write_secret(service, field_name, value):
     # type: (Any, str, str) -> None
     """Write or update a secret in storage/passwords."""
+    # Try to update existing secret first
     try:
         for cred in service.storage_passwords:
             if cred.realm == SECRET_REALM and cred.username == field_name:
-                cred.delete()
-                break
-    except Exception:
-        pass
-    service.storage_passwords.create(value, field_name, SECRET_REALM)
+                cred.update(password=value)
+                return
+    except Exception as exc:
+        logger.debug("Failed to scan existing secrets: %s", exc)
+
+    # No existing secret — create new
+    try:
+        service.storage_passwords.create(value, field_name, SECRET_REALM)
+    except Exception as exc:
+        # If create fails with conflict, try delete + create
+        logger.debug("Create secret failed, retrying with delete: %s", exc)
+        try:
+            service.storage_passwords.delete(field_name, SECRET_REALM)
+            service.storage_passwords.create(value, field_name, SECRET_REALM)
+        except Exception as exc2:
+            logger.error("Failed to write secret '%s': %s", field_name, exc2)
+            raise

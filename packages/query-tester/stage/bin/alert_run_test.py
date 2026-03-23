@@ -22,6 +22,7 @@ from kvstore_client import KVStoreClient
 from alert_email import send_failure_emails
 from alert_helpers import extract_scenario_results, build_result_summary
 from spl_drift import check_spl_drift
+from scheduled_runner_helpers import build_test_payload
 
 logger = get_logger(__name__)
 
@@ -95,13 +96,25 @@ def run(payload_path, session_key):
         if not spl_hash:
             spl_hash = stored_hash
 
+        # Fetch the saved test definition
+        saved_test_id = scheduled.get("testId", "")
+        try:
+            saved_test = kv.get_by_id("saved_tests", saved_test_id)
+        except ValueError:
+            logger.error("Saved test not found: %s", saved_test_id)
+            return
+        definition = saved_test.get("definition", {})
+        if isinstance(definition, str):
+            definition = json.loads(definition)
+        payload, _ = build_test_payload(definition, saved_test, scheduled)
+
         # Run the test
         from core.test_runner import TestRunner
         status = "error"
         result = {}  # type: Dict[str, Any]
         try:
             runner = TestRunner(session_key)
-            result, _ = runner.run_test({"testId": scheduled.get("testId", "")})
+            result, _ = runner.run_test(payload)
             raw_status = result.get("status", "error")
             status = raw_status if raw_status in ("pass", "fail", "partial") else "error"
         except Exception as exc:
@@ -135,13 +148,6 @@ def run(payload_path, session_key):
         # Send failure emails
         if status in ("fail", "error") and scheduled.get("alertOnFailure"):
             recipients = scheduled.get("emailRecipients", [])
-            definition = {}  # type: Dict[str, Any]
-            try:
-                saved = kv.get_by_id("saved_tests", scheduled.get("testId", ""))
-                raw_def = saved.get("definition", {})
-                definition = json.loads(raw_def) if isinstance(raw_def, str) else raw_def
-            except Exception:
-                logger.warning("Could not fetch definition for email attachment")
             full_scenario_results = result.get(
                 "scenarioResults", scenario_results,
             )
