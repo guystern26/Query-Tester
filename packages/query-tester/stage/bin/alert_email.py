@@ -107,84 +107,215 @@ def build_failure_email(
     splunk_web_url="",   # type: str
 ):
     # type: (...) -> Tuple[str, str]
-    """Build subject and HTML body for a failure notification email."""
+    """Build subject and Outlook-compatible HTML body for a failure email.
+
+    Uses table-based layout, no divs for structure, no border-radius,
+    no flex, no CSS shorthand. Works in Outlook 2013+, OWA, Gmail, Apple Mail.
+    Light neutral design for both light-mode and dark-mode Outlook.
+    """
     subject = "[Query Tester] Test Failed: {0}".format(test_name)
 
-    status_color = "#f87171" if status in ("fail", "error") else "#fbbf24"
+    status_color = "#dc2626" if status in ("fail", "error") else "#d97706"
     status_label = status.upper()
+    status_bg = "#fef2f2" if status in ("fail", "error") else "#fffbeb"
 
+    # SPL drift warning
     drift_html = ""
     if spl_drift_detected:
         drift_html = (
-            '<div style="margin:12px 0;padding:8px 12px;background:#78350f;'
-            'border:1px solid #a16207;border-radius:6px;color:#fde68a;'
-            'font-size:13px">'
-            "&#9888; SPL drift detected &mdash; the saved search SPL has "
-            "changed since this test was created."
-            "</div>"
+            '<tr><td style="padding:0 0 12px">'
+            '<table cellpadding="0" cellspacing="0" border="0" width="100%">'
+            '<tr bgcolor="#fffbeb">'
+            '<td class="em-drift" style="padding:10px 14px;'
+            'border-left:4px solid #d97706;font-size:13px;color:#92400e;'
+            'font-family:Arial,sans-serif">'
+            "&#9888; <strong>SPL drift detected</strong> &mdash; the saved "
+            "search SPL has changed since this test was created."
+            "</td></tr></table></td></tr>"
         )
 
+    # CTA button — Outlook-compatible bulletproof button
     link_html = ""
     if test_id:
         url = _build_test_link(test_id, splunk_web_url or SPLUNK_WEB_URL)
         link_html = (
-            '<a href="{url}" style="display:inline-block;margin-top:16px;'
-            "padding:8px 20px;background:#2563eb;color:#fff;text-decoration:none;"
-            'border-radius:6px;font-size:13px;font-weight:600">'
-            "Open Test in Query Tester</a>".format(url=url)
-        )
+            '<tr><td style="padding:16px 0 0">'
+            '<table cellpadding="0" cellspacing="0" border="0">'
+            "<tr>"
+            '<td bgcolor="#2563eb" style="padding:10px 24px">'
+            '<a href="{url}" style="color:#ffffff;font-size:13px;'
+            "font-weight:bold;text-decoration:none;"
+            'font-family:Arial,sans-serif">'
+            "Open Test in Query Tester</a>"
+            "</td></tr></table></td></tr>"
+        ).format(url=url)
 
+    # Scenario blocks
     scenario_blocks = "\n".join(
-        format_scenario_block(s) for s in scenario_results
+        "<tr><td style=\"padding:0 0 4px\">"
+        + format_scenario_block(s)
+        + "</td></tr>"
+        for s in scenario_results
     )
 
+    # Summary line
     summary_html = ""
     if full_results:
         passed = full_results.get("passedScenarios", 0)
         total = full_results.get("totalScenarios", 0)
         msg = full_results.get("message", "")
         summary_html = (
-            '<div style="margin-bottom:12px;color:#94a3b8;font-size:13px">'
+            '<tr><td class="em-sub" style="padding:0 0 12px;font-size:13px;'
+            'color:#6b7280;font-family:Arial,sans-serif">'
             "{passed}/{total} scenarios passed"
-            "{msg}</div>"
+            "{msg}</td></tr>"
         ).format(
             passed=passed,
             total=total,
             msg=" &mdash; " + esc(msg) if msg else "",
         )
 
+    # Dark-mode CSS — overrides inline light-mode styles for webmail clients
+    # (Gmail, OWA, Apple Mail). Outlook desktop ignores <style> but auto-inverts
+    # the light inline styles, which produces an acceptable dark result.
+    dark_css = (
+        "<style>"
+        ":root{color-scheme:light dark;supported-color-schemes:light dark}"
+        "@media(prefers-color-scheme:dark){"
+        ".em-body{background-color:#1a1a2e!important}"
+        ".em-card{background-color:#16213e!important}"
+        ".em-head{color:#e2e8f0!important}"
+        ".em-sub{color:#94a3b8!important}"
+        ".em-text{color:#cbd5e1!important}"
+        ".em-muted{color:#64748b!important}"
+        ".em-border{border-color:#334155!important}"
+        ".em-row-even{background-color:#16213e!important}"
+        ".em-row-odd{background-color:#1a1a2e!important}"
+        ".em-row-fail{background-color:#2d1b1b!important}"
+        ".em-scen-head{background-color:#1e293b!important}"
+        ".em-scen-border{border-color:#475569!important}"
+        ".em-footer{background-color:#0f172a!important;color:#64748b!important;"
+        "border-color:#334155!important}"
+        ".em-drift{background-color:#422006!important;color:#fde68a!important;"
+        "border-color:#a16207!important}"
+        ".em-status-bg{background-color:transparent!important}"
+        "}"
+        # Outlook.com dark mode (uses data-ogsc / data-ogsb attributes)
+        "[data-ogsc] .em-body{background-color:#1a1a2e!important}"
+        "[data-ogsc] .em-card{background-color:#16213e!important}"
+        "[data-ogsc] .em-head{color:#e2e8f0!important}"
+        "[data-ogsc] .em-sub{color:#94a3b8!important}"
+        "[data-ogsc] .em-text{color:#cbd5e1!important}"
+        "[data-ogsc] .em-muted{color:#64748b!important}"
+        "[data-ogsc] .em-footer{background-color:#0f172a!important;"
+        "color:#64748b!important}"
+        "[data-ogsc] .em-drift{background-color:#422006!important;"
+        "color:#fde68a!important}"
+        "</style>"
+    )
+
+    # Full email body — table-based layout with dual-mode classes
     body = (
-        '<div style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,'
-        "Roboto,sans-serif;max-width:700px;margin:0 auto;background:#0f172a;"
-        'color:#e2e8f0;padding:24px;border-radius:12px">'
-        '<h2 style="margin:0 0 4px;color:#f1f5f9">Test Failure Report</h2>'
-        '<div style="margin-bottom:16px;font-size:14px;color:#94a3b8">'
-        "{test_name}</div>"
-        '<table style="margin-bottom:16px;font-size:13px;color:#cbd5e1">'
-        "<tr><td><strong>Status:</strong></td>"
-        '<td style="padding-left:12px;color:{status_color};font-weight:700">'
-        "{status_label}</td></tr>"
-        "<tr><td><strong>Run time:</strong></td>"
-        '<td style="padding-left:12px">{ran_at}</td></tr>'
-        "</table>"
-        "{drift}"
+        "<!DOCTYPE html>"
+        '<html><head><meta charset="utf-8">'
+        '<meta name="color-scheme" content="light dark">'
+        '<meta name="supported-color-schemes" content="light dark">'
+        "{dark_css}"
+        "</head>"
+        '<body class="em-body" style="margin:0;padding:0;'
+        'background-color:#f3f4f6;font-family:Arial,sans-serif">'
+        "<!--[if mso]>"
+        '<table cellpadding="0" cellspacing="0" border="0" width="700"'
+        ' align="center"><tr><td>'
+        "<![endif]-->"
+        '<table cellpadding="0" cellspacing="0" border="0" width="100%"'
+        ' style="max-width:700px;margin:0 auto">'
+        # Top accent bar
+        "<tr>"
+        '<td bgcolor="#1e293b" style="padding:0;height:4px;font-size:0;'
+        'line-height:0">&nbsp;</td>'
+        "</tr>"
+        # Header
+        '<tr><td class="em-card" bgcolor="#ffffff"'
+        ' style="padding:24px 24px 16px">'
+        '<table cellpadding="0" cellspacing="0" border="0" width="100%">'
+        '<tr><td class="em-head" style="font-size:22px;font-weight:bold;'
+        'color:#1f2937;font-family:Arial,sans-serif">'
+        "Test Failure Report</td></tr>"
+        '<tr><td class="em-sub" style="padding:4px 0 0;font-size:14px;'
+        'color:#6b7280;font-family:Arial,sans-serif">'
+        "{test_name}</td></tr>"
+        "</table></td></tr>"
+        # Status + run time
+        '<tr><td class="em-card" bgcolor="#ffffff"'
+        ' style="padding:0 24px 16px">'
+        '<table cellpadding="0" cellspacing="0" border="0">'
+        "<tr>"
+        '<td class="em-sub" style="padding:4px 0;font-size:13px;'
+        'color:#6b7280;font-family:Arial,sans-serif;font-weight:bold">'
+        "Status:</td>"
+        '<td class="em-status-bg" bgcolor="{status_bg}"'
+        ' style="padding:4px 12px;font-size:13px;color:{status_color};'
+        'font-weight:bold;font-family:Arial,sans-serif">'
+        "{status_label}</td>"
+        "</tr>"
+        "<tr>"
+        '<td class="em-sub" style="padding:4px 0;font-size:13px;'
+        'color:#6b7280;font-family:Arial,sans-serif;font-weight:bold">'
+        "Run time:</td>"
+        '<td class="em-text" style="padding:4px 12px;font-size:13px;'
+        'color:#374151;font-family:Arial,sans-serif">{ran_at}</td>'
+        "</tr>"
+        "</table></td></tr>"
+        # Drift warning
+        "{drift_section}"
+        # Scenarios heading + summary
+        '<tr><td class="em-card" bgcolor="#ffffff" style="padding:0 24px">'
+        '<table cellpadding="0" cellspacing="0" border="0" width="100%">'
+        '<tr><td class="em-head em-border" style="padding:8px 0 12px;'
+        'border-top:1px solid #e5e7eb;font-size:16px;font-weight:bold;'
+        'color:#1f2937;font-family:Arial,sans-serif">'
+        "Scenario Results</td></tr>"
         "{summary}"
-        '<h3 style="margin:20px 0 12px;color:#f1f5f9;font-size:15px">'
-        "Scenario Results</h3>"
+        "</table></td></tr>"
+        # Scenario blocks
+        '<tr><td class="em-card" bgcolor="#ffffff"'
+        ' style="padding:0 24px 16px">'
+        '<table cellpadding="0" cellspacing="0" border="0" width="100%">'
         "{scenarios}"
+        "</table></td></tr>"
+        # CTA button
+        '<tr><td class="em-card" bgcolor="#ffffff"'
+        ' style="padding:0 24px 24px">'
+        '<table cellpadding="0" cellspacing="0" border="0" width="100%">'
         "{link}"
-        '<div style="margin-top:20px;padding-top:12px;border-top:1px solid '
-        '#334155;font-size:11px;color:#64748b">'
+        "</table></td></tr>"
+        # Footer
+        "<tr>"
+        '<td class="em-footer" bgcolor="#f9fafb" style="padding:16px 24px;'
+        'border-top:1px solid #e5e7eb;font-size:11px;color:#9ca3af;'
+        'font-family:Arial,sans-serif">'
         "This email was sent by the Query Tester scheduled runner. "
         "The test definition is attached as a JSON file."
-        "</div>"
-        "</div>"
+        "</td></tr>"
+        "</table>"
+        "<!--[if mso]></td></tr></table><![endif]-->"
+        "</body></html>"
     ).format(
+        dark_css=dark_css,
         test_name=esc(test_name),
         status_color=status_color,
+        status_bg=status_bg,
         status_label=status_label,
         ran_at=esc(ran_at),
-        drift=drift_html,
+        drift_section=(
+            '<tr><td class="em-card" bgcolor="#ffffff"'
+            ' style="padding:0 24px">'
+            '<table cellpadding="0" cellspacing="0" border="0" width="100%">'
+            + drift_html
+            + "</table></td></tr>"
+            if drift_html else ""
+        ),
         summary=summary_html,
         scenarios=scenario_blocks,
         link=link_html,
