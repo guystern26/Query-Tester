@@ -20,7 +20,7 @@ export function FieldConditionsGrid() {
   const toggleFieldLogic = () => store.updateFieldLogic(test.id, fieldLogic === 'and' ? 'or' : 'and');
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3" data-tutorial="field-conditions">
       <ValidationScopeSelector
         testId={test.id}
         scope={test.validation.validationScope}

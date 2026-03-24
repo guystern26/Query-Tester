@@ -4,6 +4,7 @@ import { LibraryPage } from './features/library';
 import { SetupPage } from './features/setup/SetupPage';
 import { useTestStore } from 'core/store/testStore';
 import { UnsavedChangesModal } from './features/layout/UnsavedChangesModal';
+import { SaveTestModal } from './components/test-navigation/SaveTestModal';
 
 type Page = 'library' | 'tester' | 'setup';
 
@@ -23,7 +24,18 @@ function getRoute(): { page: Page; testId?: string } {
     return { page: 'library' };
 }
 
-export function AppShell() {
+/** Returns true only when the builder has unsaved work worth prompting about. */
+function shouldGuardNavigation(): boolean {
+    const { hasUnsavedChanges, savedTestId, tests, activeTestId } = useTestStore.getState();
+    if (!hasUnsavedChanges) return false;
+    // Saved test with edits — always worth prompting
+    if (savedTestId) return true;
+    // New test — only prompt if meaningful content exists (at least an app selected)
+    const activeTest = tests.find((t) => t.id === activeTestId);
+    return Boolean(activeTest && activeTest.app);
+}
+
+export function AppShell(): React.ReactElement {
     const [route, setRoute] = useState(getRoute);
     const [pendingTarget, setPendingTarget] = useState<string | null>(null);
     const suppressGuardRef = useRef(false);
@@ -60,9 +72,8 @@ export function AppShell() {
                 setRoute(getRoute());
                 return;
             }
-            const { hasUnsavedChanges } = useTestStore.getState();
             const newRoute = getRoute();
-            if (hasUnsavedChanges && route.page === 'tester' && newRoute.page !== 'tester') {
+            if (shouldGuardNavigation() && route.page === 'tester' && newRoute.page !== 'tester') {
                 // Revert hash to stay on tester, show modal
                 window.history.replaceState(null, '', '#tester');
                 setPendingTarget(window.location.hash === '#tester' ? newRoute.page : newRoute.page);
@@ -75,8 +86,7 @@ export function AppShell() {
     }, [route.page]);
 
     const navigateTo = useCallback((target: string) => {
-        const { hasUnsavedChanges } = useTestStore.getState();
-        if (hasUnsavedChanges && route.page === 'tester') {
+        if (shouldGuardNavigation() && route.page === 'tester') {
             setPendingTarget(target);
             return;
         }
@@ -87,7 +97,9 @@ export function AppShell() {
         if (!pendingTarget) return;
         const target = pendingTarget;
         setPendingTarget(null);
-        useTestStore.setState({ hasUnsavedChanges: false });
+        // Reset builder to a clean slate — unsaved new tests are gone,
+        // saved tests keep their library version but the builder clears.
+        useTestStore.getState().resetToNewTest();
         suppressGuardRef.current = true;
         window.location.hash = target;
     }, [pendingTarget]);
@@ -96,14 +108,76 @@ export function AppShell() {
         setPendingTarget(null);
     }, []);
 
+    const [isSavingBeforeLeave, setIsSavingBeforeLeave] = useState(false);
+    const [showSaveModal, setShowSaveModal] = useState(false);
+
+    const handleSaveAndLeave = useCallback(() => {
+        if (!pendingTarget) return;
+        const state = useTestStore.getState();
+        if (state.savedTestId) {
+            // Already saved — update directly and leave
+            const activeTest = state.tests.find((t) => t.id === state.activeTestId);
+            const testName = activeTest?.name || 'Untitled Test';
+            setIsSavingBeforeLeave(true);
+            state.updateSavedTest(state.savedTestId, testName, '').then(() => {
+                const target = pendingTarget;
+                setPendingTarget(null);
+                setIsSavingBeforeLeave(false);
+                suppressGuardRef.current = true;
+                window.location.hash = target;
+            }).catch(() => {
+                setIsSavingBeforeLeave(false);
+            });
+        } else {
+            // New test — show the save modal so user can name it
+            setShowSaveModal(true);
+        }
+    }, [pendingTarget]);
+
+    const handleSaveModalNew = useCallback(async (name: string, description: string) => {
+        setIsSavingBeforeLeave(true);
+        try {
+            await useTestStore.getState().saveCurrentTest(name, description);
+            setShowSaveModal(false);
+            const target = pendingTarget;
+            setPendingTarget(null);
+            setIsSavingBeforeLeave(false);
+            suppressGuardRef.current = true;
+            if (target) window.location.hash = target;
+        } catch {
+            setIsSavingBeforeLeave(false);
+        }
+    }, [pendingTarget]);
+
+    const handleSaveModalClose = useCallback(() => {
+        setShowSaveModal(false);
+    }, []);
+
+    const saveModalInitialName = (() => {
+        const state = useTestStore.getState();
+        const activeTest = state.tests.find((t) => t.id === state.activeTestId);
+        return activeTest?.name || '';
+    })();
+
     return (
         <>
-            {pendingTarget && (
+            {pendingTarget && !showSaveModal && (
                 <UnsavedChangesModal
                     onDiscard={handleDiscardAndLeave}
                     onStay={handleStayOnPage}
+                    onSave={handleSaveAndLeave}
+                    isSaving={isSavingBeforeLeave}
                 />
             )}
+            <SaveTestModal
+                open={showSaveModal}
+                onClose={handleSaveModalClose}
+                initialName={saveModalInitialName}
+                savedTestId={null}
+                isSaving={isSavingBeforeLeave}
+                onSaveNew={handleSaveModalNew}
+                onUpdate={() => {}}
+            />
             {route.page === 'setup' ? (
                 <SetupPage onNavigateBack={() => navigateTo('library')} />
             ) : route.page === 'tester' ? (

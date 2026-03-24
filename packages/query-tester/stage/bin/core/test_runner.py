@@ -151,7 +151,7 @@ class TestRunner:
             else:
                 all_events.extend(build_events(inp))
 
-        if payload.test_type != "query_only" and strategy not in ("inputlookup", "tstats"):
+        if payload.test_type != "query_only" and strategy not in ("tstats",):
             if all_events:
                 index_events(all_events, run_id, self._session_key)
                 logger.info(

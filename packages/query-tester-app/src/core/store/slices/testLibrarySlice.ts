@@ -111,6 +111,34 @@ export function testLibrarySlice(set: SetState, get: GetState) {
             }
         },
 
+        cloneSavedTest: async (id: string) => {
+            const state = get();
+            const source = state.savedTests.find((t) => t.id === id);
+            if (!source || !source.definition) {
+                set((draft) => { draft.libraryError = 'Cannot clone — test not found.'; });
+                return;
+            }
+            set((draft) => { draft.isSaving = true; draft.libraryError = null; });
+            try {
+                const cloneName = source.name + ' (Copy)';
+                const def = { ...source.definition, name: cloneName };
+                const saved = await savedTestsApi.saveTest({
+                    name: cloneName,
+                    description: source.description || '',
+                    definition: def,
+                });
+                set((draft) => {
+                    draft.savedTests.unshift(saved);
+                    draft.isSaving = false;
+                });
+            } catch (e) {
+                set((draft) => {
+                    draft.isSaving = false;
+                    draft.libraryError = errMsg(e);
+                });
+            }
+        },
+
         clearLibraryError: () => { set((draft) => { draft.libraryError = null; }); },
     };
 }

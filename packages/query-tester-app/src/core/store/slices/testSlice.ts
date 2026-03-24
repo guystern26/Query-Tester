@@ -6,6 +6,7 @@ import type { EntityId, TestType, ExtractedDataSource, TestDefinition } from '..
 import { genId, createDefaultTest } from '../../constants/defaults';
 import { MAX_TESTS_PER_SESSION } from '../../constants/limits';
 import { findTest, deepCloneTestWithNewIds } from './helpers';
+import { skipNextTestsChange } from '../changeDetectionFlag';
 
 type SliceState = { tests: TestDefinition[]; activeTestId: EntityId | null; testResponse: unknown | null; savedTestId: string | null; savedTestVersion: number | null; hasUnsavedChanges: boolean };
 type SetState = (recipe: (draft: SliceState) => void) => void;
@@ -13,7 +14,8 @@ type GetState = () => SliceState;
 
 export function testSlice(set: SetState, _get: GetState) {
   return {
-    addTest: () =>
+    addTest: () => {
+      skipNextTestsChange();
       set((draft) => {
         if (draft.tests.length >= MAX_TESTS_PER_SESSION) return;
         const newTest = createDefaultTest();
@@ -23,9 +25,11 @@ export function testSlice(set: SetState, _get: GetState) {
         draft.savedTestId = null;
         draft.savedTestVersion = null;
         draft.hasUnsavedChanges = false;
-      }),
+      });
+    },
 
-    resetToNewTest: () =>
+    resetToNewTest: () => {
+      skipNextTestsChange();
       set((draft) => {
         const fresh = createDefaultTest();
         draft.tests = [fresh];
@@ -34,7 +38,8 @@ export function testSlice(set: SetState, _get: GetState) {
         draft.savedTestId = null;
         draft.savedTestVersion = null;
         draft.hasUnsavedChanges = false;
-      }),
+      });
+    },
 
     deleteTest: (testId: EntityId) =>
       set((draft) => {

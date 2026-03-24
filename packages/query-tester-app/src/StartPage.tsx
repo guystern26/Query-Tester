@@ -14,6 +14,8 @@ import { usePipelineState } from './features/layout/usePipelineState';
 import { StepPipeline } from './features/layout/StepPipeline';
 import { PipelineConnector } from './features/layout/PipelineConnector';
 import { SetupCard } from './features/layout/SetupCard';
+import { useTutorial } from './features/tutorial/useTutorial';
+import { TutorialOverlay } from './features/tutorial/TutorialOverlay';
 
 /* ── page component ─────────────────────────────────────────── */
 
@@ -59,6 +61,7 @@ export function StartPage({ onNavigateLibrary, loadTestId }: StartPageProps = {}
     const showValidation = hasApp && hasQuery && (!isStandard || dataDone);
 
     const pipeline = usePipelineState();
+    const tutorial = useTutorial();
 
     const handleAppChange = (appValue: string): void => {
         if (activeTest) state.updateApp(activeTest.id, appValue);
@@ -94,7 +97,7 @@ export function StartPage({ onNavigateLibrary, loadTestId }: StartPageProps = {}
             className="h-screen flex flex-col bg-gradient-to-br from-navy-900 to-navy-800 text-slate-100 overflow-hidden"
             style={{ paddingBottom: barExpanded ? '45vh' : '48px' }}
         >
-            <TopBar onNavigateLibrary={onNavigateLibrary} onNavigateSetup={() => { window.location.hash = 'setup'; }} />
+            <TopBar onNavigateLibrary={onNavigateLibrary} onNavigateSetup={() => { window.location.hash = 'setup'; }} onStartTutorial={tutorial.start} />
 
             {hasApp ? (
                 <>
@@ -211,6 +214,7 @@ export function StartPage({ onNavigateLibrary, loadTestId }: StartPageProps = {}
             )}
 
             <ResultsBar />
+            <TutorialOverlay tutorial={tutorial} />
         </div>
     );
 }

@@ -25,6 +25,8 @@ export interface TestsTableRowProps {
     isCreatingSchedule: boolean;
     onOpen: (id: string) => void;
     onEdit: (id: string) => void;
+    onClone: (id: string) => void;
+    isCloning: boolean;
     onSchedule: (id: string) => void;
     onHistory: (id: string) => void;
     onToggleSchedule: (scheduleId: string, enabled: boolean) => void;
@@ -33,8 +35,8 @@ export interface TestsTableRowProps {
 }
 
 export function TestsTableRow({
-    test, schedule, isLoading, isToggling, isCreatingSchedule, onOpen, onEdit, onSchedule, onHistory, onToggleSchedule, onDelete, deleteError,
-}: TestsTableRowProps) {
+    test, schedule, isLoading, isToggling, isCreatingSchedule, onOpen, onEdit, onClone, isCloning, onSchedule, onHistory, onToggleSchedule, onDelete, deleteError,
+}: TestsTableRowProps): React.ReactElement {
     const [isConfirming, setIsConfirming] = useState(false);
     const badge = TYPE_BADGE[test.validationType] || TYPE_BADGE[test.testType] || TYPE_BADGE.standard;
     const isEnabled = schedule ? normalizeEnabled(schedule.enabled) : false;
@@ -151,6 +153,16 @@ export function TestsTableRow({
                         <button className={ICON_BTN_CLS} onClick={() => onHistory(test.id)} title="Run history">
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h5" /><path strokeLinecap="round" strokeLinejoin="round" d="M4 9a8 8 0 1 1 1.34 4.41" /></svg>
                         </button>
+                        {isCloning ? (
+                            <span className="flex items-center gap-1 px-1">
+                                <span className="w-3 h-3 border-[1.5px] border-slate-600 border-t-blue-400 rounded-full animate-spin" />
+                                <span className="text-[10px] text-slate-500">Cloning...</span>
+                            </span>
+                        ) : (
+                            <button className={ICON_BTN_CLS} onClick={() => onClone(test.id)} title="Clone test">
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><rect x="9" y="9" width="13" height="13" rx="2" /><path strokeLinecap="round" strokeLinejoin="round" d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" /></svg>
+                            </button>
+                        )}
                         <button className={ICON_BTN_CLS} onClick={() => setIsConfirming(true)} title="Delete">
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                         </button>

@@ -6,13 +6,15 @@ import { TestNavigation } from './TestNavigation';
 import { BugReportButton } from './BugReportButton';
 import { GearIcon } from '../GearIcon';
 import { SaveTestModal } from './SaveTestModal';
+import { TutorialLaunchButton } from '../../features/tutorial/TutorialLaunchButton';
 
 export interface TopBarProps {
   onNavigateLibrary?: () => void;
   onNavigateSetup?: () => void;
+  onStartTutorial?: () => void;
 }
 
-export function TopBar({ onNavigateLibrary, onNavigateSetup }: TopBarProps = {}) {
+export function TopBar({ onNavigateLibrary, onNavigateSetup, onStartTutorial }: TopBarProps = {}) {
   const state = useTestStore();
   const isAdmin = useTestStore((s) => s.isAdmin);
   const setupRequired = useTestStore((s) => s.setupRequired);
@@ -68,8 +70,8 @@ export function TopBar({ onNavigateLibrary, onNavigateSetup }: TopBarProps = {})
     <>
       <header className="sticky top-0 z-50 h-14 bg-navy-900 border-b border-slate-800 px-5 flex items-center justify-between shrink-0 shadow-lg shadow-black/20">
         <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm" onClick={handleSave}>Export</Button>
-          <Button variant="secondary" size="sm" onClick={handleLoadClick}>Import</Button>
+          <Button variant="secondary" size="sm" onClick={handleSave} data-tutorial="export-btn">Export</Button>
+          <Button variant="secondary" size="sm" onClick={handleLoadClick} data-tutorial="import-btn">Import</Button>
           <input
             ref={fileInputRef}
             type="file"
@@ -79,7 +81,7 @@ export function TopBar({ onNavigateLibrary, onNavigateSetup }: TopBarProps = {})
             aria-hidden="true"
           />
           <div className="w-px h-5 bg-slate-700 mx-1" />
-          <div className="relative flex items-center">
+          <div className="relative flex items-center" data-tutorial="save-test-btn">
             <Button variant="primary" size="sm" onClick={() => setSaveModalOpen(true)}>
               Save Test
             </Button>
@@ -93,6 +95,7 @@ export function TopBar({ onNavigateLibrary, onNavigateSetup }: TopBarProps = {})
           <BugReportButton />
         </div>
         <div className="flex items-center gap-3">
+          {onStartTutorial && <TutorialLaunchButton onClick={onStartTutorial} />}
           <TestNavigation />
           {onNavigateLibrary && (
             <nav className="flex items-center gap-1 ml-3 pl-3 border-l border-slate-700">

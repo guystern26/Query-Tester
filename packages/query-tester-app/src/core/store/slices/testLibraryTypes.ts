@@ -4,6 +4,7 @@
 
 import type { EntityId, TestDefinition, TestResponse, SavedTestFull } from '../../types';
 import { DEFAULT_TIME_RANGE } from '../../constants/defaults';
+import { skipNextTestsChange } from '../changeDetectionFlag';
 
 export interface TestLibraryState {
     savedTests: SavedTestFull[];
@@ -62,6 +63,7 @@ export function getActiveTest(state: LibraryStoreState): TestDefinition {
 export function applyTestToBuilder(
     draft: LibraryStoreState, full: SavedTestFull, savedId: string,
 ): void {
+    skipNextTestsChange();
     const def = prepareDefinition(full);
     draft.tests = [def];
     draft.activeTestId = def.id;

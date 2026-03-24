@@ -65,7 +65,7 @@ export function GeneratorRule({ testId, scenarioId, inputId, rule, availableFiel
   const ConfigComponent = rule.type ? CONFIG_MAP[rule.type] : null;
 
   return (
-    <div className="bg-navy-900 border border-slate-800 rounded-lg p-3 mb-2">
+    <div className="bg-navy-900 border border-slate-800 rounded-lg p-3 mb-2" data-tutorial="gen-pick-list">
       <div className="flex items-center gap-2">
         {hasDropdownOptions ? (
           <select
