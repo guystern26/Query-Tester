@@ -21,7 +21,7 @@ export function ResultCountSection({ testId, resultCount }: ResultCountSectionPr
   const store = useTestStore();
 
   return (
-    <div className={`bg-navy-900 rounded-lg p-3 border ${resultCount.enabled ? 'border-green-500/40' : 'border-slate-800'}`}>
+    <div data-tutorial="result-count" className={`bg-navy-900 rounded-lg p-3 border ${resultCount.enabled ? 'border-green-500/40' : 'border-slate-800'}`}>
       <div className="text-[10px] uppercase tracking-[1.5px] text-slate-500 mb-2 flex items-center gap-1.5">
         Result Count
         {resultCount.enabled && <span className="text-green-400 text-[12px]">{'\u2713'}</span>}
@@ -34,6 +34,7 @@ export function ResultCountSection({ testId, resultCount }: ResultCountSectionPr
       {resultCount.enabled && (
         <div className="flex items-center gap-2 mt-2">
           <select
+            data-tutorial="result-count-op"
             className={`${selectCls} w-[150px]`}
             value={resultCount.operator}
             onChange={(e) => store.updateResultCount(testId, { operator: e.target.value as ResultCountOperator })}

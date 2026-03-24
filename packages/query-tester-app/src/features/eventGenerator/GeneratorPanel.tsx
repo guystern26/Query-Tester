@@ -46,7 +46,7 @@ export function GeneratorPanel({ testId, scenarioId, inputId, fieldNames }: Gene
   };
 
   return (
-    <div className="flex flex-col gap-2.5 pt-2">
+    <div className="flex flex-col gap-2.5 pt-2" data-tutorial="gen-rules">
       {!hasFields && (
         <p className="text-xs text-slate-500 italic m-0">
           {fieldNames ? 'No fields found in the JSON data.' : 'Add field names to the table above to configure generation rules.'}

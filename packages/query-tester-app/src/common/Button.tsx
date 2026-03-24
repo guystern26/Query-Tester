@@ -24,6 +24,7 @@ export interface ButtonProps {
   onClick?: () => void;
   children: React.ReactNode;
   className?: string;
+  'data-tutorial'?: string;
 }
 
 export function Button({
@@ -33,12 +34,14 @@ export function Button({
   onClick,
   children,
   className = '',
-}: ButtonProps) {
+  'data-tutorial': dataTutorial,
+}: ButtonProps): React.ReactElement {
   return (
     <button
       type="button"
       disabled={disabled}
       onClick={onClick}
+      data-tutorial={dataTutorial}
       className={`font-semibold rounded-lg transition-all duration-200 ${sizeStyles[size]} ${variantStyles[variant]} ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${className}`}
     >
       {children}

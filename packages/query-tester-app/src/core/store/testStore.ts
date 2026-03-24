@@ -176,6 +176,7 @@ export interface TestStoreState {
   saveCurrentTest: (name: string, description: string) => Promise<void>;
   updateSavedTest: (id: string, name: string, description: string) => Promise<void>;
   deleteSavedTest: (id: string) => Promise<void>;
+  cloneSavedTest: (id: string) => Promise<void>;
   clearLibraryError: () => void;
   clearSplDriftWarning: () => void;
   reloadDriftedSpl: () => Promise<void>;
@@ -255,11 +256,19 @@ export const useTestStore = create<TestStoreState>()(
   }))
 );
 
-// Auto-detect unsaved changes: any mutation to `tests` after a library load
+// Auto-detect unsaved changes: any mutation to `tests` marks unsaved.
+// Actions that intentionally reset (addTest, resetToNewTest, loadTestIntoBuilder)
+// call skipNextTestsChange() so the subscription ignores that single mutation.
+import { consumeSkip } from './changeDetectionFlag';
+
 let _prevTests: TestDefinition[] | null = null;
 useTestStore.subscribe((state) => {
-  if (state.savedTestId && _prevTests !== null && state.tests !== _prevTests && !state.hasUnsavedChanges) {
-    state.markUnsaved();
+  if (state.tests !== _prevTests) {
+    if (consumeSkip()) {
+      // Intentional reset — don't mark unsaved
+    } else if (_prevTests !== null && !state.hasUnsavedChanges) {
+      state.markUnsaved();
+    }
+    _prevTests = state.tests;
   }
-  _prevTests = state.tests;
 });

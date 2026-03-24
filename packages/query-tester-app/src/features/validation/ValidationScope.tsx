@@ -35,7 +35,7 @@ export function ValidationScopeSelector({ testId, scope, scopeN }: ValidationSco
   };
 
   return (
-    <div className="bg-navy-900 rounded-lg p-3 border border-slate-800">
+    <div className="bg-navy-900 rounded-lg p-3 border border-slate-800" data-tutorial="validation-scope">
       <div className="text-[10px] uppercase tracking-[1.5px] text-slate-500 mb-2">Validation Scope</div>
       <div className="flex items-center gap-2">
         <select className={`${selectCls} flex-1`} value={scope} onChange={handleScopeChange}>

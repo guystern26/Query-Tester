@@ -25,6 +25,8 @@ export interface TestsTableProps {
     scheduleByTestId: Record<string, ScheduledTest>;
     onOpen: (id: string) => void;
     onEdit: (id: string) => void;
+    onClone: (id: string) => void;
+    cloningIds: Set<string>;
     onSchedule: (id: string) => void;
     onHistory: (id: string) => void;
     onToggleSchedule: (scheduleId: string, enabled: boolean) => void;
@@ -34,8 +36,8 @@ export interface TestsTableProps {
 
 export function TestsTable({
     tests, isLoading, deletingIds, togglingScheduleId, creatingScheduleForTestId, scheduleByTestId,
-    onOpen, onEdit, onSchedule, onHistory, onToggleSchedule, onDelete, deleteErrors,
-}: TestsTableProps) {
+    onOpen, onEdit, onClone, cloningIds, onSchedule, onHistory, onToggleSchedule, onDelete, deleteErrors,
+}: TestsTableProps): React.ReactElement {
     if (isLoading) {
         return (
             <div className="bg-navy-900 rounded-xl border border-slate-800 overflow-hidden">
@@ -101,6 +103,8 @@ export function TestsTable({
                             isCreatingSchedule={creatingScheduleForTestId === t.id}
                             onOpen={onOpen}
                             onEdit={onEdit}
+                            onClone={onClone}
+                            isCloning={cloningIds.has(t.id)}
                             onSchedule={onSchedule}
                             onHistory={onHistory}
                             onToggleSchedule={onToggleSchedule}

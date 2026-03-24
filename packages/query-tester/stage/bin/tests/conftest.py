@@ -25,9 +25,24 @@ sys.modules.setdefault("splunk.persistconn", _splunk_mock.persistconn)
 sys.modules.setdefault("splunk.persistconn.application", _splunk_mock.persistconn.application)
 sys.modules.setdefault("splunklib", MagicMock())
 sys.modules.setdefault("splunklib.client", MagicMock())
+sys.modules.setdefault("splunklib.results", MagicMock())
 
 # Make PersistentServerConnectionApplication a plain base class
 _splunk_mock.persistconn.application.PersistentServerConnectionApplication = object
+
+# Break circular import: spl/__init__ -> query_injector -> core.models ->
+# core/__init__ -> core.test_runner -> spl.query_injector.
+# Pre-register lightweight package stubs so submodule imports (e.g.
+# "from core.models import X") resolve directly without __init__.py.
+import types as _types
+import importlib as _il
+
+for _pkg_name, _pkg_dir in [("spl", "spl"), ("core", "core")]:
+    if _pkg_name not in sys.modules:
+        _pkg = _types.ModuleType(_pkg_name)
+        _pkg.__path__ = [os.path.join(_bin_dir, _pkg_dir)]
+        _pkg.__package__ = _pkg_name
+        sys.modules[_pkg_name] = _pkg
 
 from helpers import FakeKVStore
 

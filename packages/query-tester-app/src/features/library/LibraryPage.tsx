@@ -14,11 +14,11 @@ export interface LibraryPageProps {
     onNavigateBuilder: (testId?: string) => void;
 }
 
-export function LibraryPage({ onNavigateBuilder }: LibraryPageProps) {
+export function LibraryPage({ onNavigateBuilder }: LibraryPageProps): React.ReactElement {
     const store = useTestStore();
     const {
         savedTests, isLoadingLibrary, libraryError,
-        fetchSavedTests, deleteSavedTest, clearLibraryError,
+        fetchSavedTests, deleteSavedTest, cloneSavedTest, clearLibraryError,
         scheduledTests, fetchScheduledTests, updateScheduledTest,
         isLoadingScheduled, togglingScheduleId, creatingScheduleForTestId, scheduledError,
         isAdmin, setupRequired,
@@ -26,6 +26,7 @@ export function LibraryPage({ onNavigateBuilder }: LibraryPageProps) {
 
     const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
     const [deleteErrors, setDeleteErrors] = useState<Record<string, string>>({});
+    const [cloningIds, setCloningIds] = useState<Set<string>>(new Set());
 
     // Schedule modal state
     const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
@@ -100,15 +101,25 @@ export function LibraryPage({ onNavigateBuilder }: LibraryPageProps) {
         await updateScheduledTest(scheduleId, { enabled });
     }, [updateScheduledTest]);
 
-    const handleCreateNew = useCallback(() => {
-        onNavigateBuilder();
-    }, [onNavigateBuilder]);
+    const handleClone = useCallback(async (id: string) => {
+        setCloningIds((prev) => new Set(prev).add(id));
+        try {
+            await cloneSavedTest(id);
+        } finally {
+            setCloningIds((prev) => {
+                const next = new Set(prev);
+                next.delete(id);
+                return next;
+            });
+        }
+    }, [cloneSavedTest]);
 
-    const handleScheduleClose = useCallback(() => {
-        setScheduleModalOpen(false);
-        setEditingSchedule(null);
-        setScheduleTestId(null);
-    }, []);
+    const handleCreateNew = useCallback(() => {
+        store.addTest();
+        onNavigateBuilder();
+    }, [onNavigateBuilder, store]);
+
+    const handleScheduleClose = useCallback(() => { setScheduleModalOpen(false); setEditingSchedule(null); setScheduleTestId(null); }, []);
 
     return (
         <div className="h-screen flex flex-col bg-gradient-to-br from-navy-900 to-navy-800 text-slate-100 overflow-hidden">
@@ -162,6 +173,8 @@ export function LibraryPage({ onNavigateBuilder }: LibraryPageProps) {
                         scheduleByTestId={scheduleByTestId}
                         onOpen={handleOpen}
                         onEdit={handleOpen}
+                        onClone={handleClone}
+                        cloningIds={cloningIds}
                         onSchedule={handleSchedule}
                         onHistory={handleHistory}
                         onToggleSchedule={handleToggleSchedule}
@@ -171,18 +184,8 @@ export function LibraryPage({ onNavigateBuilder }: LibraryPageProps) {
                 </div>
             </div>
 
-            {isLoadingScheduled && (
-                <div className="fixed top-16 left-1/2 -translate-x-1/2 z-[60] px-4 py-2 bg-blue-900/90 border border-blue-700 text-blue-300 text-xs font-medium rounded-lg shadow-lg animate-pulse">
-                    Saving...
-                </div>
-            )}
-
-            {scheduleToast && !isLoadingScheduled && (
-                <div className={'fixed top-16 left-1/2 -translate-x-1/2 z-[60] px-4 py-2 text-xs font-medium rounded-lg shadow-lg ' + (scheduleToast.includes('Failed') ? 'bg-red-900/90 border border-red-700 text-red-300' : 'bg-green-900/90 border border-green-700 text-green-300')}>
-                    {scheduleToast}
-                </div>
-            )}
-
+            {isLoadingScheduled && <div className="fixed top-16 left-1/2 -translate-x-1/2 z-[60] px-4 py-2 bg-blue-900/90 border border-blue-700 text-blue-300 text-xs font-medium rounded-lg shadow-lg animate-pulse">Saving...</div>}
+            {scheduleToast && !isLoadingScheduled && <div className={'fixed top-16 left-1/2 -translate-x-1/2 z-[60] px-4 py-2 text-xs font-medium rounded-lg shadow-lg ' + (scheduleToast.includes('Failed') ? 'bg-red-900/90 border border-red-700 text-red-300' : 'bg-green-900/90 border border-green-700 text-green-300')}>{scheduleToast}</div>}
             <ScheduleModal
                 open={scheduleModalOpen}
                 onClose={handleScheduleClose}

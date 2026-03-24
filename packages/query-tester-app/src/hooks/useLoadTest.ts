@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTestStore } from 'core/store/testStore';
 import { useLoadLastRun } from './useLoadLastRun';
 
-export function useLoadTest(loadTestId?: string) {
+export function useLoadTest(loadTestId?: string): { isLoadingTest: boolean; loadError: string | null } {
     const state = useTestStore();
     const [isLoadingTest, setIsLoadingTest] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
@@ -10,10 +10,9 @@ export function useLoadTest(loadTestId?: string) {
 
     useEffect(() => {
         setLoadError(null);
-        if (!loadTestId) {
-            if (state.savedTestId) state.resetToNewTest();
-            return;
-        }
+        // No test_id → keep whatever is in the builder ("last edited test").
+        // Resets happen explicitly via addTest/resetToNewTest from the UI.
+        if (!loadTestId) return;
 
         const tryLoad = () => {
             const { savedTests } = useTestStore.getState();

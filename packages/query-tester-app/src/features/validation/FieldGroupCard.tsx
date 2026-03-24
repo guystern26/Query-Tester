@@ -39,7 +39,7 @@ export function FieldGroupCard({ testId, group, index, scenarios, isOnly }: Fiel
   const toggleLogic = () => store.updateFieldGroupLogic(testId, group.id, logic === 'and' ? 'or' : 'and');
 
   return (
-    <div className="bg-navy-800 rounded-lg border border-slate-700 p-4">
+    <div className="bg-navy-800 rounded-lg border border-slate-700 p-4" data-tutorial="field-logic">
       {/* Top row: number + field name + scope + copy + delete */}
       <div className="flex items-center gap-2 mb-3">
         <span className="w-6 h-6 rounded-full bg-slate-700 text-slate-400 text-[11px] font-bold flex items-center justify-center shrink-0">

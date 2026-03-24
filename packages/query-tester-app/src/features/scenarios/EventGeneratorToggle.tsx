@@ -13,7 +13,7 @@ export interface EventGeneratorToggleProps {
 
 export function EventGeneratorToggle({ testId, scenarioId, input, generatorAvailable, generatorFieldNames }: EventGeneratorToggleProps) {
   const state = useTestStore();
-  const [genOpen, setGenOpen] = useState(false);
+  const [genOpen, setGenOpen] = useState(input.generatorConfig.enabled);
 
   return (
     <>
