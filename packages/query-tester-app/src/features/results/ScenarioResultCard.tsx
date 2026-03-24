@@ -3,7 +3,7 @@
  */
 import React, { useState, useMemo } from 'react';
 import type { ScenarioResult, ValidationDetail } from 'core/types';
-import { formatMs, isInjectedRunId, buildFieldFailures, MAX_DISPLAY_ROWS } from './resultHelpers';
+import { formatMs, isInjectedRunId, isNestedJsonField, buildFieldFailures, MAX_DISPLAY_ROWS } from './resultHelpers';
 import { ResultRowsTable } from './ResultRowsTable';
 import { ValidationItem } from './ValidationItem';
 
@@ -49,7 +49,7 @@ export function ScenarioResultCard({ result }: ScenarioResultCardProps) {
     const visibleFields = new Set<string>();
     sortedRows.forEach((r) => {
       Object.keys(r).forEach((k) => {
-        if (!k.startsWith('_') && !isInjectedRunId(k)) visibleFields.add(k);
+        if (!k.startsWith('_') && !isInjectedRunId(k) && !isNestedJsonField(k)) visibleFields.add(k);
       });
     });
     return visibleFields.size === 0;

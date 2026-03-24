@@ -52,12 +52,19 @@ def _get_email_config(session_key=None):
             port = int(cfg.get("smtp_port", SMTP_PORT))
             auth = cfg.get("email_auth_method", "none")
             tls = _infer_tls_mode(cfg.get("tls_mode", ""), port, auth)
+            web_url = cfg.get("splunk_web_url", SPLUNK_WEB_URL)
+            # If web URL is still localhost default but a real host is
+            # configured, build the URL from splunk_host automatically.
+            splunk_host = cfg.get("splunk_host", "localhost")
+            if "localhost" in web_url and splunk_host != "localhost":
+                scheme = cfg.get("splunk_scheme", "https")
+                web_url = "{0}://{1}:8000".format(scheme, splunk_host)
             return {
                 "smtp_server": cfg.get("smtp_server", SMTP_SERVER),
                 "smtp_port": port,
                 "mail_from": cfg.get("mail_from", MAIL_FROM),
                 "default_alert_email": cfg.get("default_alert_email", DEFAULT_ALERT_EMAIL),
-                "splunk_web_url": cfg.get("splunk_web_url", SPLUNK_WEB_URL),
+                "splunk_web_url": web_url,
                 "smtp_password": cfg.get("smtp_password", ""),
                 "smtp_username": cfg.get("smtp_username", ""),
                 "email_auth_method": auth,
@@ -329,9 +336,16 @@ def build_failure_email(
 
 def _build_attachment(test_name, definition, full_results):
     # type: (str, Dict[str, Any], Optional[Dict[str, Any]]) -> MIMEBase
+    # Match the app's import format (fileSlice.ts SavedState)
+    # so the attachment can be loaded directly via the Import button.
+    test_id = definition.get("id", "")
     payload = {
-        "testDefinition": definition,
-    }
+        "version": 2,
+        "savedAt": full_results.get("timestamp", "") if full_results else "",
+        "activeTestId": test_id,
+        "testDefinition": [definition],
+        "payload": [],
+    }  # type: Dict[str, Any]
     if full_results:
         payload["testResults"] = full_results
 
@@ -341,7 +355,7 @@ def _build_attachment(test_name, definition, full_results):
     encoders.encode_base64(part)
 
     safe_name = re.sub(r"[^a-zA-Z0-9_\-]", "_", test_name)[:60]
-    filename = "{0}_results.json".format(safe_name)
+    filename = "splunk-query-tester-{0}.json".format(safe_name)
     part.add_header("Content-Disposition", "attachment", filename=filename)
     return part
 

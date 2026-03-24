@@ -1,7 +1,7 @@
 /** Paginated result rows table with per-row validation. Failed rows sorted to top. */
 import React, { useState, useMemo } from 'react';
 import type { ValidationDetail } from 'core/types';
-import { HIDDEN_SPLUNK_FIELDS, MAX_DISPLAY_ROWS, MANY_COLUMNS_THRESHOLD, PAGE_SIZE, humanizeCondition, isInjectedRunId, getRowValidation } from './resultHelpers';
+import { HIDDEN_SPLUNK_FIELDS, MAX_DISPLAY_ROWS, MANY_COLUMNS_THRESHOLD, PAGE_SIZE, humanizeCondition, isInjectedRunId, isNestedJsonField, getRowValidation } from './resultHelpers';
 
 export interface ResultRowsTableProps {
   rows: Record<string, unknown>[];
@@ -23,7 +23,7 @@ export function ResultRowsTable({ rows, hiddenColumns, onToggleColumn, fieldFail
     const colSet = new Set<string>();
     rows.forEach((row) => {
       Object.keys(row).forEach((k) => {
-        if (!k.startsWith('_') && !HIDDEN_SPLUNK_FIELDS.has(k) && !isInjectedRunId(k)) {
+        if (!k.startsWith('_') && !HIDDEN_SPLUNK_FIELDS.has(k) && !isInjectedRunId(k) && !isNestedJsonField(k)) {
           colSet.add(k);
         }
       });

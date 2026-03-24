@@ -35,6 +35,11 @@ export function isInjectedRunId(key: string): boolean {
   return /^run_id_[0-9a-f]{6,16}$/i.test(key);
 }
 
+/** Check if a field is auto-extracted from nested JSON (e.g. "fieldValues{}.field"). */
+export function isNestedJsonField(key: string): boolean {
+  return key.includes('{}');
+}
+
 /** Humanize a condition operator like "is_not_empty" → "is not empty". */
 export function humanizeCondition(condition: string): string {
   const MAP: Record<string, string> = {
