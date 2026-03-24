@@ -42,6 +42,9 @@ def _is_visible_column(key):
         return False
     if RUN_ID_PATTERN.match(key):
         return False
+    # Splunk auto-extracts nested JSON arrays into "parent{}.child" fields
+    if "{}" in key:
+        return False
     return True
 
 
