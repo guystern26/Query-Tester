@@ -8,6 +8,16 @@ import { SaveTestModal } from './components/test-navigation/SaveTestModal';
 
 type Page = 'library' | 'tester' | 'setup';
 
+/** Navigate to a hash target, stripping stale ?test_id= from the URL bar. */
+function setHash(target: string): void {
+    if (window.location.search.includes('test_id')) {
+        window.history.replaceState(null, '', window.location.pathname + '#' + target);
+        window.dispatchEvent(new HashChangeEvent('hashchange'));
+    } else {
+        window.location.hash = target;
+    }
+}
+
 function getRoute(): { page: Page; testId?: string } {
     const hash = window.location.hash.replace('#', '');
     // Hash takes priority — once the user navigates away, respect it
@@ -45,11 +55,7 @@ export function AppShell(): React.ReactElement {
         if (el) el.remove();
     }, []);
 
-    useEffect(() => {
-        const { fetchConfigStatus, fetchCommandPolicy } = useTestStore.getState();
-        void fetchConfigStatus();
-        void fetchCommandPolicy();
-    }, []);
+    useEffect(() => { const s = useTestStore.getState(); void s.fetchConfigStatus(); void s.fetchCommandPolicy(); }, []);
 
     // Browser tab close / refresh guard
     useEffect(() => {
@@ -74,9 +80,8 @@ export function AppShell(): React.ReactElement {
             }
             const newRoute = getRoute();
             if (shouldGuardNavigation() && route.page === 'tester' && newRoute.page !== 'tester') {
-                // Revert hash to stay on tester, show modal
                 window.history.replaceState(null, '', '#tester');
-                setPendingTarget(window.location.hash === '#tester' ? newRoute.page : newRoute.page);
+                setPendingTarget(newRoute.page);
                 return;
             }
             setRoute(newRoute);
@@ -90,7 +95,7 @@ export function AppShell(): React.ReactElement {
             setPendingTarget(target);
             return;
         }
-        window.location.hash = target;
+        setHash(target);
     }, [route.page]);
 
     const handleDiscardAndLeave = useCallback(() => {
@@ -101,7 +106,7 @@ export function AppShell(): React.ReactElement {
         // saved tests keep their library version but the builder clears.
         useTestStore.getState().resetToNewTest();
         suppressGuardRef.current = true;
-        window.location.hash = target;
+        setHash(target);
     }, [pendingTarget]);
 
     const handleStayOnPage = useCallback(() => {
@@ -124,7 +129,7 @@ export function AppShell(): React.ReactElement {
                 setPendingTarget(null);
                 setIsSavingBeforeLeave(false);
                 suppressGuardRef.current = true;
-                window.location.hash = target;
+                setHash(target);
             }).catch(() => {
                 setIsSavingBeforeLeave(false);
             });
@@ -143,7 +148,7 @@ export function AppShell(): React.ReactElement {
             setPendingTarget(null);
             setIsSavingBeforeLeave(false);
             suppressGuardRef.current = true;
-            if (target) window.location.hash = target;
+            if (target) setHash(target);
         } catch {
             setIsSavingBeforeLeave(false);
         }

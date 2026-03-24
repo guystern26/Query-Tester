@@ -76,13 +76,31 @@ def _infer_tls_mode(stored, port, auth):
 
 def _build_attachment(payload):
     # type: (Dict[str, Any]) -> MIMEBase
-    content = json.dumps(payload, indent=2, default=str)
+    """Wrap payload in the app's import format so it can be loaded via Import."""
+    tests = payload.get("allTests") or []
+    current = payload.get("currentTest")
+    if current and current not in tests:
+        tests = [current] + tests
+    active_id = current.get("id", "") if current else ""
+    if not active_id and tests:
+        active_id = tests[0].get("id", "")
+    importable = {
+        "version": 2, "savedAt": payload.get("reportGeneratedAt", ""),
+        "activeTestId": active_id,
+        "testDefinition": tests, "payload": [],
+    }  # type: Dict[str, Any]
+    if payload.get("testResponse"):
+        importable["testResults"] = payload["testResponse"]
+    content = json.dumps(importable, indent=2, default=str)
     part = MIMEBase("application", "json")
     part.set_payload(content.encode("utf-8"))
     encoders.encode_base64(part)
-    part.add_header(
-        "Content-Disposition", "attachment", filename="bug_report.json",
-    )
+    name = current.get("name", "") if current else ""
+    if not name:
+        name = "report"
+    safe = re.sub(r"[^a-zA-Z0-9_\-]", "_", name)[:60]
+    part.add_header("Content-Disposition", "attachment",
+                    filename="splunk-query-tester-{0}.json".format(safe))
     return part
 
 

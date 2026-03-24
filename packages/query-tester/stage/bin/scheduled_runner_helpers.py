@@ -78,6 +78,39 @@ def build_summary(passed, total, scenario_results):
     return "Passed {0}/{1}".format(passed, total)
 
 
+def _flatten_event(event):
+    # type: (Dict[str, Any]) -> Dict[str, Any]
+    """Convert frontend InputEvent format to flat dict for the backend.
+
+    Frontend stores: {id, fieldValues: [{id, field, value}, ...]}
+    Backend expects: {field1: value1, field2: value2, ...}
+    If already flat (no fieldValues key), return as-is.
+    """
+    field_values = event.get("fieldValues")
+    if not isinstance(field_values, list):
+        # Already flat or JSON mode — strip internal 'id' if present
+        out = {k: v for k, v in event.items() if k != "id"}
+        return out if out else event
+    result = {}  # type: Dict[str, Any]
+    for fv in field_values:
+        if not isinstance(fv, dict):
+            continue
+        field = fv.get("field", "")
+        if field:
+            result[field] = fv.get("value", "")
+    return result
+
+
+def _normalize_scenarios(scenarios):
+    # type: (List[Dict[str, Any]]) -> List[Dict[str, Any]]
+    """Flatten events in each scenario input from frontend format."""
+    for scenario in scenarios:
+        for inp in scenario.get("inputs", []):
+            raw_events = inp.get("events", [])
+            inp["events"] = [_flatten_event(e) for e in raw_events if e]
+    return scenarios
+
+
 def build_test_payload(definition, saved_test, scheduled):
     # type: (Dict[str, Any], Dict[str, Any], Dict[str, Any]) -> tuple
     """Build the payload dict and extract query SPL from a saved test definition."""
@@ -92,6 +125,10 @@ def build_test_payload(definition, saved_test, scheduled):
         earliest = time_range.get("earliest", "-24h")
         latest = time_range.get("latest", "now")
 
+    scenarios = definition.get("scenarios", [])
+    if scenarios:
+        scenarios = _normalize_scenarios(scenarios)
+
     payload = {
         "testName": definition.get("name", saved_test.get(
             "name", scheduled.get("testName", ""))),
@@ -100,7 +137,7 @@ def build_test_payload(definition, saved_test, scheduled):
         "query": query_spl,
         "earliestTime": earliest,
         "latestTime": latest,
-        "scenarios": definition.get("scenarios", []),
+        "scenarios": scenarios,
         "validation": definition.get("validation", {}),
     }
     return payload, query_spl
