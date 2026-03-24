@@ -394,44 +394,50 @@ def send_failure_emails(
     if not recipients:
         recipients = [default_email]
 
+    # Deduplicate and validate recipients
+    valid = []  # type: List[str]
+    seen = set()  # type: set
+    for r in recipients:
+        addr = r.strip() if r else ""
+        if not addr or addr.lower() in seen:
+            continue
+        if not _is_valid_email(addr):
+            logger.warning("Skipping malformed email address: %s", addr)
+            continue
+        seen.add(addr.lower())
+        valid.append(addr)
+
+    if not valid:
+        logger.warning("No valid recipients for test '%s'", test_name)
+        return
+
     subject, html_body = build_failure_email(
         test_name, ran_at, status, scenario_results, spl_drift_detected,
         test_id=test_id, full_results=full_results,
         splunk_web_url=web_url,
     )
 
-    for recipient in recipients:
-        stripped = recipient.strip() if recipient else ""
-        if not stripped:
-            continue
-        if not _is_valid_email(stripped):
-            logger.warning("Skipping malformed email address: %s", stripped)
-            continue
+    msg = MIMEMultipart()
+    msg["Subject"] = subject
+    msg["From"] = mail_from
+    msg["To"] = ", ".join(valid)
+    msg.attach(MIMEText(html_body, "html", "utf-8"))
+    if definition:
+        msg.attach(_build_attachment(test_name, definition, full_results))
 
-        msg = MIMEMultipart()
-        msg["Subject"] = subject
-        msg["From"] = mail_from
-        msg["To"] = stripped
-
-        msg.attach(MIMEText(html_body, "html", "utf-8"))
-
-        if definition:
-            msg.attach(_build_attachment(
-                test_name, definition, full_results,
-            ))
-
-        try:
-            if tls_mode == "ssl":
-                server = smtplib.SMTP_SSL(smtp_server, smtp_port)
-            else:
-                server = smtplib.SMTP(smtp_server, smtp_port)
-                if tls_mode == "starttls":
-                    server.starttls()
-            if auth_method == "password" and smtp_username and smtp_password:
-                server.login(smtp_username, smtp_password)
-            server.sendmail(mail_from, [stripped], msg.as_string())
-            server.quit()
-            logger.info("Failure email sent to %s for test '%s'",
-                        stripped, test_name)
-        except Exception as exc:
-            logger.error("Failed to send email to %s: %s", stripped, exc)
+    try:
+        if tls_mode == "ssl":
+            server = smtplib.SMTP_SSL(smtp_server, smtp_port)
+        else:
+            server = smtplib.SMTP(smtp_server, smtp_port)
+            if tls_mode == "starttls":
+                server.starttls()
+        if auth_method == "password" and smtp_username and smtp_password:
+            server.login(smtp_username, smtp_password)
+        server.sendmail(mail_from, valid, msg.as_string())
+        server.quit()
+        logger.info("Failure email sent to %s for test '%s'",
+                    ", ".join(valid), test_name)
+    except Exception as exc:
+        logger.error("Failed to send email to %s: %s",
+                     ", ".join(valid), exc)
