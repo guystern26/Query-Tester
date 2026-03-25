@@ -1,82 +1,89 @@
-### 2. React 16 Compatibility Constraints
+# Spec 02 -- React 16 Constraints
 
-**Splunk supports only React 16.13.1. This is a hard constraint that affects every dependency and pattern choice in this project. This section must be consulted before adding any new dependency.**
+## React 16.13.1 -- Hard Requirement
 
-**2.1 Environment**
+Splunk ships React 16.13.1. This is non-negotiable and affects every dependency choice.
 
-| Constraint | Value |
-| --- | --- |
-| React | 16.13.1 (NOT 17, NOT 18). Mandatory. |
-| React-DOM | 16.13.1 (must match React version) |
-| Node.js | 18.12 (closed network, limited packages) |
-| Vite | 4.5.x (v5 requires Node 20+) |
-| TypeScript | 5.2+ (any recent TS works) |
-| Network | Closed network. All packages must be pre-installed. |
+## BANNED APIs (React 17/18/19+)
 
-**2.2 Dependency Compatibility Matrix**
+These do NOT exist in React 16. Using them will fail silently or crash at runtime:
 
-| Package | Version | Notes |
-| --- | --- | --- |
-| zustand | ^4.5.x | v4 supports React >=16.8. v5 requires React 18. MUST pin to v4. |
-| immer | ^10.x | No React dependency. Works everywhere. |
-| @splunk/react-ui | ^4.x | Official Splunk components. Built for React 16. |
-| @splunk/themes | ^0.17.x | SplunkThemeProvider wraps app. Dark mode via colorScheme. |
-| styled-components | ^5.x | Required by @splunk/react-ui. v5 supports React 16. |
-| lucide-react | ^0.263.x | Pin to older version. Recent versions may need React 18. |
-| lodash/debounce | ^4.x | No React dependency. Used for JSON editor. |
+| API | Introduced in |
+|-----|---------------|
+| `createRoot` / `hydrateRoot` | React 18 |
+| `useId` | React 18 |
+| `useTransition` / `startTransition` | React 18 |
+| `useDeferredValue` | React 18 |
+| `useSyncExternalStore` | React 18 |
+| `useInsertionEffect` | React 18 |
+| `flushSync` | React 18 |
+| Automatic batching (in promises/timeouts) | React 18 |
+| `React.lazy` + `Suspense` for data fetching | React 18 |
 
-**2.3 What NOT to Use**
+## Safe APIs (React 16.8+)
 
-| Package / API | Why |
-| --- | --- |
-| MUI (@mui/*) | Requires React 17+. Not compatible. |
-| zustand v5 | Requires React 18. Use v4 instead. |
-| Tailwind CSS | Splunk bundling strips it in production. CSS Modules instead. |
-| React.useId() | React 18+ only. Use crypto.randomUUID() for IDs. |
-| React.useDeferredValue() | React 18+ only. |
-| React.useTransition() | React 18+ only. |
-| React.startTransition() | React 18+ only. |
-| ReactDOM.createRoot() | React 18+ only. Use ReactDOM.render() instead. |
-| Suspense for data | Data fetching Suspense is React 18+. Suspense for lazy is OK (16.6+). |
+All standard hooks work: `useState`, `useEffect`, `useCallback`, `useMemo`, `useRef`, `useReducer`, `useContext`.
 
-**2.4 Safe React 16 APIs**
-All hooks from React 16.8+: useState, useEffect, useCallback, useMemo, useRef, useReducer, useContext. React.memo (16.6+), React.lazy + Suspense for code splitting (16.6+), React.forwardRef (16.3+), React.createContext (16.3+).
+Other safe APIs: `React.memo` (16.6+), `React.forwardRef` (16.3+), `createPortal` (16+), `React.lazy` + `Suspense` for code splitting only (16.6+), `React.createContext` (16.3+).
 
-**2.5 ID Generation**
-crypto.randomUUID() is a Web API (not React or Node). It works in all modern browsers regardless of React version. For Node.js environments (tests, SSR), it's available in Node 19+. For Node 18, use: crypto.randomUUID() from the 'crypto' module (available as globalThis.crypto?.randomUUID?.() || require('crypto').randomUUID()).
+## Entry Point
 
-**2.6 App Entry Point**
-```
-// main.tsx - React 16 style (NOT createRoot)
+Always use `ReactDOM.render()`, never `createRoot()`:
+
+```tsx
 import React from 'react';
 import ReactDOM from 'react-dom';
-import SplunkThemeProvider from '@splunk/themes/SplunkThemeProvider';
-import App from './App';
-```
 
-```
 ReactDOM.render(
-<SplunkThemeProvider family='enterprise' colorScheme='dark' density='comfortable'>
-<App />
-</SplunkThemeProvider>,
-document.getElementById('root')
+    <SplunkThemeProvider family="enterprise" colorScheme="dark" density="comfortable">
+        <App />
+    </SplunkThemeProvider>,
+    document.getElementById('root')
 );
 ```
 
-*Note: colorScheme='dark' integrates with Splunk's dark mode and our design tokens. The SplunkThemeProvider gives us access to Splunk's native component styling.*
+## JSX Runtime
 
-**2.7 Zustand v4 Syntax (Not v5)**
-The store examples in this spec use Zustand v4 syntax. Key differences from v5:
-```
-// v4 - default export, create() returns hook directly
+Must use `classic` runtime (not `automatic`). Vite config sets `jsxRuntime: 'classic'`. Every file using JSX must `import React from 'react'`.
+
+## Zustand v4 -- Default Import
+
+```ts
+// CORRECT -- v4 default export
 import create from 'zustand';
 import { immer } from 'zustand/middleware/immer';
+
+const useTestStore = create(
+    immer((set, get) => ({
+        // state + actions
+    }))
+);
+
+// WRONG -- { create } is v5+ named export, will fail
+import { create } from 'zustand';
 ```
 
-```
-const useTestStore = create(
-immer((set, get) => ({
-// state + actions
-}))
-);
-```
+## ID Generation
+
+Use `crypto.randomUUID()` for all entity IDs. This is a Web API, not React-specific, and works in all modern browsers regardless of React version.
+
+## styled-components v5
+
+Used for `common/` wrapper components only (required by `@splunk/react-ui`). New components use Tailwind CSS classes. Do NOT mix styled-components and Tailwind on the same element.
+
+## Dependency Compatibility
+
+| Package | Version | Notes |
+|---------|---------|-------|
+| zustand | ^4.5.x | v5 requires React 18 |
+| immer | ^10.x | No React dependency |
+| @splunk/react-ui | ^4.x | Built for React 16 |
+| @splunk/themes | ^0.17.x | SplunkThemeProvider |
+| styled-components | ^5.x | Required by @splunk/react-ui |
+| lucide-react | ^0.263.x | Pin to older version |
+
+## Forbidden Packages
+
+- **MUI (`@mui/*`)** -- requires React 17+
+- **zustand v5** -- requires React 18
+- Any package requiring React 17+ peer dependency

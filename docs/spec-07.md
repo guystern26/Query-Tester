@@ -1,72 +1,109 @@
-### 7. UX Design: Progressive Horizontal Flow
+# Spec 07 — UX Design & Pages
 
+## Hash-Based Routing (AppShell.tsx)
 
-**7.1 Dark Mode Theme**
-The entire application uses a dark theme. This is not a toggle; dark mode is the default and only mode. All CSS Modules reference dark-theme design tokens.
+Three pages routed via `location.hash`:
 
-```
-:root {
---bg-base: #0F0F1A;                 /* deepest background */
---bg-surface: #1A1A2E;              /* cards, panels */
---bg-elevated: #252540;             /* hover states, active cards */
---bg-input: #2D2D45;               /* input fields */
---border-default: #3A3A55;          /* subtle borders */
---border-active: #4A90D9;           /* focused/active elements */
---text-primary: #E8E8F0;            /* main text */
---text-secondary: #9898B0;          /* labels, hints */
---text-muted: #6A6A85;              /* disabled, placeholder */
---accent: #4A90D9;                  /* primary blue */
---accent-hover: #5BA0E9;
---success: #4ADE80;
---warning: #FBBF24;
---danger: #F87171;
---ijump-accent: #FB923C;            /* orange for iJump */
---radius-sm: 0.375rem;
---radius-md: 0.625rem;
---radius-lg: 0.875rem;
-}
-```
+| Hash | Page | Default? |
+|------|------|----------|
+| `#library` | Library | Yes |
+| `#tester` / `#tester?test_id=xxx` | Builder | No |
+| `#setup` | Setup (admin-only) | No |
 
-**7.2 Progressive Disclosure Flow**
-**The user is NEVER overwhelmed. Sections reveal step-by-step:**
+Hash takes priority over URL query params. Email notification links use `?test_id=xxx` (no hash) which routes to the builder on initial load.
 
-**Step 1: App + Test Name (always visible)**
-AppChooser dropdown and test name input at the top. Must be filled before anything else is enabled. Test type selector (Standard / Query Only) also visible.
+---
 
-**Step 2: Query Section (revealed when app is selected)**
-SPL editor with syntax highlighting. SavedSearchPicker dropdown next to it. 'Extract Fields' AI button. Section has a subtle slide-in animation.
+## Library Page (`#library`)
 
-**Step 3: Input Section (revealed when query has content)**
-Only for testType 'standard'. ScenarioPanel with scenario cards, input cards inside. 'Extract Fields' results populate here. Section slides in from below.
+Browse all saved tests in a filterable table.
 
-**Step 4: Validation Section (revealed when inputs have data OR query_only mode)**
-ValidationType toggle (Standard / iJump Alert). Field conditions or expected result. 'Suggest Fields' AI button. Section slides in.
+**Filters** (AND logic, all client-side via `useLibraryFilters`):
+- **Search** — free-text on test name (case-insensitive)
+- **App** — exact match, options derived from saved tests
+- **Type** — matches `validationType` (Standard, iJump), NOT `testType`
+- **Creator** — exact match on `createdBy`
+- **Status** — Passed / Failed / Error / Not run yet (from linked ScheduledTest)
 
-**Run Button: Enabled only when all required sections are filled**
-The Run button is disabled (grayed out, with a tooltip explaining what's missing) until:
-App is selected.
-Query SPL has content.
-At least one scenario has at least one input with a row identifier (if standard test).
-Validation has at least one condition or expected result.
+**Actions per row:** Load into builder, schedule/manage (gear icon opens ScheduleModal with CronPicker + RecipientsList).
 
-*This makes the test-building flow feel like a guided pipeline, not a form dump.*
+---
 
-**7.3 Horizontal Layout**
-All content is on one page. No tabs that hide content. The layout is horizontal with sections flowing left-to-right or top-to-bottom depending on viewport width. On wide screens, Query and Inputs can sit side by side. The results panel is a collapsible bar at the bottom.
+## Builder Page (`#tester`)
 
-**7.4 Animations**
-**Minimal but meaningful animations:**
-**Section reveal: **Slide-in + fade (200ms ease-out) when a section becomes active.
-**Card add/remove: **New cards fade in (150ms). Removed cards fade out (100ms).
-**AI extraction: **Shimmer/skeleton loading while LLM processes. Fields populate with a staggered fade-in.
-**Run button: **Subtle pulse animation when all sections are filled and test is ready.
-**Results panel: **Slide up from bottom when results arrive.
-**Validation pass/fail: **Green checkmark or red X with scale animation per scenario result.
+Progressive horizontal flow: Setup > Query > Inputs/Scenarios > Validation > Run.
 
-**7.5 Section Status Indicators**
-Each section header shows a status indicator:
-**Gray circle: **Section not yet accessible (prerequisite not met).
-**Blue circle: **Section active, user is working on it.
-**Green checkmark: **Section complete, requirements met.
-**Orange warning: **Section has validation errors.
-This creates a visual pipeline showing progress through the test creation flow.
+### Setup Phase
+- **Initial mode:** SetupCard with test name input, app selector, test type selector.
+- **Compact mode:** After app is selected, collapses to a single SetupBar.
+
+### Query Section
+- Ace editor with SPL syntax highlighting.
+- SPL linting: `splLinter.ts` detects dangerous commands (delete, outputlookup). Warnings shown as inline Ace markers + gutter annotations via `useAceMarkers`.
+- Linting triggers on blur, on external SPL change (when editor not focused). Cleared on focus.
+- Saved search selector dropdown to populate SPL from existing alerts/reports.
+- TimeRangePicker for search time range.
+
+### Scenarios
+- Collapsible ScenarioPanel per scenario with tab-based navigation.
+- Each scenario contains InputCard components with mode selector:
+  - `fields` — structured field-value editor
+  - `json` — raw JSON editor
+  - `no_events` — no input data
+  - `query_data` — populate from a Splunk sub-query
+- EventGeneratorToggle per input for auto-generating test events.
+- ExtractFieldsButton (AI-powered field extraction).
+
+### Validation
+- **Standard:** FieldConditionsGrid (field groups with condition rows) + ResultCountSection + ValidationScope.
+- **iJump:** Alert-based validation with IjumpValidation, IjumpLockedCards, IjumpCustomConditions.
+- SuggestFieldsButton (AI-powered field suggestion).
+
+### Results Bar
+Fixed bottom bar with:
+- Run button with progress indicator.
+- ScenarioResultCard per scenario showing pass/fail, duration, validation details.
+- Expandable ResultsPanel with ResultRowsTable for detailed result inspection.
+
+---
+
+## Setup Page (`#setup`)
+
+Admin-only configuration page. Sections:
+- **Splunk Connection** — host, port, scheme, credentials (display/URL only)
+- **HEC** — host, port, token, SSL verify, timeout
+- **Email/SMTP** — server, port, from, auth method, credentials, TLS (auto-inferred)
+- **Web URL** — Splunk Web base URL for email links
+- **LLM** — endpoint, API key, model, max tokens
+- **Logging** — log level (applied dynamically)
+- **Temp Index** — read-only display of temp index name
+- **Command Policy** — dangerous command allow/deny list
+
+TestConnectionBar for HEC and SMTP connectivity testing. Auto-detection pre-fills on first load.
+
+---
+
+## Modal Behaviors
+
+**UnsavedChangesModal:** Prompts when navigating away from builder with dirty state. Options: Discard / Save / Stay.
+
+**SaveTestModal:** Save to library with name, triggered from TopBar.
+
+---
+
+## SPL Drift Warning
+
+Amber banner in QuerySection when a saved search's SPL has changed since the test was last saved. Actions: "Reload SPL" (fetches current) or dismiss (X button). Fires async on `loadTestIntoBuilder()`.
+
+---
+
+## Visual Design
+
+- **Dark mode only** — no light mode toggle.
+- Backgrounds: navy-950 (`#0a1628`), navy-900 (`#162033`), navy-800 (`#202b43`), navy-700 (`#2a3a5c`).
+- Text: slate-200 (primary), slate-400 (secondary).
+- Accent: steel-400 (`#9BB1BB`) for subtle text.
+- Buttons: blue-400 (`#60A5FA`) primary with white text. Hover: `#93C5FD`. Active: `#3B82F6`.
+- Borders: slate-700.
+- **Banned accent colors:** No cyan, sky, or indigo anywhere.
+- Wrapped in SplunkThemeProvider: `family=enterprise`, `colorScheme=dark`, `density=comfortable`.

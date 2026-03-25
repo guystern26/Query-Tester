@@ -1,126 +1,114 @@
-### 13. Results Structure
+# Spec 13 — Results Structure
 
-The backend returns a hierarchical results structure that mirrors the test hierarchy: Test → Scenario → Input → Event → Field. This is the complete response the frontend receives after running a test.
+## TestResponse
 
-**17.1 Response Envelope**
-```
+Top-level response from a test run:
+
+```ts
 interface TestResponse {
-status: 'success' | 'error' | 'partial';
-message: string;                     // human-readable summary
-testName: string;
-testType: TestType;
-timestamp: string;                   // ISO datetime
-executionTimeMs: number;
-```
-
-```
-// Errors and warnings (same shape, separate arrays)
-errors: ResponseMessage[];
-warnings: ResponseMessage[];
-```
-
-```
-// Query execution metadata
-queryInfo: QueryInfo;
-```
-
-```
-// Per-scenario validation results (empty if errors prevented execution)
-summary: TestResultSummary;
-scenarioResults: ScenarioResult[];
+    passed: boolean;
+    scenarioResults: ScenarioResult[];
+    messages: ResponseMessage[];
+    splAnalysis: SplAnalysis;
+    timestamp: string;
 }
 ```
 
-**17.2 QueryInfo**
-```
-interface QueryInfo {
-executedQuery: string;               // the actual SPL that ran
-executionTimeMs: number;
-resultCount: number;
-scanCount: number;
-earliestTime?: string;
-latestTime?: string;
-}
-```
+---
 
-**17.3 Summary**
-```
-interface TestResultSummary {
-totalScenarios: number;
-passedScenarios: number;
-failedScenarios: number;
-totalInputs: number;
-totalEvents: number;
-validationType: ValidationType;
-}
-```
+## ScenarioResult
 
-**17.4 Hierarchical Results**
-```
+Per-scenario outcome:
+
+```ts
 interface ScenarioResult {
-scenarioId: EntityId;
-scenarioName: string;
-passed: boolean;
-inputsProcessed: number;
-inputsPassed: number;
-inputResults: InputResult[];
+    scenarioId: string;
+    scenarioName: string;
+    passed: boolean;
+    error?: string;
+    warnings?: string[];
+    resultCount: number;
+    executionTimeMs: number;
+    injectedSpl?: string;
+    resultRows: Record<string, string>[];
+    validations: ValidationDetail[];
 }
 ```
 
-```
-interface InputResult {
-inputId: EntityId;
-passed: boolean;
-eventsValidated: number;
-eventsPassed: number;
-eventResults: EventValidationResult[];
-executionTimeMs?: number;
-error?: string;
+- `resultRows`: flat key-value records from Splunk search results.
+- `injectedSpl`: the rewritten SPL that was actually executed (with injected filters).
+- `error`: set when the scenario failed due to an exception (not a validation failure).
+- `warnings`: non-fatal issues encountered during execution.
+
+---
+
+## ValidationDetail
+
+Per-condition validation outcome:
+
+```ts
+interface ValidationDetail {
+    field: string;
+    condition: string;
+    expected: string;
+    actual: string;
+    passed: boolean;
+    message: string;
+    rowIndex?: number;
 }
 ```
 
-```
-interface EventValidationResult {
-eventIndex: number;
-passed: boolean;
-fieldValidations: FieldValidationResult[];
-error?: string;
+- `rowIndex`: which result row this validation applies to (for per-row conditions).
+- `message`: human-readable description of the validation result.
+
+---
+
+## ResponseMessage
+
+System-level messages (not per-scenario):
+
+```ts
+interface ResponseMessage {
+    severity: 'info' | 'warning' | 'error' | 'fatal' | 'success';
+    text: string;
+    field?: string;
 }
 ```
 
-```
-interface FieldValidationResult {
-field: string;
-passed: boolean;
-expected?: string;
-actual?: string;
-message?: string;
-}
-```
+- `fatal`: stops the entire test run. Other severities are informational.
+- `field`: optional reference to which field/section the message relates to.
 
-**17.5 Example Response**
-```
-{
-"status": "partial",
-"message": "1 of 2 scenarios passed",
-"errors": [],
-"warnings": [
-{ "code": "JOIN_LIMIT", "message": "join limited to 50,000 results",
-"severity": "warning", "source": "join", "line": 3,
-"tip": "Consider using append with stats instead of join." }
-],
-"summary": { "totalScenarios": 2, "passedScenarios": 1, "failedScenarios": 1,
-"totalInputs": 3, "totalEvents": 5, "validationType": "standard" },
-"scenarioResults": [
-{ "scenarioName": "Normal User", "passed": true, "inputResults": [ ... ] },
-{ "scenarioName": "Attacker", "passed": false, "inputResults": [
-{ "passed": false, "eventResults": [
-{ "eventIndex": 0, "passed": false, "fieldValidations": [
-{ "field": "count", "passed": false, "expected": "5", "actual": "12",
-"message": "Expected 5 but got 12" }
-] }
-] }
-] }
-]
-}
-```
+---
+
+## SplAnalysis
+
+SPL analysis metadata returned with every response. Contains information about the parsed query (commands used, data sources referenced). Displayed in the results panel for debugging.
+
+---
+
+## Result Row Display
+
+### Hidden Columns
+Internal and injected fields are hidden from the results table:
+- Fields starting with `_` (Splunk internal fields)
+- Injected `run_id` fields (used for test isolation)
+- Fields containing `{}` (nested JSON extraction artifacts)
+
+### Non-Tabular Detection
+If no visible structured fields remain after filtering, the UI shows a warning instead of an empty table. Handles cases where SPL produces only internal fields.
+
+### Row Limits
+`MAX_DISPLAY_ROWS` (from `core/constants/limits.ts`) caps rows rendered in the table. Total count shown separately (e.g., "Showing 50 of 1,234 rows").
+
+---
+
+## Display Helpers
+
+### resultHelpers.ts
+- Column visibility filtering (hide internal/injected fields)
+- Non-tabular result detection
+- Row count display logic
+
+### formatters.ts (`utils/`)
+- `formatMs(ms)`: converts milliseconds to human-readable duration (e.g., "1.2s", "45ms", "2m 30s").
+- Used in ScenarioResultCard to display execution time.

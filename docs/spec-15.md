@@ -1,58 +1,76 @@
-### 15. Top Bar & Test Management
+# spec-15 — Navigation, Save & Bug Report
 
-The top bar is the persistent header of the application. It contains the global actions (Save, Load, Bug Report) and the test navigation. It is always visible regardless of scroll position or which section the user is working on.
+## TopBar
 
-**17.1 Top Bar Layout**
-```
-┌────────────────────────────────────────────────────────────────┐
-│ [Save] [Load] [ὁB]  [◀] Test Name (1/3) [▶]  [+New] [Dup] [Del] │
-└────────────────────────────────────────────────────────────────┘
-```
+Fixed top bar displays:
+- Test name (read-only display)
+- Save button (triggers save flow)
+- Bug report button (opens BugReportModal)
+- Navigation link back to library (`#library`)
 
-Left group: Save, Load, Bug Report. Center/right group: Test navigation with prev/next arrows, editable test name, test counter, New/Duplicate/Delete.
+## SaveTestModal
 
-**17.2 Save / Load**
-**Save (saveToFile):**
-Serializes the entire store state: { version, savedAt, activeTestId, tests[] }.
-Downloads as .json file via Blob + URL.createObjectURL.
-No transformation needed — the save format IS the state.
+Opened from the TopBar save button. Two modes:
 
-**Load (loadFromFile):**
-Hidden file input triggered via ref (accept='.json').
-Reads file with file.text(), parses with JSON.parse().
-Validates version field. Replaces store state.
-Resets file input value so same file can be loaded again.
-Shows error toast if file is invalid.
+### Save New
+- Inputs: name (required), description (optional)
+- `POST /data/saved_tests` with full test definition
+- On success: sets `savedTestId` and `savedTestVersion` in store
 
-**17.3 Bug Report Button**
-**A floating bug icon button in the top bar (not bottom-right — moved to the toolbar for consistency).**
-On click, opens a modal with:
-Toggle between 'Bug Report' and 'Feature Request'.
-Text area for description.
-Send button that: (1) auto-downloads a JSON file containing the full test state + results, (2) opens the default email client via mailto: with pre-filled subject, body, and a reminder to attach the JSON.
-Works fully offline — no external API needed. Designed for closed networks.
+### Update Existing
+- Sends `PUT /data/saved_tests/{id}` with `version` for optimistic locking
+- On success: increments local `savedTestVersion`
+- On `409 Conflict`: displays "This test was modified by someone else — please reload
+  before saving."
 
-```
-interface BugReportPayload {
-reportGeneratedAt: string;
-reportType: 'bug' | 'feature';
-description: string;
-currentTest: TestDefinition;
-allTests?: TestDefinition[];
-testResponse?: TestResponse;    // included when results exist
-}
-```
+## BugReportButton
 
-**17.4 Test Navigation**
-Users can have multiple tests open. The navigation provides:
-**Prev/Next arrows: **Navigate between tests. Disabled at boundaries.
-**Test name input: **Editable inline. Calls updateTestName.
-**Counter: **'(1 of 3)' showing position.
-**New Test button: **Creates a default test via addTest. Auto-switches to it.
-**Duplicate button: **Deep-clones current test with new IDs and ' (Copy)' suffix.
-**Delete button: **Removes current test. Disabled when only 1 test. Auto-switches to previous test.
+Opens `BugReportModal` for sending bug reports or feature requests via email.
 
-*All these operations are store actions in testStore.ts. The TestNavigation component reads from useTestStore() and calls actions directly — no prop passing needed.*
+- **Types:** `bug` or `feature_request`
+- **Attachment:** version 2 import format JSON (same format as save file export)
+- **Recipient:** `DEFAULT_ALERT_EMAIL` from `config.py`
+- **Backend:** `bug_report_handler.py` — builds and sends email via SMTP
+- **Delivery:** fire-and-forget, error shown as toast on failure
 
-**17.5 TestTypeSelector**
-Two-option selector below the top bar: Standard | Query Only. Sets testType on the active test. When 'query_only', the Scenarios/Inputs section is hidden. Two clickable cards, side by side.
+## AppShell Routing
+
+Hash-based routing inside the `QueryTesterApp` Splunk page (`AppShell.tsx`):
+
+| Hash | Page |
+|------|------|
+| `#library` | Library page (default) |
+| `#tester` | Builder/tester page |
+| `#tester?test_id=xxx` | Builder with auto-load |
+| `#setup` | Admin Setup page |
+
+### URL Behavior
+
+- `setHash()` helper strips stale `?test_id=` from the URL when navigating
+- Email notification links use `?test_id=xxx` (no hash) for initial load
+- **Hash takes priority** over URL query params once set — prevents getting stuck
+  on the tester page when `#library` is active but `?test_id=` lingers
+
+## Unsaved Changes Guard
+
+Protects against accidental data loss when navigating away with unsaved changes.
+
+### Detection
+
+`hasUnsavedChanges` in store — set via store subscription that compares the `tests`
+object reference against the last saved snapshot.
+
+### Triggers
+
+| Trigger | Mechanism |
+|---------|-----------|
+| Browser close/refresh | `beforeunload` event |
+| Hash change (navigation) | Hash change interception |
+
+### UnsavedChangesModal
+
+Three options:
+- **Discard** — navigate away, lose changes
+- **Save** — for existing tests: inline PUT (no modal). For new tests: opens
+  SaveTestModal first
+- **Stay** — cancel navigation, remain on current page

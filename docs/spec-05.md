@@ -1,63 +1,85 @@
-### 5. Field Value Rules & Edge Cases
+# Spec 05 -- Field Value Rules
 
-These rules define exactly how field-value pairs translate to payload data. Every edge case is documented so the next developer doesn't have to guess.
+## FieldValue Structure
 
-**5.1 Fields Mode: What Gets Sent**
-
-| State in UI | Payload Result |
-| --- | --- |
-| field: "user", value: "john" | { "user": "john" } |
-| field: "user", value: "" | { "user": "" }  — empty string is valid, field name present |
-| field: "user", value: " " | { "user": " " }  — single space is valid, NOT same as "" |
-| field: "", value: "" | Ignored. Both empty = not configured yet. Event produces [{}] |
-| field: "", value: "john" | VALIDATION ERROR. Field name required when value is non-empty. |
-| All fieldValues empty (field:"", value:"") | [{}]  — same as no_events mode |
-| inputMode: "no_events" | [{}]  — backend generates makeresults count=0 |
-
-**5.2 Field Name Requirements**
-**A field name MUST be filled if:**
-The value field is non-empty (even a single space).
-The user has enabled the event generator for this input (generator needs field names to populate).
-
-**A field name can be empty if:**
-The value field is also empty (both empty = row not configured).
-The event generator is disabled.
-
-**5.3 JSON Mode: Validation on Upload vs Edit**
-**File upload (.json only):**
-On upload, file.text() reads content, JSON.parse() validates it.
-If valid: raw string stored in jsonContent, fileRef gets {name, size}.
-If invalid: error shown on the input card. Nothing stored.
-File object itself is NEVER stored in state.
-
-**Manual editing in JSON editor:**
-jsonContent stores the raw string on every change (debounced 300ms).
-UI shows live validation feedback (green border = valid, red border + message = invalid).
-Store accepts any string. Validation is UI feedback only.
-JSON.parse() is the final gate in buildPayload() before sending to backend.
-
-**5.4 Building the Events Array for Payload**
+```ts
+interface FieldValue {
+    id: EntityId;
+    field: string;   // field name -- must be non-empty if value is non-empty
+    value: string;   // always a string, can be empty ''
+}
 ```
+
+## Fields Mode: What Gets Sent
+
+| UI State | Payload |
+|----------|---------|
+| field: "user", value: "john" | `{ "user": "john" }` |
+| field: "user", value: "" | `{ "user": "" }` -- empty string is valid |
+| field: "user", value: " " | `{ "user": " " }` -- space is valid, NOT same as "" |
+| field: "", value: "" | Ignored -- both empty = not configured |
+| field: "", value: "john" | Validation error -- field name required |
+
+## Field Inheritance
+
+In fields mode, the first event's fields serve as the template for subsequent events in the same input. New events inherit the field names from the first event.
+
+## Empty Field Name = Skip
+
+When building the payload, field-value pairs with empty field names are filtered out. If all pairs are empty, the event produces `{}`.
+
+## Multivalue Fields
+
+If a value contains newline characters, each line becomes a separate value in the indexed event. This maps to Splunk's multivalue field concept.
+
+## JSON Mode
+
+Raw JSON string stored in the input, parsed as-is at payload build time. No field inheritance applies. The string is validated with `JSON.parse()` -- invalid JSON prevents the test from running.
+
+## query_data Mode
+
+No manual events. The input specifies a sub-query (`QueryDataConfig`) that runs at execution time to fetch events. Fields:
+- `spl` -- the SPL query to run
+- `earliest` / `latest` -- time range
+- `maxEvents` -- cap on returned events (default 10,000 from `MAX_QUERY_DATA_EVENTS`)
+
+## no_events Mode
+
+Empty events array. The scenario runs the query without injecting any events for this input. Backend generates `makeresults count=0`.
+
+## Generator Expansion
+
+`GeneratorConfig` on each `TestInput` defines rules for producing additional events from templates. Generator rules are applied after manual events, expanding the event count.
+
+### Generator Types
+
+| Type | Behavior |
+|------|----------|
+| `numbered` | Sequential numbers (e.g., user_1, user_2, ...) |
+| `pick_list` | Cycles through a predefined list of values |
+| `random_number` | Random integers within a range |
+| `unique_id` | UUID-based unique values |
+| `email` | Generated email addresses |
+| `ip_address` | Generated IP addresses |
+| `general_field` | Custom pattern-based generation |
+
+## Payload Building
+
+```ts
 function buildEventsForInput(input: TestInput): Record<string, string>[] {
-// no_events mode: always [{}]
-if (input.inputMode === 'no_events') return [{}];
-```
-
-```
-// json mode: parse the raw string
-if (input.inputMode === 'json') {
-const parsed = JSON.parse(input.jsonContent || '[]');
-return Array.isArray(parsed) ? parsed : [parsed];
+    if (input.mode === 'no_events') return [{}];
+    if (input.mode === 'json') {
+        const parsed = JSON.parse(input.jsonContent || '[]');
+        return Array.isArray(parsed) ? parsed : [parsed];
+    }
+    if (input.mode === 'query_data') return []; // handled by backend
+    // fields mode
+    return input.events.map(evt => {
+        const pairs = evt.fieldValues.filter(fv => fv.field.trim() !== '');
+        if (pairs.length === 0) return {};
+        return Object.fromEntries(pairs.map(fv => [fv.field, fv.value]));
+    });
 }
 ```
 
-```
-// fields mode: convert events to objects
-return input.events.map(evt => {
-const pairs = evt.fieldValues.filter(fv => fv.field.trim() !== '');
-if (pairs.length === 0) return {};  // all empty = [{}]
-return Object.fromEntries(pairs.map(fv => [fv.field, fv.value]));
-// Note: value can be '' or ' '. Both are valid. No trimming on value.
-});
-}
-```
+Values are never trimmed. Empty string `''` and space `' '` are distinct valid values.

@@ -1,40 +1,108 @@
-### 16. Backend Context (Reference)
+# spec-16 — Backend Module Map
 
-*This section documents backend architecture for context. It is not part of the frontend implementation but gives the next developer a full picture of how the system works end-to-end.*
+## Entry Points
 
-**17.1 Query Processing Pipeline**
-When the frontend sends a test payload, the backend processes it through these stages:
+| Module | Trigger | Role |
+|--------|---------|------|
+| `query_tester.py` | REST request | Main handler. Routes sub-paths (`/config/*`, `/command_policy/*`) |
+| `alert_run_test.py` | Splunk alert action | Runs a scheduled test by ID |
+| `scheduled_runner.py` | Scripted input (60s) | Checks cron schedules, runs due tests |
 
-```
-1. Normalize   → Clean up newlines, whitespace, formatting
-2. Safety      → Block dangerous commands (outputlookup, collect, delete,
-sendemail, dbxquery, kvstore, outputcsv)
-3. Inject Data → Replace row identifiers with test data (makeresults or HEC)
-4. Execute     → Run the modified query via Splunk REST API
-5. Validate    → Check results against validation config
-6. Respond     → Build TestResponse with results, errors, warnings
-```
+## REST Handlers
 
-**17.2 Data Injection: Two Methods**
+| Module | Path | Purpose |
+|--------|------|---------|
+| `config_handler.py` | `/config/*` | Setup page config CRUD, auto-detect, connectivity test |
+| `command_policy_handler.py` | `/command_policy/*` | Dangerous command policy CRUD |
+| `saved_tests_handler.py` | `/data/saved_tests` | Saved test CRUD with ownership |
+| `scheduled_tests_handler.py` | `/data/scheduled_tests` | Schedule CRUD + saved search management |
+| `run_history_handler.py` | `/data/test_run_history` | Run history retrieval |
+| `bug_report_handler.py` | `/data/tester` (sub-path) | Bug report email sending |
 
-**Method A: makeresults (default, small datasets)**
-Converts the input events into SPL makeresults commands. The row identifier in the query (e.g., 'index=main sourcetype=access') is replaced with the generated makeresults string. Handles subsearches, joins, and lookups. Best for small datasets (< 100 events per input).
+## Core
 
-**Method B: HEC Indexing (large datasets)**
-For large or deeply nested datasets that don't fit in makeresults, the backend indexes events via HEC (HTTP Event Collector) into a temporary index (query_tester_temp). Each test run gets a unique scenario_id field. The query's row identifier is replaced with 'index=query_tester_temp scenario_id=<unique_id>'. The temp index has 1-day retention. Events are batched (up to 5000 per HEC request) and flattened to single-line JSON.
+| Module | Responsibility |
+|--------|----------------|
+| `test_runner.py` | Orchestrator — loops scenarios, coordinates all phases |
+| `payload_parser.py` | JSON dict to dataclasses (camelCase to snake_case) |
+| `response_builder.py` | Serializes results to camelCase JSON |
+| `models.py` | Dataclass definitions |
+| `helpers.py` | Shared utilities |
+| `validation_parser.py` | Parses validation conditions from payload |
 
-**17.3 Row Identifier Replacement**
-The injector replaces the ENTIRE row identifier string (not just 'index='), including sourcetype= or any other text. This handles edge cases like 'index=main sourcetype=access' appearing in both the main query and subsearches. All occurrences are replaced.
+## SPL Pipeline
 
-**17.4 Dangerous Command Blocking**
-Before execution, the safety validator scans for commands that modify production data:
-```
-BLOCKED: outputlookup, collect, delete, sendemail, dbxquery, kvstore, outputcsv
-```
-Commands in quoted strings are ignored (e.g., eval msg="please delete" is safe). Commands in subsearches are still blocked. The validator returns a warning with the command name, description, severity, and line number — using the same ResponseMessage format.
+| Module | Boundary |
+|--------|----------|
+| `spl_analyzer.py` | Reads SPL only — never modifies |
+| `spl_analyzer_rules.py` | Analysis rule definitions |
+| `query_injector.py` | Rewrites SPL — never runs it |
+| `query_executor.py` | Executes SPL via splunklib |
+| `spl_normalizer.py` | SPL preprocessing before analysis |
+| `preflight.py` | Pre-run SPL validation |
 
-**17.5 Event Generator Backend**
-The event generator runs server-side in Python. It reads the generatorConfig from each input and builds SPL eval expressions using case() statements for weighted variant selection. Generator types: numbered (flat config), pick_list (items[]), random_number, unique_id, email, ip_address, general_field (all use variants[] with weights). Weights are automatically normalized to sum to 100.
+## Data
 
-**17.6 Validation Engine**
-Backend validation uses 4 Python files in a validation/ directory: enums.py (operators, types), validation_dataclasses.py (condition/rule structures), validation_methods.py (comparison logic), validator_engine.py (orchestration). Supports per-scenario scoping via scenarioScope on each FieldCondition. Results are returned per-event, per-input, per-scenario.
+| Module | Role |
+|--------|------|
+| `data_indexer.py` | Index events via HEC, cleanup via SPL delete |
+| `lookup_manager.py` | Temp CSV lookup create/delete |
+| `sub_query_runner.py` | Executes sub-queries for query_data input mode |
+
+## Generators
+
+`event_generator.py` — expands GeneratorConfig. No file I/O, no Splunk calls.
+Type modules: `numbered.py`, `pick_list.py`, `email.py`, `ip_address.py`,
+`unique_id.py`, `random_number.py`, `general_field.py`. Parser: `config_parser.py`.
+
+## Validation
+
+| Module | Boundary |
+|--------|----------|
+| `result_validator.py` | Compares rows to conditions — never runs queries |
+| `condition_handlers.py` | Registry of condition evaluation functions |
+| `scope_evaluator.py` | Evaluates scope-level conditions |
+
+## Config Stack
+
+| Module | Role |
+|--------|------|
+| `config.py` | Static defaults (constants, never KVStore) |
+| `runtime_config.py` | KVStore + cache (120s TTL), falls back to config.py |
+| `config_detection.py` | Auto-detects Splunk settings for Setup page |
+| `config_secrets.py` | Reads/writes `storage/passwords` (uses static config directly) |
+| `config_test_connectivity.py` | Tests HEC and SMTP connectivity |
+
+## Auth & Connection
+
+| Module | Role |
+|--------|------|
+| `auth_utils.py` | Role-based auth via `authentication/current-context` |
+| `handler_utils.py` | Session/username extraction, JSON responses, `is_admin_user()` |
+| `splunk_connect.py` | `get_service(session_key)` — always localhost |
+| `kvstore_client.py` | Raw KVStore CRUD (uses static config — circular dependency anchor) |
+
+## Scheduling
+
+| Module | Role |
+|--------|------|
+| `scheduled_runner.py` | Cron loop, runs due tests, writes history, sends emails |
+| `scheduled_runner_helpers.py` | Helper functions for scheduled runner |
+| `scheduled_search_manager.py` | Creates/updates/deletes backing Splunk saved searches |
+| `cron_matcher.py` | `cron_matches(expr, dt_tuple)`, `is_enabled(record)` |
+| `spl_drift.py` | Compares current SPL against last passed run |
+
+## Email
+
+| Module | Role |
+|--------|------|
+| `alert_email.py` | Email building and SMTP delivery |
+| `alert_email_html.py` | HTML email template rendering |
+| `alert_helpers.py` | Shared email helper functions |
+
+## Infrastructure
+
+| Module | Role |
+|--------|------|
+| `logger.py` | File-based logging with `reconfigure_log_level()` |
+| `deprecation.py` | Deprecation warning utilities |

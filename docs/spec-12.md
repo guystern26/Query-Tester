@@ -1,37 +1,96 @@
-### 12. Component Architecture
+# Spec 12 — Component Architecture
 
+## Component Tree
 
 ```
-StartPage                            (dark layout shell)
-├─ TopBar                              (always visible, sticky)
-│  ├─ SaveButton                       (downloads .json)
-│  ├─ LoadButton                       (hidden file input, reads .json)
-│  ├─ BugReportButton                  (modal: bug/feature, mailto + JSON)
-│  └─ TestNavigation                   (prev/next, name, counter, +/dup/del)
-├─ AppChooser                        (Step 1: must select app)
-├─ TestTypeSelector                  (2 options: standard | query_only)
-├─ QuerySection                      (Step 2: revealed when app selected)
-│  ├─ SplEditor                       (native Splunk SPL editor component)
-│  ├─ SavedSearchPicker               (loads SPL into editor)
-│  └─ ExtractFieldsButton             (AI: extracts row IDs + fields)
-├─ ScenarioPanel                     (Step 3: revealed when query filled)
-│  └─ ScenarioCard                    (per scenario)
-│     └─ InputCard                    (per input)
-│        ├─ DataSourceSelector          (hybrid input + AI dropdown)
-│        ├─ InputModeToggle             (JSON | Fields | No Events)
-│        ├─ JsonInputView               (when json mode)
-│        ├─ FieldsInputView             (when fields mode)
-│        │  └─ EventRow → FieldValueRow
-│        ├─ NoEventsMessage             (when no_events mode)
-│        └─ GeneratorPanel
-├─ ValidationSection                 (Step 4: revealed when inputs done)
-│  ├─ ValidationTypeToggle            (standard | ijump_alert)
-│  ├─ SuggestFieldsButton             (AI: suggests validation fields)
-│  ├─ FieldConditionEditor            (with FieldNameSelector dropdown)
-│  ├─ IjumpValidation                 (locked reason/status, orange theme)
-│  ├─ ExpectedResultEditor
-│  └─ ResultCountRule
-└─ ResultsPanel                      (bottom bar, slides up on results)
-├─ RunButton                       (enabled only when all steps done)
-└─ ScenarioResultCard              (per-scenario pass/fail)
+AppShell.tsx (hash-based router)
+├── LibraryPage
+│   ├── LibraryFilters (search, app, type, creator, status dropdowns)
+│   ├── TestsTable
+│   │   └── TestsTableRow[] (one per saved test)
+│   └── ScheduleModal (gear icon per row)
+│       ├── CronPicker (cron expression builder)
+│       └── RecipientsList (email recipients)
+│
+├── StartPage (builder)
+│   ├── SetupCard (initial) / SetupBar (compact after app selected)
+│   ├── StepPipeline (progress indicator)
+│   ├── QuerySection
+│   │   ├── Ace editor (SPL with syntax highlighting)
+│   │   ├── SplWarningOverlay (linter warnings via useAceMarkers)
+│   │   ├── TimeRangePicker
+│   │   └── Saved search selector dropdown
+│   ├── ScenarioPanel[] (one per scenario, collapsible)
+│   │   ├── ScenarioTabRow (scenario name, add/remove)
+│   │   ├── InputCard[] (per input, with mode selector)
+│   │   │   ├── FieldValueEditor (mode: fields)
+│   │   │   ├── JsonInputView (mode: json)
+│   │   │   ├── QueryDataView (mode: query_data)
+│   │   │   ├── DataSourceSelector (mode picker)
+│   │   │   └── EventGeneratorToggle -> GeneratorPanel
+│   │   │       └── GeneratorRule -> type-specific Config component
+│   │   └── ExtractFieldsButton (AI field extraction)
+│   ├── ValidationSection
+│   │   ├── ResultCountSection
+│   │   ├── FieldConditionsGrid
+│   │   │   └── FieldGroupCard[] -> ConditionRow[]
+│   │   ├── FieldNameSelector (field dropdown)
+│   │   ├── ValidationScope (per-scenario vs all)
+│   │   ├── IjumpValidation / IjumpLockedCards / IjumpCustomConditions
+│   │   └── SuggestFieldsButton (AI suggestion)
+│   ├── ResultsBar (fixed bottom)
+│   │   └── ResultsPanel (expandable)
+│   │       └── ScenarioResultCard[]
+│   │           ├── ValidationItem[] (pass/fail per condition)
+│   │           └── ResultRowsTable (search result rows)
+│   ├── TopBar
+│   │   ├── TestNavigation (test controls)
+│   │   ├── SaveTestModal
+│   │   └── BugReportButton
+│   └── TutorialOverlay
+│       ├── TutorialSpotlight (highlight target element)
+│       └── TutorialTooltip (step instructions)
+│
+├── SetupPage (admin-only)
+│   ├── SplunkSection, HecSection, EmailSection (+ EmailAuthFields)
+│   ├── WebUrlSection, LlmSection, LoggingSection, TempIndexSection
+│   ├── CommandPolicySection -> PolicyRow[]
+│   └── TestConnectionBar (HEC/SMTP connectivity test)
+│
+└── UnsavedChangesModal (navigating away with dirty state)
 ```
+
+---
+
+## Component Conventions
+
+### Props
+- Named interface declared above the component, never inline.
+- Boolean props: `is`/`has`/`should` prefix (e.g., `isExpanded`, `hasError`).
+- Handler props: `on` prefix (e.g., `onSave`, `onDelete`).
+- Handler implementations: `handle` prefix (e.g., `handleSave`, `handleDelete`).
+
+### State Access
+- Components use `useTestStore()` with inline selectors.
+- No prop drilling beyond one level. If a grandchild needs state, it calls `useTestStore()` directly.
+- Example: `const isRunning = useTestStore((s) => s.isRunning);`
+
+### Business Logic
+- No business logic in components. All logic lives in store actions, utils, or hooks.
+- No API calls in components. Always dispatch through store actions.
+- Components are responsible for rendering and dispatching actions only.
+
+### File Size
+- Every component file under 200 lines.
+- Single responsibility. If you need "and" to describe it, split it.
+
+### UI Framework
+- Use `@splunk/react-ui` components via `common/` wrappers.
+- Never use MUI (`@mui/*`).
+- IDs generated via `crypto.randomUUID()`.
+
+### React 16 Constraints
+- `ReactDOM.render()` only. No `createRoot`.
+- No `useId`, `useTransition`, `useDeferredValue`, `useSyncExternalStore`.
+- `useCallback`, `useMemo`, `useRef`, `useState`, `useEffect`, `useContext` are all fine.
+- `React.memo` and `forwardRef` are fine.

@@ -1,89 +1,82 @@
-### 14. Errors & Warnings System
+# spec-14 — Errors, Warnings & SPL Linting
 
-Errors and warnings use the same interface (ResponseMessage). They live in separate arrays on the response. The frontend renders whatever is present. If both arrays are empty, nothing shows.
+## ResponseMessage
 
-**17.1 The Unified ResponseMessage**
-```
+```ts
 interface ResponseMessage {
-code: string;          // machine-readable: 'UNKNOWN_COMMAND', 'LOOKUP_NOT_FOUND', etc.
-message: string;       // human-readable description
-severity: 'fatal' | 'error' | 'warning' | 'caution' | 'info';
-source?: string;       // which SPL command or stage caused it
-line?: number;         // line number in SPL if applicable
-tip?: string;          // actionable suggestion for the user
+    severity: 'info' | 'warning' | 'error' | 'fatal' | 'success';
+    text: string;
+    field?: string; // optional field reference for targeted display
 }
 ```
 
-**17.2 Severity Levels & Colors**
+Messages arrive from the backend in `TestResponse.messages[]`. Displayed in the results
+area grouped by severity.
 
-| Severity | Color | When | Test Results? |
-| --- | --- | --- | --- |
-| fatal | Red (--danger) | 500, crash, query completely failed | No. Test never ran. scenarioResults is empty. |
-| error | Red (--danger) | Splunk error: bad command, no such field | Possibly partial. Some scenarios may have run. |
-| warning | Orange (--warning) | Join limits, subsearch limits, resource issues | Yes. Query ran but with caveats. |
-| caution | Yellow (--warning dimmed) | Performance hints, deprecated commands | Yes. Everything ran fine. |
-| info | Blue (--accent) | Informational notes, metadata | Yes. Just FYI. |
+## Scenario-Level Errors
 
-**17.3 Three Rendering Scenarios**
+Each `ScenarioResult` carries:
+- `error: string | null` — fatal scenario error (e.g., SPL execution failure)
+- `warnings: string[]` — non-fatal issues (e.g., partial match, field missing)
 
-**Scenario A: Fatal Error (no results)**
-Backend returns status: 'error', errors: [{severity: 'fatal', ...}], scenarioResults: []. The ResultsPanel shows only the error card with red theme. No scenario results, no summary stats. The Run button resets to 'Rerun'.
+Per-scenario errors do not stop the run loop — other scenarios continue executing.
 
-**Scenario B: Errors + Partial Results**
-Backend returns status: 'partial', errors: [{severity: 'error', ...}], scenarioResults: [some results]. The ResultsPanel shows the error card at top, then scenario result cards below. User can see which scenarios ran and which failed due to the error.
+## SPL Linter (Frontend-Only)
 
-**Scenario C: Warnings + Full Results**
-Backend returns status: 'success' or 'partial', errors: [], warnings: [{severity: 'warning', ...}]. The ResultsPanel shows a compact warning banner (collapsible) above the scenario results. Warnings don't block anything — they're informational.
+Client-side dangerous command detection. No backend calls.
 
-**17.4 Frontend Components**
+### Files
 
-**QueryErrorsCard**
-Renders errors[] array. Each error shows: severity icon + color, message, source command (if present), line number (if present), tip (if present in a lighter box below the error). Has a 'Copy All' button. Only renders when errors.length > 0.
+| File | Role |
+|------|------|
+| `features/query/splLinter.ts` | `lintSpl()` — parses SPL, returns warning objects |
+| `features/query/splLinterRules.ts` | Rule definitions (command name, message, severity) |
+| `features/query/SplWarningOverlay.tsx` | Dismissible warning banner above editor |
+| `features/query/useAceMarkers.ts` | Hook that applies inline Ace markers + gutter annotations |
 
-**QueryWarningsCard**
-Renders warnings[] array. Same layout as errors but with orange/yellow theme. Collapsible by default when results are also present (user clicked 'Run' and got results + warnings). Expanded by default when no results (warning-only scenario). Only renders when warnings.length > 0.
+### Dangerous Commands Detected
 
-**QueryTipsCard (removed)**
-The old QueryTipsCard with frontend regex pattern matching is removed. Tips now come from the backend inside the ResponseMessage.tip field, rendered inline with each error/warning. The backend knows exactly what went wrong and provides the right tip. No more frontend guessing.
+`delete`, `outputlookup`, `collect`, `mcollect`, `sendemail`, and others defined
+in `splLinterRules.ts`.
 
-**17.5 Backend Responsibility**
-The backend is responsible for:
-**Classifying severity: **The Python validator and query executor tag each issue with the correct severity level.
-**Providing codes: **Machine-readable codes (UNKNOWN_COMMAND, LOOKUP_NOT_FOUND, TIMEOUT, PERMISSION_DENIED, JOIN_LIMIT, SUBSEARCH_LIMIT, SYNTAX_ERROR, NO_RESULTS, FIELD_NOT_FOUND) for programmatic handling.
-**Including tips: **Actionable suggestions directly on the message. 'LOOKUP_NOT_FOUND' → tip: 'Check that the lookup file exists and the name is spelled correctly.'
-**Populating source + line: **When the issue relates to a specific SPL command, include which command and which line.
-**Always returning both arrays: **Even when empty. errors: [] and warnings: [] are always present on every response. The frontend never has to check for undefined.
+### Trigger Behavior
 
-**17.6 Store Integration**
-```
-// In testStore.ts, results state:
-interface TestStoreState {
-// ...existing state...
-testResponse: TestResponse | null;
-isRunning: boolean;
-}
-```
+| Event | Action |
+|-------|--------|
+| Editor blur | Run `lintSpl()`, apply markers |
+| External SPL change (e.g., saved search load) | Re-lint if editor is NOT focused |
+| Editor focus | Clear all warnings (let user edit in peace) |
 
-```
-// Actions:
-setTestResponse: (response: TestResponse) => set(draft => {
-draft.testResponse = response;
-draft.isRunning = false;
-}),
-```
+### Display
 
-```
-clearResults: () => set(draft => {
-draft.testResponse = null;
-}),
-```
+- Inline Ace gutter annotations (warning icons per line)
+- Ace marker highlights on the dangerous command text
+- `SplWarningOverlay.tsx` banner with dismiss button
 
-```
-// Selectors for components:
-export const selectErrors = (s: TestStoreState) =>
-s.testResponse?.errors ?? [];
-export const selectWarnings = (s: TestStoreState) =>
-s.testResponse?.warnings ?? [];
-export const selectHasResults = (s: TestStoreState) =>
-(s.testResponse?.scenarioResults?.length ?? 0) > 0;
-```
+## Command Policy (Backend)
+
+Admin-configurable list of dangerous commands with severity levels. Managed from the
+Setup page `CommandPolicySection`.
+
+### Severity Levels
+
+| Level | Behavior |
+|-------|----------|
+| `danger` | Blocked — backend refuses to execute |
+| `warning` | User must acknowledge before running |
+| `info` | Informational notice only |
+
+### Backend
+
+`command_policy_handler.py` — REST handler for `/data/tester/command_policy/*`.
+CRUD operations on the policy list stored in KVStore.
+
+### Frontend
+
+`commandPolicySlice` in the Zustand store manages the policy list. The Setup page
+`CommandPolicySection` component provides the admin UI for adding, editing, and
+removing policy entries.
+
+The SPL linter and command policy are independent systems — the linter is purely
+client-side with hardcoded rules, while the command policy is server-enforced and
+admin-configurable.

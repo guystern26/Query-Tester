@@ -173,7 +173,25 @@
       "Bash(cd C:/Users/guyst/splunk-ui-toolkit-apps/packages/query-tester/stage/bin && py -m py_compile alert_email.py && py -m py_compile alert_email_html.py && echo \"OK\")",
       "Bash(cd C:/Users/guyst/splunk-ui-toolkit-apps/packages/query-tester/stage/bin && py -m py_compile bug_report_handler.py && echo \"OK\")",
       "Bash(cd C:/Users/guyst/splunk-ui-toolkit-apps/packages/query-tester/stage/bin && py -c \"\nimport sys, os\nsys.path.insert\\(0, os.getcwd\\(\\)\\)\nfrom alert_email import build_failure_email\n\nscenario_results = [\n    {\n        'scenarioName': 'Valid login events',\n        'passed': False,\n        'error': '',\n        'resultCount': 3,\n        'validations': [\n            {'field': 'action', 'condition': 'equals', 'expected': 'success', 'actual': 'success', 'passed': True, 'message': ''},\n            {'field': 'user', 'condition': 'equals', 'expected': 'admin', 'actual': 'guest', 'passed': False, 'message': 'Expected admin but got guest'},\n            {'field': 'count', 'condition': 'greater_than', 'expected': '5', 'actual': '2', 'passed': False, 'message': 'Count too low'},\n        ],\n        'resultRows': [\n            {'action': 'success', 'user': 'guest', 'count': '2', 'src_ip': '10.0.0.1'},\n            {'action': 'success', 'user': 'admin', 'count': '8', 'src_ip': '10.0.0.2'},\n            {'action': 'failure', 'user': 'guest', 'count': '1', 'src_ip': '10.0.0.3'},\n        ],\n    },\n    {\n        'scenarioName': 'Empty index check',\n        'passed': True,\n        'error': '',\n        'resultCount': 0,\n        'validations': [\n            {'field': '_count', 'condition': 'equals', 'expected': '0', 'actual': '0', 'passed': True, 'message': ''},\n        ],\n        'resultRows': [],\n    },\n]\n\nfull_results = {\n    'passedScenarios': 1,\n    'totalScenarios': 2,\n    'message': '',\n}\n\nsubject, html = build_failure_email\\(\n    test_name='Authentication Audit - Daily',\n    ran_at='2026-03-23T08:30:00Z',\n    status='fail',\n    scenario_results=scenario_results,\n    spl_drift_detected=True,\n    test_id='abc-123-def',\n    full_results=full_results,\n    splunk_web_url='https://splunk.example.com:8000',\n\\)\n\nwith open\\('email_preview.html', 'w', encoding='utf-8'\\) as f:\n    f.write\\(html\\)\nprint\\('Wrote email_preview.html'\\)\nprint\\('Subject:', subject\\)\n\" 2>&1)",
-      "Bash(wc -l \"C:\\\\Users\\\\guyst\\\\splunk-ui-toolkit-apps\\\\packages\\\\query-tester\\\\stage\\\\bin\\\\spl\\\\query_injector.py\" && cd \"C:\\\\Users\\\\guyst\\\\splunk-ui-toolkit-apps\\\\packages\\\\query-tester\\\\stage\\\\bin\" && py -m pytest tests/ -q 2>&1)"
+      "Bash(wc -l \"C:\\\\Users\\\\guyst\\\\splunk-ui-toolkit-apps\\\\packages\\\\query-tester\\\\stage\\\\bin\\\\spl\\\\query_injector.py\" && cd \"C:\\\\Users\\\\guyst\\\\splunk-ui-toolkit-apps\\\\packages\\\\query-tester\\\\stage\\\\bin\" && py -m pytest tests/ -q 2>&1)",
+      "Bash(find C:Usersguystsplunk-ui-toolkit-appspackagesquery-tester-appsrchooks -name *.ts -o -name *.tsx)",
+      "Bash(find C:Usersguystsplunk-ui-toolkit-appspackagesquery-tester-appsrcutils -name *.ts -o -name *.tsx)",
+      "Bash(py -m py_compile generators/event_generator.py)",
+      "Bash(py -m py_compile generators/config_parser.py)",
+      "Bash(py -m py_compile generators/pick_list.py)",
+      "Bash(py -m py_compile generators/random_number.py)",
+      "Bash(py -m py_compile generators/general_field.py)",
+      "Bash(py -m pytest tests/ -v)",
+      "Bash(cd C:/Users/guyst/splunk-ui-toolkit-apps/packages/query-tester/stage/bin && py -m py_compile core/test_runner.py && echo \"OK: test_runner.py\")",
+      "Bash(cd C:/Users/guyst/splunk-ui-toolkit-apps/packages/query-tester/stage/bin && py -m py_compile data/data_indexer.py && echo \"OK: data_indexer.py\")",
+      "Bash(cd C:/Users/guyst/splunk-ui-toolkit-apps/packages/query-tester/stage/bin && py -m py_compile data/hec_config.py && echo \"OK: hec_config.py\")",
+      "Bash(cd C:/Users/guyst/splunk-ui-toolkit-apps/packages/query-tester/stage/bin && py -m py_compile spl/preflight.py && echo \"OK: preflight.py\")",
+      "Bash(cd C:/Users/guyst/splunk-ui-toolkit-apps/packages/query-tester/stage/bin && py -m py_compile spl/spl_normalizer.py && echo \"OK: spl_normalizer.py\")",
+      "Bash(cd C:/Users/guyst/splunk-ui-toolkit-apps/packages/query-tester/stage/bin && py -m pytest tests/ -v --ignore=tests/test_email_simple.py 2>&1 | tail -40)",
+      "Bash(for f:*)",
+      "Bash(py -m py_compile \"$f\")",
+      "Bash(done)",
+      "Bash(cd C:/Users/guyst/splunk-ui-toolkit-apps/packages/query-tester/stage/bin && py -m py_compile core/test_runner.py && echo \"OK\" && py -m py_compile data/data_indexer.py && echo \"OK\" && py -m py_compile data/hec_config.py && echo \"OK\" && py -m py_compile core/response_builder.py && echo \"OK\" && py -m py_compile core/payload_parser.py && echo \"OK\")"
     ]
   }
 }

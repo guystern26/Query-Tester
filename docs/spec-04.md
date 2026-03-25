@@ -1,104 +1,155 @@
-### 4. The Unified Data Model
+# Spec 04 -- Unified Data Model
 
+## Enums & IDs
 
-**4.1 Enums & IDs**
-```
-type EntityId = string;  // crypto.randomUUID()
+```ts
+type EntityId = string;                    // crypto.randomUUID()
 type TestType = 'standard' | 'query_only';
-type ValidationType = 'standard' | 'ijump_alert';
-type InputMode = 'json' | 'fields' | 'no_events';
+type ValidationType = 'standard' | 'ijump';
+type InputMode = 'fields' | 'json' | 'no_events' | 'query_data';
 type ConditionOperator = 'equals' | 'contains' | 'regex' | 'not_empty';
 type ResultCountOperator = 'equals' | 'greater_than' | 'less_than';
 ```
 
-**4.2 InputMode: Three States**
-**'json' | 'fields' | 'no_events'**
-**json: **User types/pastes JSON. Stored as raw string in jsonContent.
-**fields: **Structured events with field-value pairs. Multiple events per input.
-**no_events: **The row identifier returns 0 events. Payload sends data: [{}]. Backend generates makeresults count=0. UI hides editor, shows 'This input returns 0 events' message.
+## Core Type Hierarchy
 
-**4.3 Complete Type Hierarchy**
-
-**FieldValue**
-```
+```ts
 interface FieldValue {
-id: EntityId;
-field: string;       // must be filled if value is non-empty or generator is used
-value: string;       // can be empty string ''. Distinguish '' from ' ' (space is valid)
+    id: EntityId;
+    field: string;
+    value: string;
 }
-```
 
-**InputEvent**
-```
 interface InputEvent {
-id: EntityId;
-fieldValues: FieldValue[];
+    id: EntityId;
+    fieldValues: FieldValue[];
 }
-```
 
-**TestInput**
-```
+interface QueryDataConfig {
+    spl: string;
+    earliest: string;
+    latest: string;
+    maxEvents: number;
+}
+
 interface TestInput {
-id: EntityId;
-rowIdentifier: string;
-inputMode: InputMode;               // 'json' | 'fields' | 'no_events'
-jsonContent: string;                 // raw string, parsed only at payload build
-events: InputEvent[];
-fileRef: { name: string; size: number } | null;  // metadata only
-generatorConfig: GeneratorConfig;
+    id: EntityId;
+    rowIdentifier: string;
+    mode: InputMode;
+    events: InputEvent[];
+    generatorConfig: GeneratorConfig;
+    queryDataConfig?: QueryDataConfig;
 }
-```
 
-**Scenario**
-```
 interface Scenario {
-id: EntityId;
-name: string;
-description: string;
-inputs: TestInput[];
+    id: EntityId;
+    name: string;
+    inputs: TestInput[];
 }
-```
 
-**QueryConfig**
-```
 interface QueryConfig {
-spl: string;
-savedSearchOrigin: string | null;
+    spl: string;
+    timeRange: { earliest: string; latest: string };
 }
-```
 
-**FieldCondition**
-```
-interface FieldCondition {
-id: EntityId;
-field: string;
-operator: ConditionOperator;
-value: string;
-scenarioScope: 'all' | EntityId[];
+interface Condition {
+    id: EntityId;
+    operator: ConditionOperator;
+    value: string;
 }
-```
 
-**ValidationConfig**
-```
+interface FieldGroup {
+    id: EntityId;
+    field: string;
+    conditions: Condition[];
+}
+
 interface ValidationConfig {
-validationType: ValidationType;      // 'standard' | 'ijump_alert'
-approach: 'expected_result' | 'field_conditions';
-expectedResultJson: string;
-expectedResultFileRef: { name: string; size: number } | null;
-fieldConditions: FieldCondition[];
-resultCount: ResultCountRule;
+    validationType: ValidationType;
+    resultCount: { operator: ResultCountOperator; value: number };
+    fieldGroups: FieldGroup[];
+    validationScope: 'per_scenario' | 'aggregate';
+    ijumpConfig?: { alertName: string; triggerCondition: string };
+}
+
+interface TestDefinition {
+    id: EntityId;
+    name: string;
+    app: string;
+    testType: TestType;
+    query: QueryConfig;
+    scenarios: Scenario[];
+    validation: ValidationConfig;
 }
 ```
 
-**TestDefinition**
-```
-interface TestDefinition {
-id: EntityId;
-name: string;
-app: string;                        // Splunk app context
-testType: TestType;                 // 'standard' | 'query_only'
-scenarios: Scenario[];
-query: QueryConfig;
-validation: ValidationConfig;
+## Saved Test Types
+
+```ts
+interface SavedTestMeta {
+    id: string;
+    name: string;
+    app: string;
+    testType: TestType;
+    validationType: ValidationType;
+    createdAt: string;
+    updatedAt: string;
+    createdBy: string;
+    scenarioCount: number;
+    description: string;
+    version: number;           // optimistic locking
 }
+
+interface SavedTestFull extends SavedTestMeta {
+    definition: TestDefinition;
+}
+```
+
+## Scheduled Test
+
+```ts
+interface ScheduledTest {
+    id: string;
+    testId: string;            // references SavedTestMeta.id
+    testName: string;          // stale snapshot -- always look up current from savedTests
+    app: string;
+    savedSearchOrigin: string | null;
+    cronSchedule: string;
+    enabled: boolean;
+    createdAt: string;
+    createdBy: string;
+    lastRunAt: string | null;
+    lastRunStatus: 'passed' | 'failed' | 'error' | null;
+    alertOnFailure: boolean;
+    emailRecipients: string[];
+    version: number;
+}
+```
+
+## Test Run Record
+
+```ts
+interface TestRunRecord {
+    id: string;
+    scheduledTestId: string | null;  // null for manual runs
+    testId: string;
+    ranAt: string;
+    ranBy: string;
+    triggerType: 'scheduled' | 'manual';
+    status: 'passed' | 'failed' | 'error';
+    durationMs: number;
+    splSnapshot: string;
+    splDriftDetected: boolean;
+    resultSummary: string;
+    scenarioResults: object[];
+}
+```
+
+## Root Store State (additions beyond slices)
+
+```ts
+savedTestId: string | null;           // currently loaded saved test (null = new)
+savedTestVersion: number | null;      // version for optimistic locking
+hasUnsavedChanges: boolean;           // auto-detected via store subscription
+splDriftWarning: string | null;       // set by loadTestIntoBuilder on drift
 ```

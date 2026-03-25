@@ -1,109 +1,63 @@
-### 17. Debounce Strategy & Remaining Hooks
+# spec-17 — Debounce & Hooks
 
+## useSavedSearches
 
-**17.1 Why Debounce Matters (JSON Editor)**
-The JSON editor stores raw text in jsonContent. Without debounce, every keystroke triggers a Zustand state update, which causes the entire store to run selectors and potentially re-render multiple components. For a 500-line JSON paste, that's hundreds of updates in milliseconds.
+`hooks/useSavedSearches.ts`
 
-**The pattern: local state for instant feedback, debounced store update for persistence.**
+Fetches Splunk saved searches for the selected app. Provides a debounced search
+input so users can filter by name without hammering the API.
 
-```
-const JsonInputView = ({ scenarioId, inputId }) => {
-const storeValue = useTestStore(selectInput(scenarioId, inputId))?.jsonContent;
-const { updateInput } = useTestStore();
-```
+- Fetches on app change
+- Search input debounced (typing delay before API call)
+- Returns `{ searches, isLoading, searchTerm, setSearchTerm }`
 
-```
-// Local state for instant typing feedback
-const [localValue, setLocalValue] = useState(storeValue ?? '');
-const [jsonError, setJsonError] = useState<string | null>(null);
-```
+## useLoadTest
 
-```
-// Sync from store → local when store changes externally (e.g., file upload)
-useEffect(() => { setLocalValue(storeValue ?? ''); }, [storeValue]);
-```
+`hooks/useLoadTest.ts`
 
-```
-// Debounced store update (300ms)
-const debouncedUpdate = useRef(
-debounce((value: string) => {
-updateInput(scenarioId, inputId, { jsonContent: value });
-}, 300)
-).current;
-```
+Extracted from `StartPage.tsx`. Handles loading a saved test by ID on initial mount
+or when `test_id` changes.
 
-```
-const handleChange = (text: string) => {
-setLocalValue(text);          // instant UI update
-debouncedUpdate(text);         // delayed store update
-// Validate for UI feedback
-try { JSON.parse(text); setJsonError(null); }
-catch (e) { setJsonError((e as Error).message); }
-};
-// ...
-};
-```
+Flow:
+1. If saved tests not yet fetched, fetches them first
+2. Finds test by ID in the saved tests list
+3. Calls `loadTestIntoBuilder()` to populate the store
+4. Calls `loadLastRun()` to fetch the most recent run result
 
-*Import debounce from lodash/debounce or use a simple setTimeout-based implementation (< 10 lines). No need for a full library.*
+## useLoadLastRun
 
-**17.2 useSavedSearches Hook**
-This is the one hook that stays outside the store. It handles async data fetching, which doesn't belong in Zustand (Zustand is for synchronous state).
+`hooks/useLoadLastRun.ts`
 
-```
-// features/query/useSavedSearches.ts
-```
+Fetches the last run result for a loaded test. Called after `loadTestIntoBuilder()`
+completes. Populates the run result state so the user sees previous results
+immediately.
 
-```
-interface SavedSearch {
-name: string;
-type: string;              // 'alert' | 'report' | 'search'
-}
-```
+## Debounce Patterns
 
-```
-interface UseSavedSearchesReturn {
-savedSearches: SavedSearch[];
-loading: boolean;
-error: string | null;
-refetch: () => void;
-}
-```
+### Test Name (300ms)
 
-```
-export function useSavedSearches(app: string | undefined): UseSavedSearchesReturn {
-const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
-const [loading, setLoading] = useState(false);
-const [error, setError] = useState<string | null>(null);
-```
+`StartPage.tsx` maintains `localName` state that updates immediately on keystroke.
+A 300ms debounced callback calls `updateTestName()` on the store. This prevents
+store thrash during fast typing while keeping the input responsive.
 
-```
-const fetchSearches = useCallback(async () => {
-if (!app) { setSavedSearches([]); return; }
-setLoading(true);
-setError(null);
-try {
-const results = await splunkApi.getSavedSearches(app);
-setSavedSearches(results);
-} catch (e) {
-setError((e as Error).message);
-} finally {
-setLoading(false);
-}
-}, [app]);
-```
+### JSON Editor
 
-```
-// Auto-fetch when app changes
-useEffect(() => { fetchSearches(); }, [fetchSearches]);
-```
+JSON input editors use debounced parsing to avoid showing parse errors while the
+user is mid-edit. The raw text updates immediately; JSON.parse runs after typing
+stops.
 
-```
-return { savedSearches, loading, error, refetch: fetchSearches };
-}
-```
+### SPL Editor
 
-The SavedSearchPicker component calls this hook, shows a dropdown when loaded, and on selection calls store.loadSavedSearchSpl(name, spl) after fetching the SPL text.
+- `onChange` fires immediately — SPL is written to the store on every keystroke
+- Linting does NOT run on change — only triggers on blur
+- This separation keeps the editor responsive while deferring expensive analysis
 
-**17.3 SPL Editor**
-**Splunk provides a native SPL editor component with syntax highlighting, autocomplete, and command validation.**
-The old custom SplEditor with Levenshtein typo detection, manual command highlighting, and warning tooltips is removed. The native Splunk component handles all of this. The SplEditor wrapper simply passes the spl value from the store and calls updateQuery on change (no debounce needed — the native component handles its own internal state).
+## hasUnsavedChanges Detection
+
+Store subscription pattern:
+
+1. On save or load, a snapshot of the `tests` array reference is stored
+2. A Zustand `subscribe()` callback watches the `tests` reference
+3. If the reference changes (Immer produces a new object on any mutation),
+   `hasUnsavedChanges` flips to `true`
+4. Resets to `false` on successful save or fresh load

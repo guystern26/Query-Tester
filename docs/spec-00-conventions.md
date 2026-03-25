@@ -1,327 +1,125 @@
-# 00 — Code Conventions & SOLID Principles
+# 00 -- Python Code Conventions
 
-> **Attach this file to every Cursor prompt.** These rules apply to every Python file in the project.
+These rules apply to every Python file in `packages/query-tester/stage/bin/`.
 
----
+## Python 3.7 Compatibility
 
-## Python Version & Compatibility
+Splunk ships Python 3.7. The following are **banned**:
 
-**Python 3.7.** No exceptions. Splunk ships Python 3.7 on most enterprise versions.
+| Banned syntax | Use instead |
+|--------------|-------------|
+| `X \| None` | `Optional[X]` from `typing` |
+| `:=` (walrus) | Separate assignment |
+| `match/case` | if/elif or registry dict |
+| `list[x]`, `dict[x, y]` | `List[x]`, `Dict[x, y]` from `typing` |
+| `str.removeprefix()` | Slice: `s[len(prefix):]` |
+| `d1 \| d2` (dict union) | `{**d1, **d2}` |
 
+Every file must start with (after any docstring):
 ```python
-# CORRECT — Python 3.7 compatible
-from typing import Optional, List, Dict, Tuple, Any, Callable
-def parse(data: Optional[Dict[str, Any]]) -> List[str]: ...
-
-# WRONG — Python 3.9+ syntax, breaks on Splunk
-def parse(data: dict | None) -> list[str]: ...    # union types and built-in generics
-x := compute()                                    # walrus operator
-match status:                                     # match statement
-```
-
----
-
-## File Header — Every File, Exactly This Structure
-
-```python
-# -*- coding: utf-8 -*-
-"""
-module_name.py
-One-line description of what this module does and nothing else.
-"""
 from __future__ import annotations
+```
 
-# 1. stdlib
-import os
-import re
-import json
-import logging
-from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Tuple
-from uuid import uuid4
+## No print() -- Ever
 
-# 2. third-party (splunklib only — no pip installs on closed network)
-import splunklib.client as splunk_client
-import splunklib.results as splunk_results
-
-# 3. local modules
+`print()` writes to stdout, which **corrupts Splunk REST handler responses**. Use:
+```python
 from logger import get_logger
-
 logger = get_logger(__name__)
+logger.info("message")
 ```
 
-`from __future__ import annotations` must be the **first non-comment line** after the module docstring. It enables PEP 563 forward references in type hints for Python 3.7.
+## LF Line Endings Only
 
-The shebang `#!/usr/bin/env python3` goes on `query_tester.py` only.
+CRLF causes `500 "can't start the script"` on Linux Splunk. Configure editors to save LF.
 
----
+## No External Packages
 
-## Naming Conventions
+Only `stdlib` + bundled `splunklib`. No pip installs -- closed network environment.
 
-| Thing | Style | Example |
-|---|---|---|
-| Module-level constants | `UPPER_SNAKE_CASE` | `BATCH_SIZE = 1000`, `UNAUTHORIZED_COMMANDS` |
-| Classes | `PascalCase` | `QueryInjector`, `ResultValidator` |
-| Public functions / methods | `snake_case` | `detect_strategy()`, `build_events()` |
-| Private helpers | `_snake_case` | `_replace_index()`, `_normalize_weights()` |
-| Dataclass fields | `snake_case` | `row_identifier`, `event_count`, `field_logic` |
-| Local variables | `snake_case` | `run_id`, `injected_spl`, `all_events` |
-| Type aliases | `PascalCase` | `EventRow = Dict[str, str]` |
+## File Structure
 
----
+- **Under 200 lines** per module. Single responsibility.
+- **One `PersistentServerConnectionApplication` class per handler file.** Multiple classes in one file = "can't start the script".
+- `from __future__ import annotations` as the first import line.
 
-## SOLID — Applied Concretely
+## Naming
 
-### S — Single Responsibility: One File, One Job
+- `snake_case` in Python code.
+- `camelCase` in JSON responses (frontend expectation).
+- Translation between the two happens only in `_to_dict()` methods and the API layer.
+- No `dataclasses.asdict()` -- it produces snake_case. Use explicit `_to_dict()`.
 
+## Error Handling
+
+- `try/except` around every KVStore operation.
+- Correct HTTP codes: `400` (validation), `403` (forbidden), `404` (not found), `409` (version conflict), `500` (internal).
+- Cleanup always in `finally` -- even when exceptions are thrown.
+- All validation conditions evaluated -- no short-circuit on first failure.
+- Per-scenario errors don't stop the test loop. Fatal errors only on parse/SPL failures.
+
+## Registries Over Conditionals
+
+Use registry dicts, not if/elif chains:
+- `GENERATOR_REGISTRY` in `generators/event_generator.py`
+- `CONDITION_HANDLERS` in `validation/condition_handlers.py`
+- `STRATEGY_HANDLERS` in validation
+
+## Splunk Connections
+
+**Always** use `splunk_connect.get_service(session_key)` -- connects to localhost via static `config.py`.
+
+**Two exceptions** (circular dependency with `runtime_config`):
+1. `kvstore_client.py` -- runtime_config is stored in KVStore
+2. `config_secrets.py` -- called by `runtime_config._read_secrets()`
+
+Never add `runtime_config` imports to these three modules.
+
+## Session & Auth
+
+- `session_key` injected at construction or passed as parameter. Never a global.
+- `createdBy` always from session token (`session["user"]`), never from request body.
+- Admin check: `auth_utils.is_admin(session_key)` reads roles from session token (SAML-safe).
+- Ownership enforcement: handlers compare `createdBy` against session user on PUT/DELETE. Admins bypass.
+
+## KVStore Booleans
+
+KVStore converts Python booleans to strings `"1"`/`"0"`. JavaScript `"0"` is truthy.
+
+Always normalize explicitly:
 ```python
-# CORRECT — query_injector.py only transforms SPL strings
-class QueryInjector:
-    def inject(self, spl: str, run_id: str, strategy: str) -> str: ...
-    def detect_strategy(self, spl: str) -> str: ...
-    def _replace_outer_index(self, spl: str, run_id: str) -> str: ...
-
-# WRONG — injector reaching into execution territory
-class QueryInjector:
-    def inject(self, spl: str, run_id: str) -> str: ...
-    def run_query(self, spl: str) -> List[dict]: ...      # ← belongs in query_executor.py
-    def cleanup(self, run_id: str) -> None: ...           # ← belongs in data_indexer.py
+alert_flag in (True, "1", "true", "True")  # not bare truthiness
 ```
 
-Boundary check: if you're about to `import QueryExecutor` inside `QueryInjector`, stop — you've crossed a boundary.
+Backend handlers use `_normalize_bools()` on GET/PUT responses.
 
-### O — Open/Closed: Registries, Not if/elif Chains
+## Optimistic Locking
 
-When a function dispatches on a string value (generator type, condition operator, injection strategy), use a dict registry. Adding a new variant means adding one line to the dict — not editing existing logic.
+`saved_tests` and `scheduled_tests` use a `version` integer field:
+- Born at `1` on POST.
+- PUT: compare payload version against stored version. Mismatch -> `409 Conflict`.
+- On match: increment to `existing_version + 1`.
+- Legacy records (version=0 or missing): check skipped, version set to `1`.
 
+## web.conf Expose Entries
+
+`restmap.conf` prefix-matches (e.g., `match = /data/tester` catches `/data/tester/config/status`).
+`web.conf` expose patterns do **NOT** prefix-match -- each sub-path needs its own entry.
+
+Every time a new sub-path is added to a handler, a matching `web.conf` expose entry **must** be added, or the Splunk web proxy returns 404.
+
+## SPL Data Embedding
+
+No single quotes in SPL eval expressions -- they break silently. Use JSON with double-quote escaping via `eval _raw=`.
+
+## Handler Return Values
+
+All handler return values are plain `dict` or `list[dict]`. No dataclasses or custom objects in responses.
+
+## Splunk REST Response Format
+
+When reading Splunk REST API responses:
 ```python
-# CORRECT — open to extension, closed to modification
-CONDITION_HANDLERS: Dict[str, Callable[[str, str], bool]] = {
-    'equals':    lambda actual, expected: actual.strip().lower() == expected.strip().lower(),
-    'contains':  lambda actual, expected: expected.lower() in actual.lower(),
-    'regex':     lambda actual, expected: bool(re.search(expected, actual)),
-    'not_empty': lambda actual, _: actual is not None and actual.strip() != '',
-}
-
-def check_condition(operator: str, actual: str, expected: str) -> bool:
-    handler = CONDITION_HANDLERS.get(operator)
-    if handler is None:
-        logger.warning('Unknown condition operator: %s — skipping', operator)
-        return False
-    return handler(actual, expected)
-
-# WRONG — must edit the function to add a new operator
-def check_condition(operator: str, actual: str, expected: str) -> bool:
-    if operator == 'equals':
-        return actual.lower() == expected.lower()
-    elif operator == 'contains':
-        return expected.lower() in actual.lower()
-    elif operator == 'regex':
-        return bool(re.search(expected, actual))
-    # adding 'starts_with' means editing here
-```
-
-Apply this pattern to:
-- `event_generator.py` → `GENERATOR_REGISTRY`
-- `result_validator.py` → `CONDITION_HANDLERS`
-- `query_injector.py` → `STRATEGY_HANDLERS`
-
-### I — Interface Segregation: Pass Only What's Needed
-
-```python
-# CORRECT — takes only the two values it needs
-def _replace_outer_index(self, spl: str, run_id: str) -> str:
-    replacement = f'index=temp_query_tester run_id={run_id}'
-    return INDEX_PATTERN.sub(replacement, spl, count=1)
-
-# WRONG — takes the entire payload object when it only needs the SPL string
-def _replace_outer_index(self, payload: TestPayload) -> str:
-    replacement = f'index=temp_query_tester run_id={payload.scenarios[0].run_id}'
-    return INDEX_PATTERN.sub(replacement, payload.query, count=1)
-```
-
-`TestPayload` and `Scenario` dataclasses cross module boundaries at the `TestRunner` level. Individual helper functions receive only the specific primitives they act on.
-
-### D — Dependency Inversion: Inject, Don't Hardcode
-
-```python
-# CORRECT — session_key injected at construction, all services created from it
-class TestRunner:
-    def __init__(self, session_key: str) -> None:
-        self._session_key = session_key
-        self._executor = QueryExecutor(session_key)
-        self._indexer  = DataIndexer(session_key)
-        self._analyzer = SPLAnalyzer()
-        self._injector = QueryInjector()
-        self._validator = ResultValidator()
-
-# WRONG — global service at module level, TestRunner implicitly depends on it
-_splunk_service = splunk_client.connect(host='localhost', port=8089, ...)
-
-class TestRunner:
-    def run_test(self, payload: TestPayload) -> dict:
-        results = _splunk_service.jobs.create(...)    # hidden dependency
-```
-
----
-
-## No `print()` — Ever
-
-Splunk's REST handler reads **stdout as part of the HTTP response body**. A single `print()` anywhere in the call stack corrupts the JSON the frontend receives, producing a silent failure.
-
-```python
-# CORRECT — goes to log file, never stdout
-logger.info('Indexed %d events for run_id=%s', len(events), run_id)
-logger.warning('Cleanup failed for run_id=%s: %s', run_id, str(e))
-logger.error('Scenario failed', exc_info=True)    # exc_info=True includes traceback
-
-# WRONG — corrupts the REST response
-print(f'Indexed {len(events)} events')
-print(results)
-```
-
-This applies to: debug prints, logging.basicConfig, exception tracebacks via traceback.print_exc(), and any third-party library that defaults to stdout. Redirect or suppress all of them.
-
----
-
-## Error Handling Patterns
-
-### Per-scenario errors must not stop the run
-
-```python
-for scenario in payload.scenarios:
-    try:
-        result = self._run_scenario(spl, scenario)
-    except Exception as exc:
-        logger.error('Scenario "%s" failed: %s', scenario.name, exc, exc_info=True)
-        result = ScenarioResult(
-            scenario_name=scenario.name,
-            passed=False,
-            execution_time_ms=0,
-            result_count=0,
-            injected_spl='',
-            validations=[],
-            error=str(exc),
-        )
-    scenario_results.append(result)
-    # loop always continues to the next scenario
-```
-
-### Cleanup must run even on exception
-
-```python
-run_id = uuid4().hex[:8]
-strategy = self._injector.detect_strategy(spl)
-try:
-    result = self._execute_scenario(spl, run_id, strategy, scenario)
-finally:
-    self._cleanup(run_id, strategy)   # always — even if _execute_scenario raised
-```
-
-### Error messages must be actionable
-
-```python
-# CORRECT — tells user what failed and what to do
-raise ValueError(
-    f'Saved search "{name}" not found in app "{app}". '
-    f'Verify the app selector matches the search\'s app context.'
-)
-
-# WRONG — useless to the user
-raise ValueError('Not found')
-raise Exception('Error in payload parser')
-```
-
-### Never raise on unknown enum values from the frontend
-
-The frontend may evolve faster than the backend. Unknown string values should log a warning and return a safe default, never crash:
-
-```python
-handler = CONDITION_HANDLERS.get(operator)
-if handler is None:
-    logger.warning('Unknown operator "%s" — condition will be skipped', operator)
-    return False
-```
-
----
-
-## Dataclass Conventions
-
-All structured data passed between modules must be a `@dataclass` — not a plain `dict`.
-
-```python
-@dataclass
-class ValidationDetail:
-    """Result of evaluating one field condition against the query results."""
-    field: str              # field name that was checked
-    condition: str          # operator used (equals, contains, etc.)
-    expected: str           # expected value as a string
-    actual: str             # actual value found in results (or 'no results')
-    passed: bool
-    message: str            # human-readable: 'count equals 5 ✓'
-    error: Optional[str] = None   # optional fields with defaults go last
-```
-
-Rules:
-- Required fields first, `Optional` / defaulted fields last
-- `Optional[X]` fields default to `None`
-- `List[X]` fields use `field(default_factory=list)` — not `= None` and not `= []`
-- One dataclass per distinct concept — no reusing a dict as a return value
-- Add a one-line docstring describing the purpose of each dataclass
-
----
-
-## Generic / Data-Driven Patterns
-
-Prefer data-driven design over hard-coded logic branches. The three places in this project where this applies:
-
-```python
-# event_generator.py
-GENERATOR_REGISTRY: Dict[str, Callable] = {
-    'numbered':      _gen_numbered,
-    'pick_list':     _gen_pick_list,
-    'random_number': _gen_random_number,
-    'unique_id':     _gen_unique_id,
-    'email':         _gen_email,
-    'ip_address':    _gen_ip_address,
-    'general_field': _gen_pick_list,   # alias — same function
-}
-
-# result_validator.py
-CONDITION_HANDLERS: Dict[str, Callable[[str, str], bool]] = {
-    'equals':    lambda a, e: a.strip().lower() == e.strip().lower(),
-    'contains':  lambda a, e: e.lower() in a.lower(),
-    'regex':     lambda a, e: bool(re.search(e, a)),
-    'not_empty': lambda a, _: a is not None and a.strip() != '',
-}
-
-# query_injector.py
-STRATEGY_HANDLERS: Dict[str, Callable] = {
-    'standard':    _inject_standard,
-    'lookup':      _inject_lookup,
-    'inputlookup': _inject_noop,
-    'tstats':      _inject_noop,
-    'no_index':    _inject_prepend,
-}
-```
-
----
-
-## Line Length, Formatting, Comments
-
-- Max line length: **100 characters**
-- Backslash continuation for strings longer than one line — not implicit parenthesis continuation
-- Every non-obvious block of logic gets a one-line comment above it
-- No clever one-liners. Readable > short.
-
-```python
-# CORRECT — clear intent
-# Replace only the outer index= — leave subsearch brackets untouched
-bracket_pos = spl.find('[')
-outer = spl[:bracket_pos] if bracket_pos != -1 else spl
-inner = spl[bracket_pos:] if bracket_pos != -1 else ''
-result = _replace_index_in_segment(outer, run_id) + inner
-
-# WRONG — clever, illegible
-result = _r(spl[:spl.find('[')]if'['in spl else spl,r)+(spl[spl.find('['):]if'['in spl else'')
+data = response.json()
+content = data['entry'][0]['content']  # content is nested, not at root
 ```
