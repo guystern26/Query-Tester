@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTestStore } from 'core/store/testStore';
 import type { EntityId, FieldConditionGroup, Scenario } from 'core/types';
 import { MAX_CONDITIONS_PER_GROUP } from 'core/constants/limits';
@@ -24,19 +24,23 @@ export interface FieldGroupCardProps {
 }
 
 export function FieldGroupCard({ testId, group, index, scenarios, isOnly }: FieldGroupCardProps) {
-  const store = useTestStore();
+  const updateFieldGroupLogic = useTestStore((s) => s.updateFieldGroupLogic);
+  const updateFieldGroupScope = useTestStore((s) => s.updateFieldGroupScope);
+  const duplicateFieldGroup = useTestStore((s) => s.duplicateFieldGroup);
+  const removeFieldGroup = useTestStore((s) => s.removeFieldGroup);
+  const addConditionToGroup = useTestStore((s) => s.addConditionToGroup);
   const conds = group.conditions;
   const logic = group.conditionLogic;
   const atLimit = conds.length >= MAX_CONDITIONS_PER_GROUP;
   const scope = group.scenarioScope === 'all' ? 'all' : (Array.isArray(group.scenarioScope) ? group.scenarioScope[0] : 'all');
-  const preview = conditionPreview(group);
+  const preview = useMemo(() => conditionPreview(group), [group]);
 
   const scopeOpts = [
     { value: 'all', label: 'All Scenarios' },
     ...scenarios.map((s) => ({ value: s.id, label: s.name || 'Untitled' })),
   ];
 
-  const toggleLogic = () => store.updateFieldGroupLogic(testId, group.id, logic === 'and' ? 'or' : 'and');
+  const toggleLogic = () => updateFieldGroupLogic(testId, group.id, logic === 'and' ? 'or' : 'and');
 
   return (
     <div className="bg-navy-800 rounded-lg border border-slate-700 p-4" data-tutorial="field-logic">
@@ -54,17 +58,17 @@ export function FieldGroupCard({ testId, group, index, scenarios, isOnly }: Fiel
         <select className={`${selectCls} text-xs w-[120px]`} value={scope}
           onChange={(e) => {
             const v = e.target.value;
-            store.updateFieldGroupScope(testId, group.id, v === 'all' ? 'all' : [v] as EntityId[]);
+            updateFieldGroupScope(testId, group.id, v === 'all' ? 'all' : [v] as EntityId[]);
           }}>
           {scopeOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
         <button className="p-1.5 text-slate-500 hover:text-accent-300 rounded transition cursor-pointer" title="Duplicate"
-          onClick={() => store.duplicateFieldGroup(testId, group.id)}>
+          onClick={() => duplicateFieldGroup(testId, group.id)}>
           <CopyIcon />
         </button>
         <button
           className="p-1.5 text-slate-500 hover:text-red-400 rounded transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-          onClick={() => store.removeFieldGroup(testId, group.id)}
+          onClick={() => removeFieldGroup(testId, group.id)}
           disabled={isOnly}
           title="Remove"
         >
@@ -101,7 +105,7 @@ export function FieldGroupCard({ testId, group, index, scenarios, isOnly }: Fiel
 
       <button
         className="text-xs text-slate-400 hover:text-accent-300 transition cursor-pointer mt-2 disabled:opacity-30 disabled:cursor-not-allowed"
-        onClick={() => store.addConditionToGroup(testId, group.id)}
+        onClick={() => addConditionToGroup(testId, group.id)}
         disabled={atLimit}
       >
         + Add Condition

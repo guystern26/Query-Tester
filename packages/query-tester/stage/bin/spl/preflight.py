@@ -6,7 +6,7 @@ Fetches the cached policy and checks for blocked commands.
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Set
 
 from logger import get_logger
 
@@ -35,3 +35,23 @@ def check_blocked_commands(spl, policy):
         if re.search(r'\b' + re.escape(cmd) + r'\b', spl_lower):
             found.append(cmd)
     return found
+
+
+def get_blocked_commands_set(session_key):
+    # type: (str) -> Set[str]
+    """Fetch blocked commands from the command policy KVStore collection.
+
+    Falls back to the hardcoded UNAUTHORIZED_COMMANDS set on any failure.
+    """
+    try:
+        from command_policy_handler import get_cached_policy
+        policy = get_cached_policy(session_key)
+        return {
+            entry["command"]
+            for entry in policy
+            if entry.get("allowed") == "false"
+        }
+    except Exception as exc:
+        logger.warning("Failed to fetch command policy, using defaults: %s", exc)
+        from spl.spl_analyzer_rules import UNAUTHORIZED_COMMANDS
+        return UNAUTHORIZED_COMMANDS

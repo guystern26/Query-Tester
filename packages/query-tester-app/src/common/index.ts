@@ -1,4 +1,3 @@
-export { ThemeProvider } from './ThemeProvider';
 export { Button } from './Button';
 export type { ButtonProps } from './Button';
 export { Card } from './Card';
@@ -17,5 +16,3 @@ export { Message } from './Message';
 export { EmptyState } from './EmptyState';
 export type { EmptyStateProps } from './EmptyState';
 export type { MessageProps } from './Message';
-export { Tabs } from './Tabs';
-export type { TabsProps, TabItem } from './Tabs';

@@ -21,7 +21,7 @@ export function RunHistoryRow({ run, isLast }: RunHistoryRowProps) {
     return (
         <div className="flex gap-3">
             {/* Timeline line + dot */}
-            <div className="flex flex-col items-center shrink-0" style={{ width: 20 }}>
+            <div className="flex flex-col items-center shrink-0 w-5">
                 <span className="text-sm leading-none">{STATUS_ICON[run.status] || '\u2753'}</span>
                 {!isLast && <div className="flex-1 w-px bg-slate-700 mt-1" />}
             </div>
@@ -68,7 +68,7 @@ export function RunHistoryRow({ run, isLast }: RunHistoryRowProps) {
                                 <thead>
                                     <tr className="text-slate-600">
                                         <th className="text-left font-medium pb-1 pr-2">Scenario</th>
-                                        <th className="text-left font-medium pb-1 pr-2" style={{ width: 50 }}>Result</th>
+                                        <th className="text-left font-medium pb-1 pr-2 w-[50px]">Result</th>
                                         <th className="text-left font-medium pb-1">Message</th>
                                     </tr>
                                 </thead>

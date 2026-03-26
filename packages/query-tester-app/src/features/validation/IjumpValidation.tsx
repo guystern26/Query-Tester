@@ -28,8 +28,8 @@ const MonitorIcon = () => (
 /* ── main component ────────────────────────────────────────── */
 
 export function IjumpValidation() {
-  const store = useTestStore();
-  const test = selectActiveTest(store);
+  const test = useTestStore(selectActiveTest);
+  const replaceAllFieldGroups = useTestStore((s) => s.replaceAllFieldGroups);
 
   const [subMode, setSubMode] = useState<IjumpSubMode>('jumping');
   const [initialized, setInitialized] = useState(false);
@@ -46,7 +46,7 @@ export function IjumpValidation() {
     } else {
       const baseGroups = createIJumpBaseGroups('jumping');
       const custom = groups.filter((g) => !isIJumpLockedField(g.field));
-      store.replaceAllFieldGroups(test.id, [...baseGroups, ...custom]);
+      replaceAllFieldGroups(test.id, [...baseGroups, ...custom]);
       setSubMode('jumping');
     }
     setInitialized(true);
@@ -60,7 +60,7 @@ export function IjumpValidation() {
   const handleSubModeChange = (newMode: IjumpSubMode) => {
     if (newMode === subMode) return;
     const updated = updateIJumpSubMode(groups, newMode);
-    store.replaceAllFieldGroups(test.id, updated);
+    replaceAllFieldGroups(test.id, updated);
     setSubMode(newMode);
   };
 

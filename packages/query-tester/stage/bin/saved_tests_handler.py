@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-saved_tests_handler.py — REST handler for saved test library CRUD.
-Stores test definitions in KVStore.
-"""
+"""saved_tests_handler.py — REST handler for saved test library CRUD."""
 from __future__ import annotations
 
 import json
@@ -22,7 +19,7 @@ from kvstore_client import KVStoreClient
 from handler_utils import (
     get_session_key, get_username, json_response,
     normalize_payload, extract_id, now_iso,
-    check_ownership, check_version,
+    handle_rest_request, check_ownership, check_and_increment_version,
 )
 from scheduled_search_manager import delete_saved_search
 from config import MAX_DEFINITION_SIZE_BYTES
@@ -32,15 +29,22 @@ logger = get_logger(__name__)
 COLLECTION_SAVED_TESTS = "saved_tests"
 COLLECTION_SCHEDULED_TESTS = "scheduled_tests"
 
-META_FIELDS = [
-    "id", "name", "app", "testType", "validationType",
-    "createdAt", "updatedAt", "createdBy", "scenarioCount", "description",
-]
-
 
 def _sort_by_updated(records):
     # type: (List[Dict[str, Any]]) -> List[Dict[str, Any]]
     return sorted(records, key=lambda r: r.get("updatedAt", ""), reverse=True)
+
+
+def _check_definition_size(definition):
+    # type: (Any) -> None
+    """Raise ValueError if the definition exceeds MAX_DEFINITION_SIZE_BYTES."""
+    raw = json.dumps(definition) if isinstance(definition, dict) else str(definition or "")
+    size = len(raw.encode("utf-8"))
+    if size > MAX_DEFINITION_SIZE_BYTES:
+        raise ValueError(
+            "Test definition is too large to save ({0:.1f} MB). "
+            "Reduce the number of scenarios or events.".format(size / (1024 * 1024))
+        )
 
 
 class SavedTestsHandler(PersistentServerConnectionApplication):
@@ -52,29 +56,12 @@ class SavedTestsHandler(PersistentServerConnectionApplication):
 
     def handle(self, in_string):
         # type: (str) -> Dict[str, Any]
-        try:
-            request = json.loads(in_string)
-        except Exception:
-            return json_response({"error": "Bad request"}, 400)
-
-        method = request.get("method", "GET").upper()
-        try:
-            if method == "GET":
-                return self._handle_get(request)
-            elif method == "POST":
-                return self._handle_post(request)
-            elif method == "PUT":
-                return self._handle_put(request)
-            elif method == "DELETE":
-                return self._handle_delete(request)
-            else:
-                return json_response({"error": "Method not allowed"}, 405)
-        except ValueError as exc:
-            logger.warning("Client error: %s", str(exc))
-            return json_response({"error": str(exc)}, 400)
-        except Exception as exc:
-            logger.error("Server error: %s", str(exc), exc_info=True)
-            return json_response({"error": "Internal server error"}, 500)
+        return handle_rest_request(in_string, {
+            "GET": self._handle_get,
+            "POST": self._handle_post,
+            "PUT": self._handle_put,
+            "DELETE": self._handle_delete,
+        }, logger)
 
     def _handle_get(self, request):
         # type: (Dict[str, Any]) -> Dict[str, Any]
@@ -93,22 +80,12 @@ class SavedTestsHandler(PersistentServerConnectionApplication):
         # type: (Dict[str, Any]) -> Dict[str, Any]
         session_key = get_session_key(request)
         payload = normalize_payload(request.get("payload"))
-
         name = str(payload.get("name", "")).strip()
         if not name:
             raise ValueError("Test name is required.")
-
         timestamp = now_iso()
         definition = payload.get("definition", {})
-
-        # Check definition size before writing
-        definition_str = json.dumps(definition) if isinstance(definition, dict) else str(definition or "")
-        if len(definition_str.encode("utf-8")) > MAX_DEFINITION_SIZE_BYTES:
-            size_mb = len(definition_str.encode("utf-8")) / (1024 * 1024)
-            raise ValueError(
-                "Test definition is too large to save ({0:.1f} MB). "
-                "Reduce the number of scenarios or events.".format(size_mb)
-            )
+        _check_definition_size(definition)
 
         record = {
             "id": str(uuid.uuid4()),
@@ -127,7 +104,6 @@ class SavedTestsHandler(PersistentServerConnectionApplication):
         kv = KVStoreClient(session_key)
         kv.upsert(COLLECTION_SAVED_TESTS, record["id"], record)
         logger.info("Created saved test: %s", record["id"])
-
         record["definition"] = definition
         return json_response(record, 201)
 
@@ -137,45 +113,34 @@ class SavedTestsHandler(PersistentServerConnectionApplication):
         record_id = extract_id(request)
         if not record_id:
             raise ValueError("Missing record ID in URL path.")
-
         payload = normalize_payload(request.get("payload"))
         kv = KVStoreClient(session_key)
         existing = kv.get_by_id(COLLECTION_SAVED_TESTS, record_id)
 
-        forbidden = check_ownership(existing, request, session_key)
+        forbidden = check_ownership(existing, get_username(request), session_key)
         if forbidden:
             return forbidden
 
-        conflict = check_version(existing, payload)
-        if conflict:
-            return conflict
+        ok, new_version = check_and_increment_version(existing, payload.pop("version", None))
+        if not ok:
+            return json_response({"error": "conflict", "currentVersion": new_version}, 409)
 
-        stored_version = int(existing.get("version") or 0)
-
-        # Preserve immutable fields
         created_at = existing.get("createdAt")
         created_by = existing.get("createdBy")
-
         existing.update(payload)
         existing["id"] = record_id
         existing["createdAt"] = created_at
         existing["createdBy"] = created_by
         existing["updatedAt"] = now_iso()
-        existing["version"] = stored_version + 1
+        existing["version"] = new_version
 
         definition = existing.get("definition", {})
-        definition_str = json.dumps(definition) if isinstance(definition, dict) else str(definition or "")
-        if len(definition_str.encode("utf-8")) > MAX_DEFINITION_SIZE_BYTES:
-            size_mb = len(definition_str.encode("utf-8")) / (1024 * 1024)
-            raise ValueError(
-                "Test definition is too large to save ({0:.1f} MB). "
-                "Reduce the number of scenarios or events.".format(size_mb)
-            )
+        _check_definition_size(definition)
         if isinstance(definition, dict):
             existing["definition"] = json.dumps(definition)
 
         kv.upsert(COLLECTION_SAVED_TESTS, record_id, existing)
-        logger.info("Updated saved test: %s (version %d)", record_id, stored_version + 1)
+        logger.info("Updated saved test: %s (version %d)", record_id, new_version)
 
         if isinstance(existing.get("definition"), str):
             existing["definition"] = json.loads(existing["definition"])
@@ -187,15 +152,13 @@ class SavedTestsHandler(PersistentServerConnectionApplication):
         record_id = extract_id(request)
         if not record_id:
             raise ValueError("Missing record ID in URL path.")
-
         kv = KVStoreClient(session_key)
         existing = kv.get_by_id(COLLECTION_SAVED_TESTS, record_id)
 
-        forbidden = check_ownership(existing, request, session_key)
+        forbidden = check_ownership(existing, get_username(request), session_key)
         if forbidden:
             return forbidden
 
-        # Cascade-delete any schedules referencing this test
         scheduled = kv.query(COLLECTION_SCHEDULED_TESTS, {"testId": record_id})
         for sched in scheduled:
             sched_id = sched.get("id", "")

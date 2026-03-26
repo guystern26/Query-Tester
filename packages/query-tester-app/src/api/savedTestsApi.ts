@@ -26,7 +26,7 @@ function buildIdUrl(path: string, id: string): string {
     return createRESTURL(path, REST_OPTS) + '?output_mode=json&id=' + encodeURIComponent(id);
 }
 
-async function request<T>(url: string, method: string, body?: unknown): Promise<T> {
+async function request<T>(url: string, method: string, body?: unknown, signal?: AbortSignal): Promise<T> {
     const defaults = getDefaultFetchInit();
     const headers: Record<string, string> = { ...(defaults.headers as Record<string, string>) };
     if (body !== undefined) {
@@ -37,6 +37,7 @@ async function request<T>(url: string, method: string, body?: unknown): Promise<
         credentials: defaults.credentials as RequestCredentials,
         headers,
         ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+        ...(signal ? { signal } : {}),
     };
     const res = await fetch(url, init);
 
@@ -87,9 +88,9 @@ interface UpdatePayload {
 }
 
 export const savedTestsApi = {
-    async listTests(): Promise<SavedTestFull[]> {
+    async listTests(signal?: AbortSignal): Promise<SavedTestFull[]> {
         const url = buildUrl('data/saved_tests');
-        return request<SavedTestFull[]>(url, 'GET');
+        return request<SavedTestFull[]>(url, 'GET', undefined, signal);
     },
 
     async saveTest(payload: SavePayload): Promise<SavedTestFull> {

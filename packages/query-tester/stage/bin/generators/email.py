@@ -33,33 +33,48 @@ def _generate_local_part(variant: Dict[str, Any], index: int) -> str:
     return local_part + suffix
 
 
-def generate(rule: GeneratorRule, index: int) -> str:
+def prepare(rule: GeneratorRule) -> Dict[str, Any]:
+    """Pre-parse email config. Pre-computes weights for multi-variant mode."""
     variants = rule.config.get("variants") or []
 
-    # Legacy format: {domain: "example.com"} — used by old config_parser normalization
+    # Legacy format: {domain: "example.com"}
     if not variants and "domain" in rule.config:
-        domain = rule.config.get("domain", "example.com")
-        return "user{0}@{1}".format(index + 1, domain)
+        return {"mode": "legacy", "domain": rule.config.get("domain", "example.com")}
 
     if not variants:
-        return "user{0}@example.com".format(index + 1)
+        return {"mode": "simple"}
 
     if len(variants) == 1:
         v = variants[0]
-        domain = str(v.get("domain", "example.com") or "example.com")
-        local = _generate_local_part(v, index)
-        return "{0}@{1}".format(local, domain)
+        return {
+            "mode": "single",
+            "domain": str(v.get("domain", "example.com") or "example.com"),
+            "variant": v,
+        }
 
-    # Weighted selection among variants
-    weights_input = []  # type: List[float]
+    # Multi-variant: pre-compute normalized weights once
+    weights = []  # type: List[float]
     for v in variants:
         try:
-            weights_input.append(float(v.get("weight", 1)))
+            weights.append(float(v.get("weight", 1)))
         except (TypeError, ValueError):
-            weights_input.append(1.0)
+            weights.append(1.0)
+    return {"mode": "weighted", "variants": variants, "weights": normalize_weights(weights)}
 
-    weights = normalize_weights(weights_input)
-    chosen = random.choices(variants, weights=weights, k=1)[0]
+
+def generate(rule: GeneratorRule, index: int, prepared: Any = None) -> str:
+    """Generate an email address."""
+    if prepared is None:
+        prepared = prepare(rule)
+    mode = prepared["mode"]
+    if mode == "legacy":
+        return "user{0}@{1}".format(index + 1, prepared["domain"])
+    if mode == "simple":
+        return "user{0}@example.com".format(index + 1)
+    if mode == "single":
+        local = _generate_local_part(prepared["variant"], index)
+        return "{0}@{1}".format(local, prepared["domain"])
+    # mode == "weighted": pick variant, then generate
+    chosen = random.choices(prepared["variants"], weights=prepared["weights"], k=1)[0]
     domain = str(chosen.get("domain", "example.com") or "example.com")
-    local = _generate_local_part(chosen, index)
-    return "{0}@{1}".format(local, domain)
+    return "{0}@{1}".format(_generate_local_part(chosen, index), domain)

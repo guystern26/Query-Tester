@@ -11,15 +11,19 @@ export interface FieldValueEditorProps {
 }
 
 export function FieldValueEditor({ testId, scenarioId, inputId, events }: FieldValueEditorProps) {
-  const state = useTestStore();
+  const addFieldToAllEvents = useTestStore((s) => s.addFieldToAllEvents);
+  const addEvent = useTestStore((s) => s.addEvent);
+  const deleteEvent = useTestStore((s) => s.deleteEvent);
+  const updateFieldValue = useTestStore((s) => s.updateFieldValue);
+  const removeFieldFromAllEvents = useTestStore((s) => s.removeFieldFromAllEvents);
 
   return (
     <div className="flex flex-col gap-3">
       <div className="flex gap-3 items-center flex-wrap">
-        <Button variant="secondary" size="sm" onClick={() => state.addFieldToAllEvents(testId, scenarioId, inputId)}>
+        <Button variant="secondary" size="sm" onClick={() => addFieldToAllEvents(testId, scenarioId, inputId)}>
           Add field to all events
         </Button>
-        <Button variant="secondary" size="sm" onClick={() => state.addEvent(testId, scenarioId, inputId)}>
+        <Button variant="secondary" size="sm" onClick={() => addEvent(testId, scenarioId, inputId)}>
           Add event
         </Button>
       </div>
@@ -33,7 +37,7 @@ export function FieldValueEditor({ testId, scenarioId, inputId, events }: FieldV
             <Button
               variant="danger"
               size="sm"
-              onClick={() => state.deleteEvent(testId, scenarioId, inputId, event.id)}
+              onClick={() => deleteEvent(testId, scenarioId, inputId, event.id)}
             >
               Remove event
             </Button>
@@ -45,7 +49,7 @@ export function FieldValueEditor({ testId, scenarioId, inputId, events }: FieldV
                   type="text"
                   value={fv.field}
                   onChange={(e) =>
-                    state.updateFieldValue(testId, scenarioId, inputId, event.id, fv.id, { field: e.target.value })
+                    updateFieldValue(testId, scenarioId, inputId, event.id, fv.id, { field: e.target.value })
                   }
                   placeholder="field name"
                   className="px-2 py-1.5 text-sm w-full min-w-0"
@@ -55,7 +59,7 @@ export function FieldValueEditor({ testId, scenarioId, inputId, events }: FieldV
                   type="text"
                   value={fv.value}
                   onChange={(e) =>
-                    state.updateFieldValue(testId, scenarioId, inputId, event.id, fv.id, { value: e.target.value })
+                    updateFieldValue(testId, scenarioId, inputId, event.id, fv.id, { value: e.target.value })
                   }
                   placeholder="value"
                   className="px-2 py-1.5 text-sm w-full min-w-0"
@@ -63,7 +67,7 @@ export function FieldValueEditor({ testId, scenarioId, inputId, events }: FieldV
                 />
                 <button
                   type="button"
-                  onClick={() => state.removeFieldFromAllEvents(testId, scenarioId, inputId, fieldIndex)}
+                  onClick={() => removeFieldFromAllEvents(testId, scenarioId, inputId, fieldIndex)}
                   className="border-none bg-transparent text-slate-400 cursor-pointer px-1 py-0.5 text-sm rounded"
                   aria-label="Remove this field from all events"
                 >

@@ -1,10 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-query_tester.py
-Splunk REST entry point for the Query Tester backend.
-Uses PersistentServerConnectionApplication (scripttype = persist).
-"""
+"""query_tester.py — Splunk REST entry point for the Query Tester backend."""
 from __future__ import annotations
 
 import json
@@ -12,9 +8,8 @@ import os
 import sys
 import time
 import uuid
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, Optional
 
-# Add bin/ to sys.path so sibling modules (logger, core, spl, etc.) are importable
 _bin_dir = os.path.dirname(os.path.abspath(__file__))
 if _bin_dir not in sys.path:
     sys.path.insert(0, _bin_dir)
@@ -22,228 +17,184 @@ if _bin_dir not in sys.path:
 from splunk.persistconn.application import PersistentServerConnectionApplication
 
 from logger import get_logger
+from handler_utils import (
+    get_session_key, get_username, json_response, normalize_payload,
+)
 from core.test_runner import TestRunner
-
-# HEC token is read from config.py (HEC_TOKEN) or QUERY_TESTER_HEC_TOKEN env var.
-# See bin/config.py to set it.
 
 logger = get_logger(__name__)
 
-
-def _get_session_key(in_string: str) -> str:
-    """Extract the session key from the persistent connection input."""
-    request = json.loads(in_string) if isinstance(in_string, str) else in_string
-    session = request.get("session") or {}
-    key = (
-        session.get("authtoken")
-        or session.get("sessionKey")
-        or request.get("system_authtoken")
-    )
-    if not key:
-        raise ValueError("Missing session key in request.")
-    return key
-
-
-def _normalize_payload(raw_body: Any) -> Dict[str, Any]:
-    """Parse the POST body into a dict."""
-    if raw_body is None:
-        return {}
-    if isinstance(raw_body, (list, tuple)) and raw_body:
-        raw_body = raw_body[0]
-    if isinstance(raw_body, bytes):
-        raw_body = raw_body.decode("utf-8")
-    if isinstance(raw_body, str):
-        if not raw_body.strip():
-            return {}
-        return json.loads(raw_body)
-    if isinstance(raw_body, dict):
-        return raw_body
-    raise ValueError("Unsupported payload type: {0}".format(type(raw_body).__name__))
+COLLECTION_RUN_HISTORY = "test_run_history"
+ERROR_RESPONSE = {
+    "status": "error", "message": "Internal server error.",
+    "testName": "", "testType": "", "timestamp": "",
+    "totalScenarios": 0, "passedScenarios": 0,
+    "errors": [{"code": "INTERNAL_ERROR",
+                "message": "Internal server error.", "severity": "error"}],
+    "warnings": [],
+    "splAnalysis": {"unauthorizedCommands": [], "unusualCommands": [],
+                    "uniqLimitations": None, "commandsUsed": []},
+    "scenarioResults": [],
+}
 
 
-def _json_response(data: Dict[str, Any], status: int = 200) -> Dict[str, Any]:
-    """Build a persistent-connection response dict."""
-    return {
-        "payload": json.dumps(data, default=str),
-        "status": status,
-        "headers": {
-            "Content-Type": "application/json",
-        },
-    }
+def _get_cold_config(session_key):
+    # type: (str) -> Optional[Dict[str, Any]]
+    """Read runtime config once for TestRunner injection. Returns None on error."""
+    try:
+        from runtime_config import get_runtime_config
+        cfg = get_runtime_config(session_key)
+        return {
+            "hec_host": cfg.get("hec_host"),
+            "hec_port": cfg.get("hec_port"),
+            "hec_scheme": cfg.get("hec_scheme"),
+            "hec_token": cfg.get("hec_token"),
+            "hec_ssl_verify": cfg.get("hec_ssl_verify"),
+            "hec_timeout": cfg.get("hec_timeout"),
+            "temp_index": cfg.get("temp_index"),
+            "temp_sourcetype": cfg.get("temp_sourcetype"),
+        }
+    except Exception:
+        return None
+
+
+def _write_manual_history(session_key, payload, result, duration_ms, username):
+    # type: (str, Dict[str, Any], Dict[str, Any], int, str) -> None
+    try:
+        from kvstore_client import KVStoreClient
+        kv = KVStoreClient(session_key)
+        record = {
+            "id": str(uuid.uuid4()),
+            "scheduledTestId": None,
+            "testId": payload.get("testId", ""),
+            "ranBy": username,
+            "ranAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "status": result.get("status", "error"),
+            "durationMs": duration_ms,
+            "triggerType": "manual",
+            "splSnapshotHash": "",
+            "splDriftDetected": False,
+            "resultSummary": "Manual run: {0}".format(
+                result.get("status", "error"),
+            ),
+            "scenarioResults": json.dumps([]),
+        }
+        kv.upsert(COLLECTION_RUN_HISTORY, record["id"], record)
+    except Exception as exc:
+        logger.warning("Failed to write manual run history: %s", exc)
 
 
 class QueryTesterHandler(PersistentServerConnectionApplication):
-    """
-    Splunk PersistentServerConnectionApplication handler.
-    Registered via restmap.conf with scripttype = persist.
+    """Main REST handler. Delegates sub-paths and runs tests."""
 
-    The handler instance persists across requests, allowing a DELETE to
-    cancel a search job started by a previous POST.
-    """
-
-    def __init__(self, command_line: str = "", command_arg: str = "") -> None:
+    def __init__(self, command_line="", command_arg=""):
+        # type: (str, str) -> None
         super().__init__()
         self._current_runner = None  # type: Any
 
-    def handle(self, in_string: str) -> Dict[str, Any]:
-        """
-        Router — Splunk calls this for every request.
-        in_string is a JSON blob with method, rest_path, query, payload, session, etc.
-        """
+    def handle(self, in_string):
+        # type: (str) -> Dict[str, Any]
         try:
             request = json.loads(in_string)
         except Exception:
-            return _json_response({"status": "error", "message": "Bad request"}, 400)
+            return json_response(
+                {"status": "error", "message": "Bad request"}, 400,
+            )
 
-        # Delegate sub-path requests to their dedicated handlers
         rest_path = request.get("rest_path", "")
         if "/config" in rest_path:
             return self._delegate_config(in_string)
         if "/command_policy" in rest_path:
             return self._delegate_command_policy(in_string)
+        if "/llm" in rest_path:
+            return self._delegate_llm(request)
         if "/bug_report" in rest_path:
             return self._handle_bug_report(request)
 
         method = request.get("method", "GET").upper()
-
         if method == "GET":
-            return self._handle_get(request)
-        elif method == "POST":
+            return json_response({"status": "ok", "service": "query_tester"})
+        if method == "POST":
             return self._handle_post(request)
-        elif method == "DELETE":
+        if method == "DELETE":
             return self._handle_delete(request)
-        else:
-            return _json_response(
-                {"status": "error", "message": "Method not allowed: " + method}, 405
-            )
+        return json_response(
+            {"status": "error", "message": "Method not allowed"}, 405,
+        )
 
-    def _delegate_config(self, in_string: str) -> Dict[str, Any]:
-        """Delegate to ConfigHandler."""
+    def _delegate_config(self, in_string):
+        # type: (str) -> Dict[str, Any]
         from config_handler import ConfigHandler
-        handler = ConfigHandler()
-        return handler.handle(in_string)
+        return ConfigHandler().handle(in_string)
 
-    def _delegate_command_policy(self, in_string: str) -> Dict[str, Any]:
-        """Delegate to CommandPolicyHandler."""
+    def _delegate_command_policy(self, in_string):
+        # type: (str) -> Dict[str, Any]
         from command_policy_handler import CommandPolicyHandler
-        handler = CommandPolicyHandler()
-        return handler.handle(in_string)
+        return CommandPolicyHandler().handle(in_string)
 
-    def _handle_bug_report(self, request: Dict[str, Any]) -> Dict[str, Any]:
-        """Send a bug report / feature request email."""
+    def _delegate_llm(self, request):
+        # type: (Dict[str, Any]) -> Dict[str, Any]
+        from llm_proxy_handler import handle_llm_proxy
+        return handle_llm_proxy(request)
+
+    def _handle_bug_report(self, request):
+        # type: (Dict[str, Any]) -> Dict[str, Any]
         if request.get("method", "GET").upper() != "POST":
-            return _json_response({"error": "Method not allowed"}, 405)
+            return json_response({"error": "Method not allowed"}, 405)
         try:
-            session_key = _get_session_key(request)
-            payload = _normalize_payload(request.get("payload"))
-
-            report_type = payload.get("reportType", "bug")
+            session_key = get_session_key(request)
+            payload = normalize_payload(request.get("payload"))
             description = str(payload.get("description", "")).strip()
             if not description:
-                return _json_response({"error": "Description is required."}, 400)
-
-            username = (request.get("session") or {}).get("user", "unknown")
-            attachment = {
-                "reportGeneratedAt": payload.get("reportGeneratedAt", ""),
-                "reportType": report_type,
-                "description": description,
-                "currentTest": payload.get("currentTest"),
-                "allTests": payload.get("allTests"),
-                "testResponse": payload.get("testResponse"),
-            }
-
+                return json_response({"error": "Description is required."}, 400)
+            report_type = payload.get("reportType", "bug")
             from bug_report_handler import send_bug_report
-            send_bug_report(
-                session_key, report_type, description, username, attachment,
-            )
-            return _json_response({"status": "ok", "message": "Report sent."})
+            send_bug_report(session_key, report_type, description,
+                            get_username(request), {
+                                "reportGeneratedAt": payload.get("reportGeneratedAt", ""),
+                                "reportType": report_type, "description": description,
+                                "currentTest": payload.get("currentTest"),
+                                "allTests": payload.get("allTests"),
+                                "testResponse": payload.get("testResponse"),
+                            })
+            return json_response({"status": "ok", "message": "Report sent."})
         except ValueError as exc:
             logger.warning("Bug report validation error: %s", exc)
-            return _json_response({"error": str(exc)}, 400)
+            return json_response({"error": str(exc)}, 400)
         except Exception as exc:
             logger.error("Failed to send bug report: %s", exc, exc_info=True)
-            return _json_response(
-                {"error": "Failed to send report: {0}".format(exc)}, 500,
-            )
+            return json_response({"error": "Failed to send report: {0}".format(exc)}, 500)
 
-    def _handle_get(self, request: Dict[str, Any]) -> Dict[str, Any]:
-        """Health check."""
-        return _json_response({"status": "ok", "service": "query_tester"})
-
-    def _handle_post(self, request: Dict[str, Any]) -> Dict[str, Any]:
-        """Run a test."""
+    def _handle_post(self, request):
+        # type: (Dict[str, Any]) -> Dict[str, Any]
         try:
-            session_key = _get_session_key(request)
-            raw_body = request.get("payload")
-            payload = _normalize_payload(raw_body)
-
+            session_key = get_session_key(request)
+            payload = normalize_payload(request.get("payload"))
             start_ms = int(time.time() * 1000)
-            runner = TestRunner(session_key)
+            cold_config = _get_cold_config(session_key)
+            runner = TestRunner(session_key, config=cold_config)
             self._current_runner = runner
             result, status_code = runner.run_test(payload)
-
-            # Fire-and-forget: write manual run history record
-            try:
-                from kvstore_client import KVStoreClient
-                duration_ms = int(time.time() * 1000) - start_ms
-                username = (request.get("session") or {}).get("user", "unknown")
-                kv = KVStoreClient(session_key)
-                history = {
-                    "id": str(uuid.uuid4()),
-                    "scheduledTestId": None,
-                    "testId": payload.get("testId", ""),
-                    "ranBy": username,
-                    "ranAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                    "status": result.get("status", "error"),
-                    "durationMs": duration_ms,
-                    "triggerType": "manual",
-                    "splSnapshotHash": "",
-                    "splDriftDetected": False,
-                    "resultSummary": "Manual run: {0}".format(result.get("status", "error")),
-                    "scenarioResults": json.dumps([]),
-                }
-                kv.upsert("test_run_history", history["id"], history)
-            except Exception as hist_exc:
-                logger.warning("Failed to write manual run history: %s", hist_exc)
-
-            return _json_response(result, status_code)
+            duration_ms = int(time.time() * 1000) - start_ms
+            _write_manual_history(
+                session_key, payload, result, duration_ms,
+                get_username(request),
+            )
+            return json_response(result, status_code)
         except Exception as exc:
             logger.error("Error handling POST: %s", str(exc), exc_info=True)
-            return _json_response(
-                {
-                    "status": "error",
-                    "message": "Internal server error.",
-                    "testName": "",
-                    "testType": "",
-                    "timestamp": "",
-                    "totalScenarios": 0,
-                    "passedScenarios": 0,
-                    "errors": [{"code": "INTERNAL_ERROR", "message": "Internal server error.", "severity": "error"}],
-                    "warnings": [],
-                    "splAnalysis": {
-                        "unauthorizedCommands": [],
-                        "unusualCommands": [],
-                        "uniqLimitations": None,
-                        "commandsUsed": [],
-                    },
-                    "scenarioResults": [],
-                },
-                500,
-            )
+            return json_response(ERROR_RESPONSE, 500)
         finally:
             self._current_runner = None
 
-    def _handle_delete(self, request: Dict[str, Any]) -> Dict[str, Any]:
-        """Cancel the currently running test."""
+    def _handle_delete(self, request):
+        # type: (Dict[str, Any]) -> Dict[str, Any]
         runner = self._current_runner
         if runner is None:
-            return _json_response({"status": "ok", "message": "No test running."})
-
+            return json_response({"status": "ok", "message": "No test running."})
         try:
             runner.cancel()
-            return _json_response({"status": "ok", "message": "Test cancelled."})
+            return json_response({"status": "ok", "message": "Test cancelled."})
         except Exception as exc:
             logger.error("Error cancelling test: %s", str(exc), exc_info=True)
-            return _json_response(
-                {"status": "error", "message": str(exc)}, 500
-            )
+            return json_response({"status": "error", "message": str(exc)}, 500)

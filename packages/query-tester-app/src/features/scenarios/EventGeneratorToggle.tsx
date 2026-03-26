@@ -12,7 +12,8 @@ export interface EventGeneratorToggleProps {
 }
 
 export function EventGeneratorToggle({ testId, scenarioId, input, generatorAvailable, generatorFieldNames }: EventGeneratorToggleProps) {
-  const state = useTestStore();
+  const setGeneratorEnabled = useTestStore((s) => s.setGeneratorEnabled);
+  const updateGeneratorEventCount = useTestStore((s) => s.updateGeneratorEventCount);
   const [genOpen, setGenOpen] = useState(input.generatorConfig.enabled);
 
   return (
@@ -28,7 +29,7 @@ export function EventGeneratorToggle({ testId, scenarioId, input, generatorAvail
         onClick={() => {
           if (!generatorAvailable) return;
           if (!input.generatorConfig.enabled) {
-            state.setGeneratorEnabled(testId, scenarioId, input.id, true);
+            setGeneratorEnabled(testId, scenarioId, input.id, true);
             setGenOpen(true);
           } else {
             setGenOpen(!genOpen);
@@ -59,7 +60,7 @@ export function EventGeneratorToggle({ testId, scenarioId, input, generatorAvail
                     ? 'bg-green-600 text-white'
                     : 'bg-navy-950 text-slate-400 border border-slate-700 hover:text-slate-200 hover:border-slate-500'
                 }`}
-                onClick={() => state.updateGeneratorEventCount(testId, scenarioId, input.id, n)}
+                onClick={() => updateGeneratorEventCount(testId, scenarioId, input.id, n)}
               >
                 {n >= 1000 ? `${n / 1000}k` : n}
               </button>
@@ -71,9 +72,9 @@ export function EventGeneratorToggle({ testId, scenarioId, input, generatorAvail
               value={input.generatorConfig.eventCount || ''}
               onChange={(e) => {
                 const raw = e.target.value;
-                if (raw.trim() === '') { state.updateGeneratorEventCount(testId, scenarioId, input.id, 0); return; }
+                if (raw.trim() === '') { updateGeneratorEventCount(testId, scenarioId, input.id, 0); return; }
                 const n = Number(raw);
-                if (!Number.isNaN(n) && n >= 0) state.updateGeneratorEventCount(testId, scenarioId, input.id, Math.min(n, 10000));
+                if (!Number.isNaN(n) && n >= 0) updateGeneratorEventCount(testId, scenarioId, input.id, Math.min(n, 10000));
               }}
               placeholder="# events"
               className="w-[80px] px-2 py-0.5 text-[11px] bg-navy-950 border border-slate-700 rounded-md text-slate-200 placeholder-slate-500 focus:outline-none focus:border-accent-600 transition text-center"
@@ -90,7 +91,7 @@ export function EventGeneratorToggle({ testId, scenarioId, input, generatorAvail
             e.stopPropagation();
             if (!generatorAvailable) return;
             const next = !input.generatorConfig.enabled;
-            state.setGeneratorEnabled(testId, scenarioId, input.id, next);
+            setGeneratorEnabled(testId, scenarioId, input.id, next);
             if (!next) setGenOpen(false);
             else setGenOpen(true);
           }}

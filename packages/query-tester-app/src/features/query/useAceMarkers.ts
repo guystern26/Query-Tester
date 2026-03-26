@@ -4,7 +4,7 @@
  */
 import { useEffect, useRef } from 'react';
 import type { SplWarning } from './splLinter';
-import { MARKER_CLASSES, injectCss, showTooltip, removeTooltip } from './aceMarkerStyles';
+import { MARKER_CLASSES, fieldMarkerClass, injectCss, showTooltip, removeTooltip } from './aceMarkerStyles';
 
 /** Minimal Ace typings — just what we use. */
 interface AceRange {
@@ -101,7 +101,9 @@ export function useAceMarkers(
         for (const w of warnings) {
             const startPos = session.doc.indexToPosition(w.start, 0);
             const endPos = session.doc.indexToPosition(w.end, 0);
-            const baseCls = MARKER_CLASSES[w.severity] || MARKER_CLASSES.warning;
+            const baseCls = w.severity === 'field'
+                ? fieldMarkerClass(w.colorIndex ?? 0)
+                : (MARKER_CLASSES[w.severity] || MARKER_CLASSES.warning);
             const cls = w.isBlocked ? baseCls + ' spl-lint-blocked' : baseCls;
             const range = new RangeCtor(
                 startPos.row,
@@ -112,12 +114,14 @@ export function useAceMarkers(
             const id = session.addMarker(range, cls, 'text', true);
             markerIds.current.push(id);
 
-            annotations.push({
-                row: startPos.row,
-                column: startPos.column,
-                text: w.message,
-                type: w.severity === 'error' ? 'error' : 'warning',
-            });
+            if (w.severity !== 'field') {
+                annotations.push({
+                    row: startPos.row,
+                    column: startPos.column,
+                    text: w.message,
+                    type: w.severity === 'error' ? 'error' : 'warning',
+                });
+            }
         }
 
         session.setAnnotations(annotations);

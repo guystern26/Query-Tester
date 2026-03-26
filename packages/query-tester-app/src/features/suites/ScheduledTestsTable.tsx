@@ -55,7 +55,7 @@ export function ScheduledTestsTable({
                         <th className={TH}>Schedule</th>
                         <th className={TH}>Last Run</th>
                         <th className={TH}>Status</th>
-                        <th className={TH} style={{ width: 28 }}></th>
+                        <th className={`${TH} w-7`}></th>
                         <th className={TH}>Actions</th>
                     </tr>
                 </thead>
@@ -102,7 +102,7 @@ export function ScheduledTestsTable({
                                         </span>
                                     )}
                                 </td>
-                                <td className="px-4 py-3 text-center" style={{ width: 28 }}>
+                                <td className="px-4 py-3 text-center w-7">
                                     {drift && <span title="SPL drift detected">&#9888;&#65039;</span>}
                                 </td>
                                 <td className="px-4 py-3">

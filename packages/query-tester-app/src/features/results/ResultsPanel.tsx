@@ -4,8 +4,7 @@ import { selectTestResponse } from 'core/store/selectors';
 import { ScenarioResultCard } from './ScenarioResultCard';
 
 export function ResultsPanel() {
-  const state = useTestStore();
-  const response = selectTestResponse(state);
+  const response = useTestStore(selectTestResponse);
 
   if (!response) {
     return (

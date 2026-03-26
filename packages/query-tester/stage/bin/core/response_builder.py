@@ -6,7 +6,7 @@ Build the final JSON response dict from test results.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from core.models import ScenarioResult, TestPayload, ValidationDetail
 from spl.spl_analyzer import SplAnalysis
@@ -58,8 +58,14 @@ def build_response(
     payload: TestPayload,
     analysis: SplAnalysis,
     scenario_results: List[ScenarioResult],
+    max_result_rows: Optional[int] = None,
 ) -> Dict[str, Any]:
-    """Build the top-level response dict returned to the frontend."""
+    """Build the top-level response dict returned to the frontend.
+
+    *max_result_rows* truncates serialized result rows per scenario while
+    keeping ``resultCount`` accurate. Avoids serializing thousands of rows
+    when only a subset is displayed.
+    """
     total = len(scenario_results)
     passed_count = sum(1 for s in scenario_results if s.passed)
 
@@ -87,12 +93,19 @@ def build_response(
             "commandsUsed": analysis.commands_used,
         },
         "scenarioResults": [
-            _scenario_result_to_dict(result) for result in scenario_results
+            _scenario_result_to_dict(result, max_result_rows)
+            for result in scenario_results
         ],
     }
 
 
-def _scenario_result_to_dict(result: ScenarioResult) -> Dict[str, Any]:
+def _scenario_result_to_dict(
+    result: ScenarioResult, max_rows: Optional[int] = None,
+) -> Dict[str, Any]:
+    """Serialize a ScenarioResult. Truncates result_rows if max_rows is set."""
+    rows = result.result_rows
+    if max_rows is not None and len(rows) > max_rows:
+        rows = rows[:max_rows]
     return {
         "scenarioName": result.scenario_name,
         "passed": result.passed,
@@ -102,7 +115,8 @@ def _scenario_result_to_dict(result: ScenarioResult) -> Dict[str, Any]:
         "validations": [
             _validation_detail_to_dict(v) for v in result.validations
         ],
-        "resultRows": result.result_rows,
+        "resultRows": rows,
+        "resultRowsTruncated": max_rows is not None and result.result_count > max_rows,
         "error": result.error,
         "warnings": result.warnings,
     }

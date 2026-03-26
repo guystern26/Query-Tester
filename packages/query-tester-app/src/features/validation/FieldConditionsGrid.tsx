@@ -8,8 +8,9 @@ import { FieldGroupCard } from './FieldGroupCard';
 import { SuggestFieldsButton } from './SuggestFieldsButton';
 
 export function FieldConditionsGrid() {
-  const store = useTestStore();
-  const test = selectActiveTest(store);
+  const test = useTestStore(selectActiveTest);
+  const updateFieldLogic = useTestStore((s) => s.updateFieldLogic);
+  const addFieldGroup = useTestStore((s) => s.addFieldGroup);
   if (!test) return null;
 
   const groups = test.validation.fieldGroups;
@@ -17,7 +18,7 @@ export function FieldConditionsGrid() {
   const scenarios = test.scenarios;
   const atLimit = groups.length >= MAX_FIELD_GROUPS;
 
-  const toggleFieldLogic = () => store.updateFieldLogic(test.id, fieldLogic === 'and' ? 'or' : 'and');
+  const toggleFieldLogic = () => updateFieldLogic(test.id, fieldLogic === 'and' ? 'or' : 'and');
 
   return (
     <div className="flex flex-col gap-3" data-tutorial="field-conditions">
@@ -39,7 +40,7 @@ export function FieldConditionsGrid() {
           title="No validation rules yet"
           subtitle="Add a field to start defining conditions for your query results."
           actionLabel="+ Add First Condition"
-          onAction={() => store.addFieldGroup(test.id)}
+          onAction={() => addFieldGroup(test.id)}
         />
       )}
 
@@ -74,7 +75,7 @@ export function FieldConditionsGrid() {
       {groups.length > 0 && (
         <button
           className="w-full py-2.5 border border-dashed border-slate-700 rounded-lg text-sm text-slate-400 hover:text-accent-300 hover:border-accent-600 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-          onClick={() => store.addFieldGroup(test.id)}
+          onClick={() => addFieldGroup(test.id)}
           disabled={atLimit}
         >
           + Add Field

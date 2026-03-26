@@ -16,10 +16,15 @@ function Chevron({ up }: { up: boolean }) {
 }
 
 export function ResultsBar() {
-  const store = useTestStore();
-  const test = selectActiveTest(store);
-  const response = selectTestResponse(store);
-  const { isRunning, resultsBarExpanded: expanded, toggleResultsBar } = store;
+  const test = useTestStore(selectActiveTest);
+  const response = useTestStore(selectTestResponse);
+  const isRunning = useTestStore((s) => s.isRunning);
+  const expanded = useTestStore((s) => s.resultsBarExpanded);
+  const commandPolicy = useTestStore((s) => s.commandPolicy);
+  const toggleResultsBar = useTestStore((s) => s.toggleResultsBar);
+  const cancelTest = useTestStore((s) => s.cancelTest);
+  const setTestResponse = useTestStore((s) => s.setTestResponse);
+  const runTest = useTestStore((s) => s.runTest);
 
   /* preflight errors stored in testResponse.errors with PREFLIGHT_ codes */
   const preflightErrors = (response?.errors ?? []).filter((e) => e.code.startsWith('PREFLIGHT_'));
@@ -61,10 +66,10 @@ export function ResultsBar() {
   /* run handler */
   const handleRun = () => {
     if (!test) return;
-    if (isRunning) { store.cancelTest(); return; }
-    const errs = validateBeforeRun(test, store.commandPolicy);
+    if (isRunning) { cancelTest(); return; }
+    const errs = validateBeforeRun(test, commandPolicy);
     if (errs.length > 0) {
-      store.setTestResponse({
+      setTestResponse({
         status: 'error',
         message: errs.length + ' validation error(s) found',
         testName: test.name,
@@ -83,7 +88,7 @@ export function ResultsBar() {
       });
       return;
     }
-    void store.runTest();
+    void runTest();
   };
 
   /* button */
@@ -122,8 +127,7 @@ export function ResultsBar() {
 
       {/* Expanded content */}
       <div
-        style={{ overflowY: 'auto' }}
-        className={`flex-1 min-h-0 bg-navy-950 p-4 transition-opacity duration-200 ${expanded ? 'opacity-100 delay-150' : 'opacity-0'}`}
+        className={`flex-1 min-h-0 overflow-y-auto bg-navy-950 p-4 transition-opacity duration-200 ${expanded ? 'opacity-100 delay-150' : 'opacity-0'}`}
       >
         <div className="flex flex-col gap-3">
         {/* Preflight errors */}

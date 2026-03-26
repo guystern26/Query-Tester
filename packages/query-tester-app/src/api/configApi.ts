@@ -37,7 +37,7 @@ function buildUrl(path: string): string {
     return createRESTURL(path, REST_OPTS) + '?output_mode=json';
 }
 
-async function request<T>(url: string, method: string, body?: unknown): Promise<T> {
+async function request<T>(url: string, method: string, body?: unknown, signal?: AbortSignal): Promise<T> {
     const defaults = getDefaultFetchInit();
     const headers: Record<string, string> = { ...(defaults.headers as Record<string, string>) };
     if (body !== undefined) {
@@ -48,6 +48,7 @@ async function request<T>(url: string, method: string, body?: unknown): Promise<
         credentials: defaults.credentials as RequestCredentials,
         headers,
         ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+        ...(signal ? { signal } : {}),
     };
     const res = await fetch(url, init);
     if (!res.ok) {
@@ -76,8 +77,8 @@ async function request<T>(url: string, method: string, body?: unknown): Promise<
 // ─── Public API ─────────────────────────────────────────────────────────────
 
 export const configApi = {
-    async getConfig(): Promise<AppConfig> {
-        const raw = await request<Record<string, unknown>>(buildUrl('data/tester/config'), 'GET');
+    async getConfig(signal?: AbortSignal): Promise<AppConfig> {
+        const raw = await request<Record<string, unknown>>(buildUrl('data/tester/config'), 'GET', undefined, signal);
         return mapConfigResponse(raw);
     },
 

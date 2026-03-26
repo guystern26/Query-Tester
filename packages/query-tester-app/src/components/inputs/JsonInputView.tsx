@@ -32,9 +32,9 @@ const AlertIcon = () => (
 );
 
 export function JsonInputView({ testId, scenarioId, inputId }: JsonInputViewProps) {
-  const store = useTestStore();
-  const { updateInputJson, setInputFileRef } = store;
-  const input = selectInput(store, scenarioId, inputId);
+  const updateInputJson = useTestStore((s) => s.updateInputJson);
+  const setInputFileRef = useTestStore((s) => s.setInputFileRef);
+  const input = useTestStore((s) => selectInput(s, scenarioId, inputId));
   const storeValue = input?.jsonContent ?? '';
   const fileRef = input?.fileRef ?? null;
 

@@ -21,8 +21,9 @@ const ChevronDown = () => (
 );
 
 export function DataSourceSelector({ testId, scenarioId, inputId, value }: DataSourceSelectorProps) {
-  const store = useTestStore();
-  const test = selectActiveTest(store);
+  const test = useTestStore(selectActiveTest);
+  const selectDataSource = useTestStore((s) => s.selectDataSource);
+  const updateRowIdentifier = useTestStore((s) => s.updateRowIdentifier);
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -53,7 +54,7 @@ export function DataSourceSelector({ testId, scenarioId, inputId, value }: DataS
   }, [open]);
 
   const handleSelect = (source: ExtractedDataSource) => {
-    store.selectDataSource(testId, scenarioId, inputId, source);
+    selectDataSource(testId, scenarioId, inputId, source);
     setOpen(false);
   };
 
@@ -63,7 +64,7 @@ export function DataSourceSelector({ testId, scenarioId, inputId, value }: DataS
         <input
           type="text"
           value={value}
-          onChange={(e) => store.updateRowIdentifier(testId, scenarioId, inputId, e.target.value)}
+          onChange={(e) => updateRowIdentifier(testId, scenarioId, inputId, e.target.value)}
           placeholder="e.g., index=main sourcetype=access_combined"
           className={`flex-1 min-w-0 px-3 py-2 text-sm bg-navy-950 border border-slate-700 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-500/30 transition-all duration-200 ${
             hasSources ? 'rounded-l-lg border-r-0' : 'rounded-lg'
@@ -73,8 +74,10 @@ export function DataSourceSelector({ testId, scenarioId, inputId, value }: DataS
           <button
             type="button"
             onClick={() => setOpen(!open)}
-            className={`px-2 bg-navy-950 border border-slate-700 rounded-r-lg text-slate-400 hover:text-slate-200 hover:border-accent-600 cursor-pointer transition-all duration-200 flex items-center ${
-              open ? 'border-accent-600 text-slate-200' : ''
+            className={`px-2 bg-navy-950 border rounded-r-lg cursor-pointer transition-all duration-200 flex items-center ${
+              open
+                ? 'border-accent-600 text-slate-200'
+                : 'border-blue-500/50 text-blue-400 animate-pulse hover:text-blue-300 hover:border-blue-400'
             }`}
             title="Select from extracted sources"
           >

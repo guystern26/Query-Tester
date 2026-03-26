@@ -32,12 +32,12 @@ function getVariants(rule: FieldGenerationRule): UniqueIdVariant[] {
   }));
 }
 
-export function UniqueIdConfig({ testId, scenarioId, inputId, rule }: UniqueIdConfigProps) {
-  const store = useTestStore();
+function UniqueIdConfigInner({ testId, scenarioId, inputId, rule }: UniqueIdConfigProps) {
+  const updateGeneratorRule = useTestStore((s) => s.updateGeneratorRule);
   const variants = getVariants(rule);
 
   const save = (next: UniqueIdVariant[]) => {
-    store.updateGeneratorRule(testId, scenarioId, inputId, rule.id, {
+    updateGeneratorRule(testId, scenarioId, inputId, rule.id, {
       config: { ...rule.config, variants: next } as any,
     });
   };
@@ -89,3 +89,5 @@ export function UniqueIdConfig({ testId, scenarioId, inputId, rule }: UniqueIdCo
     </div>
   );
 }
+
+export const UniqueIdConfig = React.memo(UniqueIdConfigInner);

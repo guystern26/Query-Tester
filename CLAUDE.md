@@ -52,7 +52,7 @@ yarn workspace @splunk/query-tester run link:app
 - **Data hierarchy:** Test -> Scenario[] -> TestInput[] -> InputEvent[] -> FieldValue[]
 - **Input modes:** `'json' | 'fields' | 'no_events' | 'query_data'` — each TestInput has a mode determining how events are provided
 - **Feature modules:** `src/features/{scenarios,query,results,validation,eventGenerator,layout}/`
-- **API layer:** `src/api/` (splunkApi.ts, testApi.ts, llmApi.ts)
+- **API layer:** `src/api/` (splunkApi.ts, testApi.ts, llmApi.ts, llmPrompts.ts)
 - **Config:** `src/config/env.ts` (REST_PATH, LLM_ENDPOINT — rebuild required after changes)
 
 ### `packages/query-tester` — Splunk app wrapper + Python backend
@@ -96,6 +96,7 @@ Key modules and their strict boundaries:
 - `scheduled_search_manager.py` — creates/updates/deletes backing Splunk saved searches for scheduled tests (UI visibility only).
 - `spl_drift.py` — SPL drift detection: compares current saved search SPL against last passed run.
 - `cron_matcher.py` — cron expression matching: `cron_matches(expr, dt_tuple)`, `is_enabled(record)`.
+- `llm_proxy_handler.py` — backend proxy for LLM API calls (Extract Fields / Suggest Fields buttons). Reads endpoint, model, max_tokens from `runtime_config` (KVStore) and API key from `storage/passwords`. Browser never talks to the LLM provider directly — all calls go through `POST /data/tester/llm`. No CORS issues, no secrets in the browser.
 - `logger.py` — file-based logging with `reconfigure_log_level(level_str)` for dynamic log level changes.
 
 **Bundled `splunklib/`** — no pip installs; closed network.
@@ -472,6 +473,37 @@ All filters combine with AND logic (all must match). Filter state and memos are 
 Test name can be edited from two places:
 - **Builder page** — inline input in the setup bar (compact mode) or setup card (initial mode). Uses debounced `updateTestName` (300ms) via `localName` state in `StartPage.tsx`. Name is NOT in the TopBar/TestNavigation — only in the setup area.
 - **Library page → ScheduleModal** — the settings gear on each test row opens `ScheduleModal.tsx`, which includes a "Test Name" input. On save, if the name changed, it calls `updateSavedTest()` to rename. Note: `ScheduledTest.testName` is stale (set at creation) — always look up the current name from `savedTests.find()`.
+
+## LLM / AI Features (Extract Fields, Suggest Fields)
+
+### Architecture — Backend Proxy
+LLM calls are proxied through the Splunk backend to avoid CORS and keep secrets server-side.
+
+**Flow:** Browser → `POST /data/tester/llm` → `llm_proxy_handler.py` → LLM provider (e.g. OpenAI)
+
+**Frontend files:**
+- `src/api/llmApi.ts` — `callLLM()` sends `{systemPrompt, userMessage}` to the backend proxy. No config or API keys leave the browser.
+- `src/api/llmPrompts.ts` — System prompt constants (`EXTRACT_DATA_SOURCES_PROMPT`, `EXTRACT_VALIDATION_FIELDS_PROMPT`).
+- `src/features/scenarios/ExtractFieldsButton.tsx` — "Extract Fields" AI button on each scenario.
+- `src/features/scenarios/DataSourceSelector.tsx` — Dropdown that shows extracted data sources with a glowing blue chevron when sources are available.
+- `src/features/validation/SuggestFieldsButton.tsx` — "Suggest Fields" AI button in the validation section.
+- `src/core/store/slices/llmActionsSlice.ts` — Store actions wrapping LLM API calls.
+
+**Backend files:**
+- `llm_proxy_handler.py` — Reads all LLM config from admin Setup page (KVStore + `storage/passwords`). Makes the HTTP call server-side via `urllib.request`. Returns `{content: "..."}`.
+- Route: delegated from `query_tester.py` via `_delegate_llm()` when `rest_path` contains `/llm`.
+
+**Config (all from admin Setup page — never hardcoded):**
+- `llm_endpoint` — e.g. `https://api.openai.com/v1/chat/completions` (KVStore `query_tester_config`)
+- `llm_model` — e.g. `gpt-4o-mini` (KVStore)
+- `llm_max_tokens` — e.g. `1024` (KVStore)
+- `llm_api_key` — stored in `storage/passwords` (secret), read via `runtime_config`
+
+**Setup page UI:** `src/features/setup/LlmSection.tsx` — endpoint, API key (SecretField), model, max tokens. Leave all blank to disable AI features.
+
+**Vite dev proxy:** `vite.config.ts` has `/llm-proxy` → `https://api.openai.com` for `yarn dev` mode. Not used in production.
+
+---
 
 ## SPL Linter (Dangerous Command Detection)
 

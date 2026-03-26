@@ -15,15 +15,22 @@ export interface TopBarProps {
 }
 
 export function TopBar({ onNavigateLibrary, onNavigateSetup, onStartTutorial }: TopBarProps = {}) {
-  const state = useTestStore();
+  const activeTest = useTestStore(selectActiveTest);
   const isAdmin = useTestStore((s) => s.isAdmin);
   const setupRequired = useTestStore((s) => s.setupRequired);
-  const activeTest = selectActiveTest(state);
+  const hasUnsavedChanges = useTestStore((s) => s.hasUnsavedChanges);
+  const savedTestId = useTestStore((s) => s.savedTestId);
+  const isSaving = useTestStore((s) => s.isSaving);
+  const saveToFile = useTestStore((s) => s.saveToFile);
+  const loadFromFile = useTestStore((s) => s.loadFromFile);
+  const saveCurrentTest = useTestStore((s) => s.saveCurrentTest);
+  const updateSavedTest = useTestStore((s) => s.updateSavedTest);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
-  const handleSave = () => state.saveToFile();
+  const handleSave = () => saveToFile();
 
   const handleLoadClick = () => {
     fileInputRef.current?.click();
@@ -34,7 +41,7 @@ export function TopBar({ onNavigateLibrary, onNavigateSetup, onStartTutorial }: 
     if (!file) return;
     file.text().then(
       (content) => {
-        const result = state.loadFromFile(content);
+        const result = loadFromFile(content);
         if (!result.success) alert(result.error ?? 'Failed to load file');
       },
       () => alert('Failed to read file')
@@ -49,22 +56,22 @@ export function TopBar({ onNavigateLibrary, onNavigateSetup, onStartTutorial }: 
 
   // Save as new copy → navigate to Library so user sees their new test in the list
   const handleSaveNew = useCallback(async (name: string, description: string) => {
-    await state.saveCurrentTest(name, description);
+    await saveCurrentTest(name, description);
     setSaveModalOpen(false);
-    if (!state.libraryError) {
+    if (!useTestStore.getState().libraryError) {
       showToast('Test saved');
       if (onNavigateLibrary) onNavigateLibrary();
     }
-  }, [state, showToast, onNavigateLibrary]);
+  }, [saveCurrentTest, showToast, onNavigateLibrary]);
 
   // Update existing → stay in Builder
   const handleUpdate = useCallback(async (id: string, name: string, description: string) => {
-    await state.updateSavedTest(id, name, description);
+    await updateSavedTest(id, name, description);
     setSaveModalOpen(false);
-    if (!state.libraryError) {
+    if (!useTestStore.getState().libraryError) {
       showToast('Test updated');
     }
-  }, [state, showToast]);
+  }, [updateSavedTest, showToast]);
 
   return (
     <>
@@ -85,7 +92,7 @@ export function TopBar({ onNavigateLibrary, onNavigateSetup, onStartTutorial }: 
             <Button variant="primary" size="sm" onClick={() => setSaveModalOpen(true)}>
               Save Test
             </Button>
-            {state.hasUnsavedChanges && state.savedTestId && (
+            {hasUnsavedChanges && savedTestId && (
               <span
                 className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-400 border-2 border-navy-900"
                 title="Unsaved changes"
@@ -138,8 +145,8 @@ export function TopBar({ onNavigateLibrary, onNavigateSetup, onStartTutorial }: 
         open={saveModalOpen}
         onClose={() => setSaveModalOpen(false)}
         initialName={activeTest?.name ?? ''}
-        savedTestId={state.savedTestId}
-        isSaving={state.isSaving}
+        savedTestId={savedTestId}
+        isSaving={isSaving}
         onSaveNew={handleSaveNew}
         onUpdate={handleUpdate}
       />

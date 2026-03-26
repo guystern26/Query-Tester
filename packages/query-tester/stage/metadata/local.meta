@@ -22,3 +22,8 @@ modtime = 1774359555.350623300
 owner = admin
 version = 9.4.2
 modtime = 1774359798.142814500
+
+[passwords/credential%3Aquery_tester%3Allm_api_key%3A]
+owner = admin
+version = 9.4.2
+modtime = 1774441473.958786800

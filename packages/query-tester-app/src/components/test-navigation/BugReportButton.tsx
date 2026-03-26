@@ -39,16 +39,14 @@ async function submitReport(payload: BugReportPayload): Promise<void> {
 }
 
 export function BugReportButton() {
-    const state = useTestStore();
+    const activeTest = useTestStore(selectActiveTest);
+    const tests = useTestStore(selectTests);
+    const testResponse = useTestStore(selectTestResponse);
     const [open, setOpen] = useState(false);
     const [reportType, setReportType] = useState<ReportType>('bug');
     const [description, setDescription] = useState('');
     const [status, setStatus] = useState<SendStatus>('idle');
     const [errorMsg, setErrorMsg] = useState('');
-
-    const activeTest = selectActiveTest(state);
-    const tests = selectTests(state);
-    const testResponse = selectTestResponse(state);
     const currentTest = activeTest ?? tests[0] ?? createDefaultTest();
 
     const handleSend = async () => {

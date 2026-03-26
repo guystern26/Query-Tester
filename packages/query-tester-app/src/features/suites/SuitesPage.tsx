@@ -13,12 +13,15 @@ export interface SuitesPageProps {
 }
 
 export function SuitesPage({ onNavigateLibrary, onNavigateBuilder }: SuitesPageProps) {
-    const store = useTestStore();
-    const {
-        scheduledTests, runHistory, isLoadingScheduled, scheduledError,
-        fetchScheduledTests, runNow, deleteScheduledTest, fetchRunHistory,
-        clearScheduledError,
-    } = store;
+    const scheduledTests = useTestStore((s) => s.scheduledTests);
+    const runHistory = useTestStore((s) => s.runHistory);
+    const isLoadingScheduled = useTestStore((s) => s.isLoadingScheduled);
+    const scheduledError = useTestStore((s) => s.scheduledError);
+    const fetchScheduledTests = useTestStore((s) => s.fetchScheduledTests);
+    const runNow = useTestStore((s) => s.runNow);
+    const deleteScheduledTest = useTestStore((s) => s.deleteScheduledTest);
+    const fetchRunHistory = useTestStore((s) => s.fetchRunHistory);
+    const clearScheduledError = useTestStore((s) => s.clearScheduledError);
 
     const [runningId, setRunningId] = useState<string | null>(null);
     const [modalOpen, setModalOpen] = useState(false);

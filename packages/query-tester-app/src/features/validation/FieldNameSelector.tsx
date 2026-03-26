@@ -21,8 +21,8 @@ const ChevronDown = () => (
 );
 
 export function FieldNameSelector({ testId, groupId, value, className = '' }: FieldNameSelectorProps) {
-  const store = useTestStore();
-  const test = selectActiveTest(store);
+  const test = useTestStore(selectActiveTest);
+  const updateFieldGroupField = useTestStore((s) => s.updateFieldGroupField);
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -48,7 +48,7 @@ export function FieldNameSelector({ testId, groupId, value, className = '' }: Fi
   }, [open]);
 
   const handleSelect = (field: string) => {
-    store.updateFieldGroupField(testId, groupId, field);
+    updateFieldGroupField(testId, groupId, field);
     setOpen(false);
   };
 
@@ -57,7 +57,7 @@ export function FieldNameSelector({ testId, groupId, value, className = '' }: Fi
       <div className="flex">
         <input
           value={value}
-          onChange={(e) => store.updateFieldGroupField(testId, groupId, e.target.value)}
+          onChange={(e) => updateFieldGroupField(testId, groupId, e.target.value)}
           onFocus={() => { if (hasSuggestions) setOpen(true); }}
           placeholder="Field name (e.g., status, reason)"
           className={`flex-1 min-w-0 px-2.5 py-1.5 text-[13px] bg-navy-950 border border-slate-700 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-500/30 transition font-semibold ${

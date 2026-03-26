@@ -2,6 +2,9 @@
 """
 condition_handlers.py
 Condition handler registries and per-condition check functions.
+
+Includes a compiled regex cache (capped at MAX_REGEX_CACHE entries)
+and pre-compiled timestamp patterns to avoid recompilation per row.
 """
 from __future__ import annotations
 
@@ -15,6 +18,33 @@ from validation.scope_evaluator import evaluate_scope, SCOPE_LABELS
 
 
 logger = get_logger(__name__)
+
+MAX_REGEX_CACHE = 100
+
+# Module-level cache: persists across requests in Splunk's persistent handler.
+_regex_cache = {}  # type: Dict[str, re.Pattern]
+
+
+def _get_pattern(pattern: str) -> re.Pattern:
+    """Return a compiled regex, using a capped LRU cache."""
+    compiled = _regex_cache.get(pattern)
+    if compiled is not None:
+        return compiled
+    # Evict oldest entries when cache is full (dict preserves insertion order in 3.7+)
+    if len(_regex_cache) >= MAX_REGEX_CACHE:
+        oldest = next(iter(_regex_cache))
+        del _regex_cache[oldest]
+    compiled = re.compile(pattern)
+    _regex_cache[pattern] = compiled
+    return compiled
+
+
+# Pre-compiled timestamp patterns — compiled once at module load, not per row.
+_TIMESTAMP_PATTERNS = [
+    re.compile(r"^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}"),
+    re.compile(r"^\d{2}/\d{2}/\d{4}\s+\d{2}:\d{2}:\d{2}"),
+    re.compile(r"^\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}"),
+]
 
 
 def _is_timestamp(value: str) -> bool:
@@ -30,22 +60,16 @@ def _is_timestamp(value: str) -> bool:
             return True
     except (ValueError, TypeError):
         pass
-    # ISO 8601 / common timestamp patterns
-    timestamp_patterns = [
-        r"^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}",  # 2024-01-15T10:30:00
-        r"^\d{2}/\d{2}/\d{4}\s+\d{2}:\d{2}:\d{2}",    # 01/15/2024 10:30:00
-        r"^\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}",      # Jan 15 10:30:00
-    ]
-    for pat in timestamp_patterns:
-        if re.match(pat, stripped):
+    for pat in _TIMESTAMP_PATTERNS:
+        if pat.match(stripped):
             return True
     return False
 
 
 def _safe_regex(actual: str, expected: str) -> bool:
-    """Run regex match, returning False on invalid pattern instead of crashing."""
+    """Run regex match using compiled cache. Returns False on invalid pattern."""
     try:
-        return bool(re.search(expected, actual))
+        return bool(_get_pattern(expected).search(actual))
     except re.error as exc:
         logger.warning("Invalid regex pattern %r: %s", expected, exc)
         return False

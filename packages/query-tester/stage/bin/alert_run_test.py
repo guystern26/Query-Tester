@@ -1,9 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-alert_run_test.py — Custom alert action entry point.
-Called by Splunk scheduler when a scheduled test's saved search fires.
-Orchestrates: fetch test -> check SPL drift -> run test -> record history -> email.
-"""
+"""alert_run_test.py — Custom alert action for scheduled test execution."""
 from __future__ import annotations
 
 import json
@@ -19,8 +15,9 @@ if _bin_dir not in sys.path:
 
 from logger import get_logger
 from kvstore_client import KVStoreClient
-from alert_email import send_failure_emails
-from alert_helpers import extract_scenario_results, build_result_summary
+from alert_email import (
+    send_failure_emails, extract_scenario_results, build_result_summary,
+)
 from spl_drift import check_spl_drift
 from scheduled_runner_helpers import build_test_payload
 
@@ -44,7 +41,6 @@ def _get_test_id_from_payload(payload_path):
 def _write_history_record(kv, test_id, ran_at, status, duration_ms,
                           spl_hash, spl_drift, summary, scenario_results):
     # type: (KVStoreClient, str, str, str, int, str, bool, str, List[Dict[str, Any]]) -> None
-    """Write a test run history record. Must never raise."""
     try:
         record = {
             "id": str(uuid.uuid4()),
@@ -64,7 +60,6 @@ def _write_history_record(kv, test_id, ran_at, status, duration_ms,
 
 def run(payload_path, session_key):
     # type: (str, str) -> None
-    """Main alert action entry point. Always writes a history record."""
     test_id = ""
     kv = None  # type: Optional[KVStoreClient]
     start_ms = int(time.time() * 1000)

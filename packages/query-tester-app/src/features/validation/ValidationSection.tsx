@@ -8,8 +8,10 @@ import { IjumpValidation } from './IjumpValidation';
 import { ResultCountSection } from './ResultCountSection';
 
 export function ValidationSection() {
-  const state = useTestStore();
-  const test = selectActiveTest(state);
+  const test = useTestStore(selectActiveTest);
+  const replaceAllFieldGroups = useTestStore((s) => s.replaceAllFieldGroups);
+  const updateResultCount = useTestStore((s) => s.updateResultCount);
+  const setValidationType = useTestStore((s) => s.setValidationType);
   const [clearOpen, setClearOpen] = useState(false);
 
   if (!test) return null;
@@ -17,8 +19,8 @@ export function ValidationSection() {
   const type: ValidationType = test.validation.validationType;
 
   const handleClearAll = () => {
-    state.replaceAllFieldGroups(test.id, []);
-    state.updateResultCount(test.id, { enabled: false, value: 0 });
+    replaceAllFieldGroups(test.id, []);
+    updateResultCount(test.id, { enabled: false, value: 0 });
     setClearOpen(false);
   };
 
@@ -33,13 +35,13 @@ export function ValidationSection() {
       <div className="flex bg-navy-950 rounded-lg p-1 border border-slate-700 w-fit">
         <button
           className={`${segBase} rounded-md ${type === 'standard' ? 'bg-accent-900 text-accent-300' : 'text-slate-400 hover:text-slate-200'}`}
-          onClick={() => state.setValidationType(test.id, 'standard')}
+          onClick={() => setValidationType(test.id, 'standard')}
         >
           Standard
         </button>
         <button
           className={`${segBase} rounded-md ${type === 'ijump_alert' ? 'bg-accent-900 text-accent-300' : 'text-slate-400 hover:text-slate-200'}`}
-          onClick={() => state.setValidationType(test.id, 'ijump_alert')}
+          onClick={() => setValidationType(test.id, 'ijump_alert')}
         >
           iJump Alert
         </button>

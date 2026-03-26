@@ -16,7 +16,10 @@ from splunk.persistconn.application import PersistentServerConnectionApplication
 
 from logger import get_logger
 from kvstore_client import KVStoreClient
-from handler_utils import get_session_key, json_response, normalize_payload, get_query_param
+from handler_utils import (
+    get_session_key, json_response, normalize_payload,
+    get_query_param, handle_rest_request,
+)
 
 logger = get_logger(__name__)
 
@@ -47,7 +50,6 @@ def invalidate_policy_cache():
 
 def get_cached_policy(session_key):
     # type: (str) -> List[Dict[str, Any]]
-    """Return the full command policy list. TTL cached."""
     global _policy_cache, _policy_cache_time
     if _policy_cache is not None and (time.time() - _policy_cache_time) < POLICY_CACHE_TTL:
         return _policy_cache
@@ -101,27 +103,18 @@ class CommandPolicyHandler(PersistentServerConnectionApplication):
 
     def handle(self, in_string):
         # type: (str) -> Dict[str, Any]
-        try:
-            request = json.loads(in_string)
-        except Exception:
-            return json_response({"error": "Bad request"}, 400)
-        method = request.get("method", "GET").upper()
+        return handle_rest_request(in_string, {
+            "GET": self._handle_get,
+            "POST": self._handle_post,
+            "DELETE": self._handle_delete,
+        }, logger)
+
+    def _handle_post(self, request):
+        # type: (Dict[str, Any]) -> Dict[str, Any]
         path = request.get("rest_path", "")
-        try:
-            if method == "GET":
-                return self._handle_get(request)
-            if method == "POST":
-                if "/single" in path:
-                    return self._handle_upsert_single(request)
-                return self._handle_replace_all(request)
-            if method == "DELETE":
-                return self._handle_delete(request)
-            return json_response({"error": "Method not allowed"}, 405)
-        except ValueError as exc:
-            return json_response({"error": str(exc)}, 400)
-        except Exception as exc:
-            logger.error("Command policy error: %s", str(exc), exc_info=True)
-            return json_response({"error": "Internal server error"}, 500)
+        if "/single" in path:
+            return self._handle_upsert_single(request)
+        return self._handle_replace_all(request)
 
     def _handle_get(self, request):
         # type: (Dict[str, Any]) -> Dict[str, Any]

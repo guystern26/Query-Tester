@@ -67,12 +67,12 @@ function getVariants(rule: FieldGenerationRule): IpAddressVariant[] {
   });
 }
 
-export function IpAddressConfig({ testId, scenarioId, inputId, rule }: IpAddressConfigProps) {
-  const store = useTestStore();
+function IpAddressConfigInner({ testId, scenarioId, inputId, rule }: IpAddressConfigProps) {
+  const updateGeneratorRule = useTestStore((s) => s.updateGeneratorRule);
   const variants = getVariants(rule);
 
   const save = (next: IpAddressVariant[]) => {
-    store.updateGeneratorRule(testId, scenarioId, inputId, rule.id, {
+    updateGeneratorRule(testId, scenarioId, inputId, rule.id, {
       config: { ...rule.config, variants: next } as any,
     });
   };
@@ -153,3 +153,5 @@ export function IpAddressConfig({ testId, scenarioId, inputId, rule }: IpAddress
     </div>
   );
 }
+
+export const IpAddressConfig = React.memo(IpAddressConfigInner);

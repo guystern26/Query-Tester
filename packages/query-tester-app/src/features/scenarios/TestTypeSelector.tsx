@@ -16,8 +16,9 @@ const DESCS: Record<TestType, string> = {
 interface Props { compact?: boolean; }
 
 export function TestTypeSelector({ compact = false }: Props) {
-  const state = useTestStore();
-  const activeTest = selectActiveTest(state);
+  const activeTest = useTestStore(selectActiveTest);
+  const updateTestType = useTestStore((s) => s.updateTestType);
+  const clearResults = useTestStore((s) => s.clearResults);
   const testType: TestType = activeTest?.testType ?? 'standard';
 
   const handleSelect = (type: TestType) => {
@@ -25,8 +26,8 @@ export function TestTypeSelector({ compact = false }: Props) {
     if (type === 'query_only' && inputHasData(activeTest.scenarios)) {
       if (!window.confirm('Switching to Query Only will ignore all test data. Your data is preserved if you switch back.')) return;
     }
-    state.updateTestType(activeTest.id, type);
-    state.clearResults();
+    updateTestType(activeTest.id, type);
+    clearResults();
   };
 
   if (compact) {

@@ -5,7 +5,6 @@ Normalize user-pasted SPL before analysis and execution.
 """
 from __future__ import annotations
 
-import re
 from typing import Optional
 
 

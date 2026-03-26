@@ -16,7 +16,12 @@ export interface ScheduleModalProps {
 }
 
 export function ScheduleModal({ open, onClose, editingTest, preselectedTestId }: ScheduleModalProps) {
-    const { savedTests, fetchSavedTests, createScheduledTest, updateScheduledTest, updateSavedTest, isLoadingScheduled } = useTestStore();
+    const savedTests = useTestStore((s) => s.savedTests);
+    const fetchSavedTests = useTestStore((s) => s.fetchSavedTests);
+    const createScheduledTest = useTestStore((s) => s.createScheduledTest);
+    const updateScheduledTest = useTestStore((s) => s.updateScheduledTest);
+    const updateSavedTest = useTestStore((s) => s.updateSavedTest);
+    const isLoadingScheduled = useTestStore((s) => s.isLoadingScheduled);
 
     const [testId, setTestId] = useState('');
     const [testName, setTestName] = useState('');

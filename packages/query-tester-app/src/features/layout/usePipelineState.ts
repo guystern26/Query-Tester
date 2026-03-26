@@ -17,9 +17,8 @@ export interface PipelineState {
 }
 
 export function usePipelineState(): PipelineState {
-  const state = useTestStore();
-  const test = selectActiveTest(state);
-  const isRunning = selectIsRunning(state);
+  const test = useTestStore(selectActiveTest);
+  const isRunning = useTestStore(selectIsRunning);
 
   const testType = test?.testType ?? 'standard';
   const isQueryOnly = testType === 'query_only';

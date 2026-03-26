@@ -15,8 +15,8 @@ export interface GeneratorPanelProps {
 }
 
 export function GeneratorPanel({ testId, scenarioId, inputId, fieldNames }: GeneratorPanelProps) {
-  const store = useTestStore();
-  const input = selectInput(store, scenarioId, inputId);
+  const input = useTestStore((s) => selectInput(s, scenarioId, inputId));
+  const addGeneratorRule = useTestStore((s) => s.addGeneratorRule);
   if (!input) return null;
 
   const cfg = input.generatorConfig;
@@ -42,7 +42,7 @@ export function GeneratorPanel({ testId, scenarioId, inputId, fieldNames }: Gene
   const canAddRule = rules.length < MAX_GENERATOR_RULES && unusedFields.length > 0;
 
   const handleAddRule = () => {
-    store.addGeneratorRule(testId, scenarioId, inputId, { field: '', type: 'general_field', config: {} });
+    addGeneratorRule(testId, scenarioId, inputId, { field: '', type: 'general_field', config: {} });
   };
 
   return (

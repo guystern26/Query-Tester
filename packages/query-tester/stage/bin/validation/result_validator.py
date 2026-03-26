@@ -9,7 +9,6 @@ from typing import Any, Dict, List, Tuple
 
 from logger import get_logger
 from core.models import (
-    FieldConditionGroup,
     ParsedScenario,
     ValidationConfig,
     ValidationDetail,
@@ -24,12 +23,13 @@ def validate(
     validation: ValidationConfig,
     scenario: ParsedScenario,
     results: List[Dict[str, Any]],
+    fail_fast: bool = False,
 ) -> Tuple[List[ValidationDetail], bool]:
     """
-    Validate Splunk result rows against all conditions in the ValidationConfig.
+    Validate result rows against all conditions. Returns (details, overall_passed).
 
-    Returns (details, overall_passed).
-    ALL conditions are evaluated -- no short-circuit on first failure.
+    fail_fast=False (default): evaluates ALL conditions for the full report.
+    fail_fast=True: stops on first failure, returns partial results (scheduled runs).
     """
     details = []  # type: List[ValidationDetail]
     all_passed = True
@@ -39,6 +39,8 @@ def validate(
         details.append(count_detail)
         if not count_detail.passed:
             all_passed = False
+            if fail_fast:
+                return details, False
 
     if not results and (not validation.result_count or not validation.result_count.enabled):
         no_result_detail = ValidationDetail(
@@ -57,52 +59,17 @@ def validate(
     scope_n = validation.scope_n
 
     if validation.field_groups:
-        # Structured groups: evaluate per-group with conditionLogic, then fieldLogic
-        group_results = []  # type: List[bool]
-        for group in validation.field_groups:
-            if not _scope_matches(group.scenario_scope, scenario.name):
-                continue
-            group_details = []  # type: List[ValidationDetail]
-            for condition in group.conditions:
-                detail = check_field_condition(condition, results, scope, scope_n)
-                group_details.append(detail)
-            details.extend(group_details)
-
-            if not group_details:
-                continue
-
-            if group.condition_logic == "or":
-                group_passed = any(d.passed for d in group_details)
-            else:
-                group_passed = all(d.passed for d in group_details)
-            group_results.append(group_passed)
-
-        if group_results:
-            if validation.field_logic == "or":
-                if not any(group_results):
-                    all_passed = False
-            else:
-                if not all(group_results):
-                    all_passed = False
-
+        passed = _validate_groups(
+            validation, scenario, results, scope, scope_n, details, fail_fast,
+        )
+        if not passed:
+            all_passed = False
     elif validation.field_conditions:
-        # Flat conditions fallback (legacy / no groups sent)
-        field_details = []  # type: List[ValidationDetail]
-        for condition in validation.field_conditions:
-            if not _scope_matches(condition.scenario_scope, scenario.name):
-                continue
-            detail = check_field_condition(condition, results, scope, scope_n)
-            field_details.append(detail)
-
-        details.extend(field_details)
-
-        if validation.field_logic == "or":
-            if field_details and not any(d.passed for d in field_details):
-                all_passed = False
-        else:
-            if any(not d.passed for d in field_details):
-                all_passed = False
-
+        passed = _validate_flat_conditions(
+            validation, scenario, results, scope, scope_n, details, fail_fast,
+        )
+        if not passed:
+            all_passed = False
     elif validation.expected_result:
         detail = _check_expected_result(validation.expected_result, results)
         details.append(detail)
@@ -110,6 +77,77 @@ def validate(
             all_passed = False
 
     return details, all_passed
+
+
+def _validate_groups(
+    validation: ValidationConfig,
+    scenario: ParsedScenario,
+    results: List[Dict[str, Any]],
+    scope: str,
+    scope_n: Any,
+    details: List[ValidationDetail],
+    fail_fast: bool,
+) -> bool:
+    """Evaluate structured groups. Returns True if all groups pass."""
+    group_results = []  # type: List[bool]
+    for group in validation.field_groups:
+        if not _scope_matches(group.scenario_scope, scenario.name):
+            continue
+        group_details = []  # type: List[ValidationDetail]
+        for condition in group.conditions:
+            detail = check_field_condition(condition, results, scope, scope_n)
+            group_details.append(detail)
+            if fail_fast and not detail.passed:
+                details.extend(group_details)
+                return False
+        details.extend(group_details)
+        if not group_details:
+            continue
+
+        if group.condition_logic == "or":
+            group_passed = any(d.passed for d in group_details)
+        else:
+            group_passed = all(d.passed for d in group_details)
+        group_results.append(group_passed)
+        if fail_fast and not group_passed:
+            return False
+
+    if not group_results:
+        return True
+    if validation.field_logic == "or":
+        return any(group_results)
+    return all(group_results)
+
+
+def _validate_flat_conditions(
+    validation: ValidationConfig,
+    scenario: ParsedScenario,
+    results: List[Dict[str, Any]],
+    scope: str,
+    scope_n: Any,
+    details: List[ValidationDetail],
+    fail_fast: bool,
+) -> bool:
+    """Evaluate flat conditions (legacy / no groups). Returns True if all pass."""
+    field_details = []  # type: List[ValidationDetail]
+    for condition in validation.field_conditions:
+        if not _scope_matches(condition.scenario_scope, scenario.name):
+            continue
+        detail = check_field_condition(condition, results, scope, scope_n)
+        field_details.append(detail)
+        if fail_fast and not detail.passed:
+            details.extend(field_details)
+            return False
+
+    details.extend(field_details)
+
+    if validation.field_logic == "or":
+        if field_details and not any(d.passed for d in field_details):
+            return False
+    else:
+        if any(not d.passed for d in field_details):
+            return False
+    return True
 
 
 def _check_expected_result(

@@ -5,6 +5,11 @@
 import type { EntityId, TestDefinition } from '../../types';
 import { genId } from '../../constants/defaults';
 
+/** Extract a human-readable message from an unknown error. */
+export function errMsg(e: unknown): string {
+    return e instanceof Error ? e.message : String(e);
+}
+
 export function findTest(draft: TestDefinition[], testId: EntityId): TestDefinition | undefined {
   return draft.find((t) => t.id === testId);
 }

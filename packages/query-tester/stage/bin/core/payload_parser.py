@@ -41,10 +41,21 @@ def parse(raw: Dict[str, Any]) -> TestPayload:
             "Missing required top-level key in payload: {0}".format(str(exc))
         )
 
+    # Fail fast: check time range before parsing scenarios/validation (cheap fatal check)
+    earliest_time = raw.get("earliestTime", "0")
+    latest_time = raw.get("latestTime", "now")
+    if not isinstance(earliest_time, str):
+        earliest_time = "0"
+    if not isinstance(latest_time, str):
+        latest_time = "now"
+    if earliest_time.strip() == "0":
+        raise ValueError(
+            '"All time" is not allowed. Please select a specific time range.'
+        )
+
     validation_raw = raw.get("validation") or {}
     if not isinstance(validation_raw, dict):
         raise ValueError("validation must be an object when provided.")
-
     validation = parse_validation(validation_raw)
 
     scenarios_raw = raw.get("scenarios")
@@ -65,17 +76,6 @@ def parse(raw: Dict[str, Any]) -> TestPayload:
             )
             continue
         scenarios.append(_parse_scenario(scenario_obj))
-
-    earliest_time = raw.get("earliestTime", "0")
-    latest_time = raw.get("latestTime", "now")
-    if not isinstance(earliest_time, str):
-        earliest_time = "0"
-    if not isinstance(latest_time, str):
-        latest_time = "now"
-    if earliest_time.strip() == "0":
-        raise ValueError(
-            '"All time" is not allowed. Please select a specific time range.'
-        )
 
     return TestPayload(
         test_name=test_name,

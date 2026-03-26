@@ -24,12 +24,12 @@ function getVariants(rule: FieldGenerationRule): EmailVariant[] {
   }));
 }
 
-export function EmailConfig({ testId, scenarioId, inputId, rule }: EmailConfigProps) {
-  const store = useTestStore();
+function EmailConfigInner({ testId, scenarioId, inputId, rule }: EmailConfigProps) {
+  const updateGeneratorRule = useTestStore((s) => s.updateGeneratorRule);
   const variants = getVariants(rule);
 
   const save = (next: EmailVariant[]) => {
-    store.updateGeneratorRule(testId, scenarioId, inputId, rule.id, {
+    updateGeneratorRule(testId, scenarioId, inputId, rule.id, {
       config: { ...rule.config, variants: next } as any,
     });
   };
@@ -87,3 +87,5 @@ export function EmailConfig({ testId, scenarioId, inputId, rule }: EmailConfigPr
     </div>
   );
 }
+
+export const EmailConfig = React.memo(EmailConfigInner);

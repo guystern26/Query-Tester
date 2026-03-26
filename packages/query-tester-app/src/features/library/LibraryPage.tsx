@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { shallow } from 'zustand/shallow';
 import { useTestStore } from 'core/store/testStore';
 import type { ScheduledTest } from 'core/types';
 import { Message } from '../../common';
@@ -15,27 +16,29 @@ export interface LibraryPageProps {
 }
 
 export function LibraryPage({ onNavigateBuilder }: LibraryPageProps): React.ReactElement {
-    const store = useTestStore();
     const {
-        savedTests, isLoadingLibrary, libraryError,
+        savedTests, isLoadingLibrary, libraryError, scheduledTests, isLoadingScheduled,
+        togglingScheduleId, creatingScheduleForTestId, scheduledError, isAdmin, setupRequired,
         fetchSavedTests, deleteSavedTest, cloneSavedTest, clearLibraryError,
-        scheduledTests, fetchScheduledTests, updateScheduledTest,
-        isLoadingScheduled, togglingScheduleId, creatingScheduleForTestId, scheduledError,
-        isAdmin, setupRequired,
-    } = store;
+        fetchScheduledTests, updateScheduledTest, addTest,
+    } = useTestStore((s) => ({
+        savedTests: s.savedTests, isLoadingLibrary: s.isLoadingLibrary, libraryError: s.libraryError,
+        scheduledTests: s.scheduledTests, isLoadingScheduled: s.isLoadingScheduled,
+        togglingScheduleId: s.togglingScheduleId, creatingScheduleForTestId: s.creatingScheduleForTestId,
+        scheduledError: s.scheduledError, isAdmin: s.isAdmin, setupRequired: s.setupRequired,
+        fetchSavedTests: s.fetchSavedTests, deleteSavedTest: s.deleteSavedTest,
+        cloneSavedTest: s.cloneSavedTest, clearLibraryError: s.clearLibraryError,
+        fetchScheduledTests: s.fetchScheduledTests, updateScheduledTest: s.updateScheduledTest,
+        addTest: s.addTest,
+    }), shallow);
 
     const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
     const [deleteErrors, setDeleteErrors] = useState<Record<string, string>>({});
     const [cloningIds, setCloningIds] = useState<Set<string>>(new Set());
-
-    // Schedule modal state
     const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
     const [editingSchedule, setEditingSchedule] = useState<ScheduledTest | null>(null);
     const [scheduleTestId, setScheduleTestId] = useState<string | null>(null);
-
-    // Run history drawer state
     const [historyTest, setHistoryTest] = useState<ScheduledTest | null>(null);
-
     const [scheduleToast, setScheduleToast] = useState<string | null>(null);
     const prevLoadingRef = React.useRef(false);
     useEffect(() => {
@@ -47,9 +50,7 @@ export function LibraryPage({ onNavigateBuilder }: LibraryPageProps): React.Reac
         prevLoadingRef.current = isLoadingScheduled;
     }, [isLoadingScheduled, scheduledError]);
 
-    useEffect(() => { const el = document.getElementById('qt-loading'); if (el) el.remove(); }, []);
-
-    useEffect(() => { fetchSavedTests(); fetchScheduledTests(); }, [fetchSavedTests, fetchScheduledTests]);
+    useEffect(() => { const el = document.getElementById('qt-loading'); if (el) el.remove(); fetchSavedTests(); fetchScheduledTests(); }, [fetchSavedTests, fetchScheduledTests]);
 
     // Map testId -> ScheduledTest for quick lookup
     const scheduleByTestId = useMemo(() => {
@@ -115,9 +116,9 @@ export function LibraryPage({ onNavigateBuilder }: LibraryPageProps): React.Reac
     }, [cloneSavedTest]);
 
     const handleCreateNew = useCallback(() => {
-        store.addTest();
+        addTest();
         onNavigateBuilder();
-    }, [onNavigateBuilder, store]);
+    }, [onNavigateBuilder, addTest]);
 
     const handleScheduleClose = useCallback(() => { setScheduleModalOpen(false); setEditingSchedule(null); setScheduleTestId(null); }, []);
 

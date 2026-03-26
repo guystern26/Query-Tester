@@ -81,8 +81,7 @@ export function TutorialSpotlight({
 
     return (
         <div
-            className="fixed inset-0 z-[9990]"
-            style={{ pointerEvents: 'auto' }}
+            className="fixed inset-0 z-[9990] pointer-events-auto"
             onClick={onOverlayClick}
         >
             {/* Inline keyframes — no tailwind config needed */}

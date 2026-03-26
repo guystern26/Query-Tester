@@ -29,7 +29,7 @@ function isSplunkEnv(): boolean {
  * Wrapper around fetch that includes CSRF token and credentials.
  * Appends output_mode=json to the URL for Splunk REST endpoints.
  */
-async function splunkFetch(url: string): Promise<Record<string, unknown>> {
+async function splunkFetch(url: string, signal?: AbortSignal): Promise<Record<string, unknown>> {
   const separator = url.includes('?') ? '&' : '?';
   const fullUrl = url + separator + 'output_mode=json&count=0';
   const defaults = getDefaultFetchInit();
@@ -37,6 +37,7 @@ async function splunkFetch(url: string): Promise<Record<string, unknown>> {
     method: 'GET',
     credentials: defaults.credentials as RequestCredentials,
     headers: defaults.headers as Record<string, string>,
+    ...(signal ? { signal } : {}),
   };
   const response = await fetch(fullUrl, init);
   if (!response.ok) {
@@ -50,12 +51,13 @@ async function splunkFetch(url: string): Promise<Record<string, unknown>> {
 /**
  * Direct fetch for use outside Splunk Web (inner network).
  */
-async function directFetch(url: string): Promise<Record<string, unknown>> {
+async function directFetch(url: string, signal?: AbortSignal): Promise<Record<string, unknown>> {
   const separator = url.includes('?') ? '&' : '?';
   const fullUrl = url + separator + 'output_mode=json&count=1000';
   const response = await fetch(fullUrl, {
     method: 'GET',
     credentials: 'include',
+    ...(signal ? { signal } : {}),
   });
   if (!response.ok) {
     throw new Error(
@@ -99,16 +101,16 @@ export async function getApps(): Promise<string[]> {
  * Inside Splunk: GET /servicesNS/-/{app}/saved/searches
  * Outside Splunk: GET http://splunk:8089/servicesNS/admin/{app}/saved/searches
  */
-export async function getSavedSearches(app: string): Promise<SavedSearch[]> {
+export async function getSavedSearches(app: string, signal?: AbortSignal): Promise<SavedSearch[]> {
   try {
     let data: Record<string, unknown>;
 
     if (isSplunkEnv()) {
       const url = createRESTURL('saved/searches', { app, sharing: 'app' });
-      data = await splunkFetch(url);
+      data = await splunkFetch(url, signal);
     } else {
       const url = ENV.SPLUNK_BASE + '/servicesNS/admin/' + encodeURIComponent(app) + '/saved/searches?output_mode=json&count=1000';
-      data = await directFetch(url);
+      data = await directFetch(url, signal);
     }
 
     const entries = (data as { entry?: Array<{ name?: string }> }).entry;

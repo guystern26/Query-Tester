@@ -23,15 +23,20 @@ const XIcon = ({ size = 13 }: { size?: number }) => (
 );
 
 export function FieldValueEditor({ testId, scenarioId, inputId, events }: FieldValueEditorProps) {
-  const store = useTestStore();
+  const addEvent = useTestStore((s) => s.addEvent);
+  const deleteEvent = useTestStore((s) => s.deleteEvent);
+  const addFieldToAllEvents = useTestStore((s) => s.addFieldToAllEvents);
+  const removeFieldFromAllEvents = useTestStore((s) => s.removeFieldFromAllEvents);
+  const updateFieldValue = useTestStore((s) => s.updateFieldValue);
+  const updateFieldNameInAllEvents = useTestStore((s) => s.updateFieldNameInAllEvents);
   const fieldCount = events.length === 0
     ? 0
     : Math.max(0, ...events.map((e) => e.fieldValues.length));
   const canAddEvent = events.length < MAX_EVENTS_PER_INPUT;
   const canAddField = fieldCount < MAX_FIELDS_PER_EVENT;
 
-  const addEvent = () => canAddEvent && store.addEvent(testId, scenarioId, inputId);
-  const addField = () => canAddField && store.addFieldToAllEvents(testId, scenarioId, inputId);
+  const handleAddEvent = () => canAddEvent && addEvent(testId, scenarioId, inputId);
+  const handleAddField = () => canAddField && addFieldToAllEvents(testId, scenarioId, inputId);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const handleWheel = useCallback((e: React.WheelEvent) => {
@@ -50,7 +55,7 @@ export function FieldValueEditor({ testId, scenarioId, inputId, events }: FieldV
         <p className="text-sm text-slate-500 m-0">Click + Add Event to start defining test data</p>
         <button
           className="mt-3 inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-accent-300 transition-colors duration-200 cursor-pointer"
-          onClick={addEvent}
+          onClick={handleAddEvent}
           disabled={!canAddEvent}
         >
           <PlusIcon /> Add Event
@@ -78,7 +83,7 @@ export function FieldValueEditor({ testId, scenarioId, inputId, events }: FieldV
                     {events.length > 1 && (
                       <button
                         className="p-0.5 text-slate-700 hover:text-red-400 hover:bg-red-900/20 rounded transition-colors duration-200 cursor-pointer flex-shrink-0"
-                        onClick={() => store.deleteEvent(testId, scenarioId, inputId, evt.id)}
+                        onClick={() => deleteEvent(testId, scenarioId, inputId, evt.id)}
                         aria-label={`Delete event ${ei + 1}`}
                       >
                         <XIcon size={12} />
@@ -93,7 +98,7 @@ export function FieldValueEditor({ testId, scenarioId, inputId, events }: FieldV
               <th className="border-b border-slate-600/60 px-3 w-full text-left">
                 <button
                   className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-accent-300 transition-colors duration-200 cursor-pointer whitespace-nowrap disabled:opacity-30 disabled:cursor-not-allowed"
-                  onClick={addEvent}
+                  onClick={handleAddEvent}
                   disabled={!canAddEvent}
                   title="Add event column"
                 >
@@ -119,7 +124,7 @@ export function FieldValueEditor({ testId, scenarioId, inputId, events }: FieldV
                     <div className="flex items-center gap-0.5 px-1.5">
                       <button
                         className="p-0.5 text-slate-700 hover:text-red-400 hover:bg-red-900/20 rounded transition-all duration-200 cursor-pointer opacity-0 group-hover:opacity-100 flex-shrink-0"
-                        onClick={() => store.removeFieldFromAllEvents(testId, scenarioId, inputId, fi)}
+                        onClick={() => removeFieldFromAllEvents(testId, scenarioId, inputId, fi)}
                         aria-label={`Delete field ${fieldName || fi + 1}`}
                       >
                         <XIcon size={12} />
@@ -129,7 +134,7 @@ export function FieldValueEditor({ testId, scenarioId, inputId, events }: FieldV
                         type="text"
                         value={fieldName}
                         onChange={(e) =>
-                          store.updateFieldNameInAllEvents(testId, scenarioId, inputId, fi, e.target.value)
+                          updateFieldNameInAllEvents(testId, scenarioId, inputId, fi, e.target.value)
                         }
                         placeholder="field name"
                       />
@@ -146,7 +151,7 @@ export function FieldValueEditor({ testId, scenarioId, inputId, events }: FieldV
                           value={fv?.value ?? ''}
                           onChange={(e) =>
                             fv &&
-                            store.updateFieldValue(testId, scenarioId, inputId, evt.id, fv.id, {
+                            updateFieldValue(testId, scenarioId, inputId, evt.id, fv.id, {
                               value: e.target.value,
                             })
                           }
@@ -164,7 +169,7 @@ export function FieldValueEditor({ testId, scenarioId, inputId, events }: FieldV
               <td className="py-2 px-2 sticky left-0 z-10 bg-navy-800">
                 <button
                   className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-accent-300 transition-colors duration-200 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                  onClick={addField}
+                  onClick={handleAddField}
                   disabled={!canAddField}
                 >
                   <PlusIcon /> Field

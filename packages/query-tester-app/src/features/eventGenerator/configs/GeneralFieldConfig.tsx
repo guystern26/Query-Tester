@@ -29,12 +29,12 @@ function getVariants(rule: FieldGenerationRule): GeneralFieldVariant[] {
   }));
 }
 
-export function GeneralFieldConfig({ testId, scenarioId, inputId, rule }: GeneralFieldConfigProps) {
-  const store = useTestStore();
+function GeneralFieldConfigInner({ testId, scenarioId, inputId, rule }: GeneralFieldConfigProps) {
+  const updateGeneratorRule = useTestStore((s) => s.updateGeneratorRule);
   const variants = getVariants(rule);
 
   const save = (next: GeneralFieldVariant[]) => {
-    store.updateGeneratorRule(testId, scenarioId, inputId, rule.id, {
+    updateGeneratorRule(testId, scenarioId, inputId, rule.id, {
       config: { ...rule.config, variants: next } as any,
     });
   };
@@ -89,3 +89,5 @@ export function GeneralFieldConfig({ testId, scenarioId, inputId, rule }: Genera
     </div>
   );
 }
+
+export const GeneralFieldConfig = React.memo(GeneralFieldConfigInner);

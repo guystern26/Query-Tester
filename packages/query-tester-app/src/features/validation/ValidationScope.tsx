@@ -22,16 +22,16 @@ export interface ValidationScopeProps {
 }
 
 export function ValidationScopeSelector({ testId, scope, scopeN }: ValidationScopeProps) {
-  const store = useTestStore();
+  const updateValidationScope = useTestStore((s) => s.updateValidationScope);
 
   const handleScopeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const v = e.target.value as VSType;
-    store.updateValidationScope(testId, v, NEEDS_N.has(v) ? (scopeN ?? 1) : null);
+    updateValidationScope(testId, v, NEEDS_N.has(v) ? (scopeN ?? 1) : null);
   };
 
   const handleNChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const n = Number(e.target.value);
-    if (!Number.isNaN(n) && n >= 0) store.updateValidationScope(testId, scope, n);
+    if (!Number.isNaN(n) && n >= 0) updateValidationScope(testId, scope, n);
   };
 
   return (

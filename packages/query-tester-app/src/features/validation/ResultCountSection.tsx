@@ -18,7 +18,7 @@ export interface ResultCountSectionProps {
 }
 
 export function ResultCountSection({ testId, resultCount }: ResultCountSectionProps) {
-  const store = useTestStore();
+  const updateResultCount = useTestStore((s) => s.updateResultCount);
 
   return (
     <div data-tutorial="result-count" className={`bg-navy-900 rounded-lg p-3 border ${resultCount.enabled ? 'border-green-500/40' : 'border-slate-800'}`}>
@@ -28,7 +28,7 @@ export function ResultCountSection({ testId, resultCount }: ResultCountSectionPr
       </div>
       <Switch
         checked={resultCount.enabled}
-        onChange={(v) => store.updateResultCount(testId, { enabled: v })}
+        onChange={(v) => updateResultCount(testId, { enabled: v })}
         label="Check result count"
       />
       {resultCount.enabled && (
@@ -37,7 +37,7 @@ export function ResultCountSection({ testId, resultCount }: ResultCountSectionPr
             data-tutorial="result-count-op"
             className={`${selectCls} w-[150px]`}
             value={resultCount.operator}
-            onChange={(e) => store.updateResultCount(testId, { operator: e.target.value as ResultCountOperator })}
+            onChange={(e) => updateResultCount(testId, { operator: e.target.value as ResultCountOperator })}
           >
             {RESULT_OPS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
@@ -47,7 +47,7 @@ export function ResultCountSection({ testId, resultCount }: ResultCountSectionPr
             value={resultCount.value}
             onChange={(e) => {
               const n = Number(e.target.value);
-              if (!Number.isNaN(n)) store.updateResultCount(testId, { value: n });
+              if (!Number.isNaN(n)) updateResultCount(testId, { value: n });
             }}
             placeholder="0"
           />

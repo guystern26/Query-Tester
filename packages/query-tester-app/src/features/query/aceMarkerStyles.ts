@@ -14,6 +14,11 @@ export const MARKER_CLASSES: Record<string, string> = {
     info: 'spl-lint-info',
 };
 
+/** Returns the CSS class for a field-tracking marker by color index. */
+export function fieldMarkerClass(colorIndex: number): string {
+    return 'spl-field-' + (colorIndex % 10);
+}
+
 // ── CSS injection ───────────────────────────────────────────────────────────────
 
 const MARKER_CSS = `
@@ -41,6 +46,16 @@ const MARKER_CSS = `
     .spl-lint-blocked {
       border-bottom-style: dashed !important;
     }
+    .spl-field-0 { position:absolute; background:rgba(59,130,246,0.18); border-radius:2px; z-index:3; }
+    .spl-field-1 { position:absolute; background:rgba(34,197,94,0.18); border-radius:2px; z-index:3; }
+    .spl-field-2 { position:absolute; background:rgba(245,158,11,0.18); border-radius:2px; z-index:3; }
+    .spl-field-3 { position:absolute; background:rgba(236,72,153,0.18); border-radius:2px; z-index:3; }
+    .spl-field-4 { position:absolute; background:rgba(168,85,247,0.18); border-radius:2px; z-index:3; }
+    .spl-field-5 { position:absolute; background:rgba(249,115,22,0.18); border-radius:2px; z-index:3; }
+    .spl-field-6 { position:absolute; background:rgba(20,184,166,0.18); border-radius:2px; z-index:3; }
+    .spl-field-7 { position:absolute; background:rgba(139,92,246,0.18); border-radius:2px; z-index:3; }
+    .spl-field-8 { position:absolute; background:rgba(52,211,153,0.18); border-radius:2px; z-index:3; }
+    .spl-field-9 { position:absolute; background:rgba(251,113,133,0.18); border-radius:2px; z-index:3; }
     .spl-lint-tooltip {
       position: absolute;
       z-index: 1000;
@@ -67,6 +82,11 @@ const MARKER_CSS = `
       background: #172554;
       border: 1px solid #1e40af;
       color: #93c5fd;
+    }
+    .spl-lint-tooltip.field {
+      background: #1e293b;
+      border: 1px solid #475569;
+      color: #e2e8f0;
     }
 `;
 

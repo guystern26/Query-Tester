@@ -24,12 +24,12 @@ const inputCls =
   'px-2 py-1.5 text-xs bg-navy-950 border border-slate-800 rounded text-slate-300 placeholder-slate-600 focus:outline-none focus:border-accent-600 transition';
 const labelCls = 'text-[10px] text-slate-500 uppercase shrink-0';
 
-export function NumberedConfig({ testId, scenarioId, inputId, rule }: NumberedConfigProps) {
-  const store = useTestStore();
+function NumberedConfigInner({ testId, scenarioId, inputId, rule }: NumberedConfigProps) {
+  const updateGeneratorRule = useTestStore((s) => s.updateGeneratorRule);
   const cfg = getCfg(rule);
 
   const save = (patch: Partial<NumberedGeneratorConfig>) => {
-    store.updateGeneratorRule(testId, scenarioId, inputId, rule.id, {
+    updateGeneratorRule(testId, scenarioId, inputId, rule.id, {
       config: { ...cfg, ...patch } as any,
     });
   };
@@ -63,3 +63,5 @@ export function NumberedConfig({ testId, scenarioId, inputId, rule }: NumberedCo
     </div>
   );
 }
+
+export const NumberedConfig = React.memo(NumberedConfigInner);

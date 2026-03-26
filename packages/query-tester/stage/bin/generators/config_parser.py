@@ -5,7 +5,7 @@ Parse generator configuration from raw payload dicts.
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any, Callable, Dict, List
 
 from logger import get_logger
 from core.models import GeneratorConfig, GeneratorRule
@@ -88,62 +88,51 @@ def _parse_generator_rule(raw: Dict[str, Any]) -> GeneratorRule:
     )
 
 
+def _normalize_pick_list(raw: Dict[str, Any]) -> Dict[str, Any]:
+    """Frontend sends {items: [...]}; backend expects {variants: [...]}."""
+    items = raw.get("items") or raw.get("variants") or []
+    return {"variants": items}
+
+
+def _normalize_general_field(raw: Dict[str, Any]) -> Dict[str, Any]:
+    """Variant list pass-through — accepts either 'variants' or 'items' key."""
+    variants = raw.get("variants") or raw.get("items") or []
+    return {"variants": variants}
+
+
+def _normalize_numbered(raw: Dict[str, Any]) -> Dict[str, Any]:
+    """Frontend sends {pattern, rangeStart, padLength}; backend expects {prefix, start, padding}."""
+    prefix = raw.get("pattern") or raw.get("prefix", "")
+    start = raw.get("rangeStart", raw.get("start", 1))
+    padding = raw.get("padLength", raw.get("padding", 0))
+    return {"prefix": prefix, "start": start, "padding": padding}
+
+
+def _normalize_variants_passthrough(raw: Dict[str, Any]) -> Dict[str, Any]:
+    """Pass through variants list unchanged — used by types with matching frontend/backend shape."""
+    variants = raw.get("variants") or []
+    return {"variants": variants}
+
+
+ConfigNormalizer = Callable[[Dict[str, Any]], Dict[str, Any]]
+
+CONFIG_NORMALIZERS: Dict[str, ConfigNormalizer] = {
+    "pick_list": _normalize_pick_list,
+    "general_field": _normalize_general_field,
+    "numbered": _normalize_numbered,
+    "random_number": _normalize_variants_passthrough,
+    "email": _normalize_variants_passthrough,
+    "unique_id": _normalize_variants_passthrough,
+    "ip_address": _normalize_variants_passthrough,
+}
+
+
 def _normalize_config(gen_type: str, raw: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Map frontend camelCase config keys to what each backend generator expects.
-    """
-    # pick_list: frontend sends {items: [{value, weight}]}
-    # backend expects {variants: [{value, weight}]}
-    if gen_type == "pick_list":
-        items = raw.get("items") or raw.get("variants") or []
-        return {"variants": items}
-
-    # general_field delegates to pick_list, same normalization needed
-    if gen_type == "general_field":
-        variants = raw.get("variants") or raw.get("items") or []
-        # Each variant has componentType/componentLength — convert to value
-        normalized = []  # type: list
-        for v in variants:
-            if isinstance(v, dict) and "value" not in v:
-                # Build a value placeholder from the variant spec
-                normalized.append(v)
-            else:
-                normalized.append(v)
-        return {"variants": normalized}
-
-    # numbered: frontend sends {pattern, rangeStart, rangeEnd, padLength}
-    # backend expects {prefix, start, padding}
-    if gen_type == "numbered":
-        prefix = raw.get("pattern") or raw.get("prefix", "")
-        start = raw.get("rangeStart", raw.get("start", 1))
-        padding = raw.get("padLength", raw.get("padding", 0))
-        return {"prefix": prefix, "start": start, "padding": padding}
-
-    # random_number: frontend sends {variants: [{min, max, decimals, prefix, suffix, weight}]}
-    # backend expects same shape — pass through for full variant support
-    if gen_type == "random_number":
-        variants = raw.get("variants") or []
-        return {"variants": variants}
-
-    # email: frontend sends {variants: [{localPart, domain, componentType, componentLength, weight}]}
-    # backend expects same shape — pass through for full variant support
-    if gen_type == "email":
-        variants = raw.get("variants") or []
-        return {"variants": variants}
-
-    # unique_id: frontend sends {variants: [{format, prefix, suffix, length, weight}]}
-    # backend expects same shape — pass through
-    if gen_type == "unique_id":
-        variants = raw.get("variants") or []
-        return {"variants": variants}
-
-    # ip_address: frontend sends {variants: [{ipType, customOctets, prefix, suffix, weight}]}
-    # backend expects same shape — pass through for full variant support
-    if gen_type == "ip_address":
-        variants = raw.get("variants") or []
-        return {"variants": variants}
-
-    return raw
+    """Map frontend camelCase config keys to what each backend generator expects."""
+    normalizer = CONFIG_NORMALIZERS.get(gen_type)
+    if normalizer is None:
+        return raw
+    return normalizer(raw)
 
 
 def _get_str(obj: Dict[str, Any], key: str, default: str) -> str:

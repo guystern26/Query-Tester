@@ -1,14 +1,19 @@
 # -*- coding: utf-8 -*-
-"""
-handler_utils.py — Shared utilities for all REST handlers.
-Extracts session info, builds responses, normalizes payloads.
-"""
+"""handler_utils.py — Shared utilities for all REST handlers."""
 from __future__ import annotations
 
 import json
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, Optional, Tuple
 
+from logger import get_logger
+
+_logger = get_logger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Request parsing
+# ---------------------------------------------------------------------------
 
 def get_session_key(request):
     # type: (Dict[str, Any]) -> str
@@ -62,27 +67,16 @@ def normalize_payload(raw_body):
 def extract_id(request):
     # type: (Dict[str, Any]) -> Optional[str]
     """Extract a record ID from query params, form params, or URL path."""
-    # Check query params
-    query = request.get("query") or []
-    if isinstance(query, dict):
-        val = query.get("id")
-        if val:
-            return str(val)
-    elif isinstance(query, list):
-        for qp in query:
-            if isinstance(qp, (list, tuple)) and len(qp) == 2 and qp[0] == "id":
-                return str(qp[1])
-    # Check form params (Splunk sometimes puts query params here)
-    form = request.get("form") or []
-    if isinstance(form, dict):
-        val = form.get("id")
-        if val:
-            return str(val)
-    elif isinstance(form, list):
-        for fp in form:
-            if isinstance(fp, (list, tuple)) and len(fp) == 2 and fp[0] == "id":
-                return str(fp[1])
-    # Check URL path
+    for source in ("query", "form"):
+        container = request.get(source) or []
+        if isinstance(container, dict):
+            val = container.get("id")
+            if val:
+                return str(val)
+        elif isinstance(container, list):
+            for pair in container:
+                if isinstance(pair, (list, tuple)) and len(pair) == 2 and pair[0] == "id":
+                    return str(pair[1])
     rest_path = request.get("rest_path", "")
     parts = rest_path.strip("/").split("/")
     if len(parts) >= 3:
@@ -111,9 +105,44 @@ def now_iso():
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
 
+# ---------------------------------------------------------------------------
+# Request skeleton — TASK 1
+# ---------------------------------------------------------------------------
+
+def handle_rest_request(in_string, method_map, logger_ref=None):
+    # type: (str, Dict[str, Callable], Any) -> Dict[str, Any]
+    """Parse JSON, route by HTTP method, and wrap in standard try/except.
+
+    *method_map* maps HTTP verbs to callables that accept ``(request_dict)``
+    and return a ``json_response`` dict.  Unmatched methods get 405.
+    ``ValueError`` → 400, any other ``Exception`` → 500.
+    """
+    try:
+        request = json.loads(in_string)
+    except Exception:
+        return json_response({"error": "Bad request"}, 400)
+    method = request.get("method", "GET").upper()
+    handler_fn = method_map.get(method)
+    if handler_fn is None:
+        return json_response({"error": "Method not allowed"}, 405)
+    log = logger_ref or _logger
+    try:
+        return handler_fn(request)
+    except ValueError as exc:
+        log.warning("Client error: %s", str(exc))
+        return json_response({"error": str(exc)}, 400)
+    except Exception as exc:
+        log.error("Server error: %s", str(exc), exc_info=True)
+        return json_response({"error": "Internal server error"}, 500)
+
+
+# ---------------------------------------------------------------------------
+# Auth & ownership — TASK 2
+# ---------------------------------------------------------------------------
+
 def is_admin_user(session_key, username):
     # type: (str, str) -> bool
-    """Check if the user has the 'admin' role via splunklib."""
+    """Check if the user has an admin role via splunklib."""
     try:
         from splunk_connect import get_service
         service = get_service(session_key, app="QueryTester", owner="nobody")
@@ -124,28 +153,33 @@ def is_admin_user(session_key, username):
         return False
 
 
-def check_ownership(existing, request, session_key):
-    # type: (Dict[str, Any], Dict[str, Any], str) -> Optional[Dict[str, Any]]
-    """Return a 403 response if the user doesn't own the record, else None."""
-    username = get_username(request)
-    owner = existing.get("createdBy", "")
-    if owner and username != owner and not is_admin_user(session_key, username):
+def check_ownership(record, session_user, session_key):
+    # type: (Dict[str, Any], str, str) -> Optional[Dict[str, Any]]
+    """Return a 403 response if *session_user* doesn't own *record*, else None.
+
+    Admins bypass.  Records with empty ``createdBy`` (legacy) allow anyone.
+    """
+    owner = record.get("createdBy", "")
+    if owner and session_user != owner and not is_admin_user(session_key, session_user):
         return json_response(
             {"error": "Forbidden: you can only modify your own records."}, 403
         )
     return None
 
 
-def check_version(existing, payload):
-    # type: (Dict[str, Any], Dict[str, Any]) -> Optional[Dict[str, Any]]
-    """Optimistic locking: return a 409 response on version mismatch, else None.
+# ---------------------------------------------------------------------------
+# Optimistic locking — TASK 3
+# ---------------------------------------------------------------------------
 
-    Pops 'version' from payload as a side effect.
+def check_and_increment_version(stored_record, payload_version):
+    # type: (Dict[str, Any], Optional[int]) -> Tuple[bool, int]
+    """Optimistic locking: compare versions and compute the next one.
+
+    Returns ``(True, new_version)`` on success.
+    Returns ``(False, stored_version)`` on conflict (caller should 409).
+    Legacy records (version 0 or missing) skip the check.
     """
-    stored_version = int(existing.get("version") or 0)
-    client_version = payload.pop("version", None)
-    if client_version is not None and int(client_version) != stored_version:
-        return json_response(
-            {"error": "conflict", "currentVersion": stored_version}, 409
-        )
-    return None
+    stored_version = int(stored_record.get("version") or 0)
+    if payload_version is not None and int(payload_version) != stored_version:
+        return False, stored_version
+    return True, stored_version + 1

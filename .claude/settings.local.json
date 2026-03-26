@@ -191,7 +191,16 @@
       "Bash(for f:*)",
       "Bash(py -m py_compile \"$f\")",
       "Bash(done)",
-      "Bash(cd C:/Users/guyst/splunk-ui-toolkit-apps/packages/query-tester/stage/bin && py -m py_compile core/test_runner.py && echo \"OK\" && py -m py_compile data/data_indexer.py && echo \"OK\" && py -m py_compile data/hec_config.py && echo \"OK\" && py -m py_compile core/response_builder.py && echo \"OK\" && py -m py_compile core/payload_parser.py && echo \"OK\")"
+      "Bash(cd C:/Users/guyst/splunk-ui-toolkit-apps/packages/query-tester/stage/bin && py -m py_compile core/test_runner.py && echo \"OK\" && py -m py_compile data/data_indexer.py && echo \"OK\" && py -m py_compile data/hec_config.py && echo \"OK\" && py -m py_compile core/response_builder.py && echo \"OK\" && py -m py_compile core/payload_parser.py && echo \"OK\")",
+      "Bash(./node_modules/.bin/tsc --noEmit)",
+      "Bash(cd C:/Users/guyst/splunk-ui-toolkit-apps/packages/query-tester/stage/bin && py -m pytest tests/ -v --ignore=tests/test_email_simple.py 2>&1 | tail -10)",
+      "Bash(py -m py_compile validation/result_validator.py)",
+      "Bash(py:*)",
+      "Bash(taskkill //F //IM node.exe 2>&1 || true)",
+      "Bash(wmic process:*)",
+      "Bash(kill 14329 5484 3914 1092 3938 4021 2>/dev/null; sleep 1; ps aux | grep -i node | head -10)",
+      "Bash(find /c/Users/guyst/splunk-ui-toolkit-apps/packages/query-tester-app/src/features/query -type f -name \"*.ts*\" 2>/dev/null | head -20)",
+      "Bash(find /c/Users/guyst/splunk-ui-toolkit-apps -name \"*review*SKILL.md\" -o -name \"*spl*review*.md\" 2>/dev/null | head -20)"
     ]
   }
 }

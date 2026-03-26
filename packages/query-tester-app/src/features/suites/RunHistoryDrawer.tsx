@@ -10,7 +10,9 @@ export interface RunHistoryDrawerProps {
 }
 
 export function RunHistoryDrawer({ open, onClose, test }: RunHistoryDrawerProps) {
-    const { runHistory, fetchRunHistory, isLoadingHistory } = useTestStore();
+    const runHistory = useTestStore((s) => s.runHistory);
+    const fetchRunHistory = useTestStore((s) => s.fetchRunHistory);
+    const isLoadingHistory = useTestStore((s) => s.isLoadingHistory);
 
     const testId = test?.id || '';
     const runs = runHistory[testId] || [];

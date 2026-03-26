@@ -9,8 +9,8 @@ from core.helpers import normalize_weights
 from core.models import GeneratorRule
 
 
-def _generate_number(variant: Dict[str, Any]) -> str:
-    """Generate a single number from a variant config."""
+def _parse_variant(variant: Dict[str, Any]) -> Dict[str, Any]:
+    """Extract and validate numeric params from a variant config dict."""
     try:
         lo = float(variant.get("min", 0))
     except (TypeError, ValueError):
@@ -19,62 +19,77 @@ def _generate_number(variant: Dict[str, Any]) -> str:
         hi = float(variant.get("max", 100))
     except (TypeError, ValueError):
         hi = 100.0
-
     if lo > hi:
         lo, hi = hi, lo
-
     decimals = variant.get("decimals", 0)
     try:
         decimals = int(decimals)
     except (TypeError, ValueError):
         decimals = 0
+    return {
+        "lo": lo, "hi": hi, "decimals": decimals,
+        "prefix": str(variant.get("prefix", "") or ""),
+        "suffix": str(variant.get("suffix", "") or ""),
+    }
 
-    prefix = str(variant.get("prefix", "") or "")
-    suffix = str(variant.get("suffix", "") or "")
 
-    if decimals > 0:
-        num = str(round(random.uniform(lo, hi), decimals))
+def _generate_from_parsed(v: Dict[str, Any]) -> str:
+    """Generate a random number string from pre-parsed variant params."""
+    if v["decimals"] > 0:
+        num = str(round(random.uniform(v["lo"], v["hi"]), v["decimals"]))
     else:
-        num = str(int(random.randint(int(lo), int(hi))))
+        num = str(random.randint(int(v["lo"]), int(v["hi"])))
+    return v["prefix"] + num + v["suffix"]
 
-    return prefix + num + suffix
 
-
-def generate(rule: GeneratorRule, index: int) -> Any:
+def prepare(rule: GeneratorRule) -> Dict[str, Any]:
+    """Pre-parse config for the generation loop. Called once per rule."""
     variants = rule.config.get("variants") or []
 
-    # Legacy format: {min, max, float} — used by old config_parser normalization
+    # Legacy format: {min, max, float}
     if not variants and "min" in rule.config:
         lo = rule.config.get("min", 0)
         hi = rule.config.get("max", 100)
         try:
-            lo_num = float(lo)
-            hi_num = float(hi)
+            lo_f, hi_f = float(lo), float(hi)
         except (TypeError, ValueError):
-            lo_num = 0.0
-            hi_num = 100.0
-
-        if lo_num > hi_num:
-            lo_num, hi_num = hi_num, lo_num
-
-        if rule.config.get("float", False):
-            return round(random.uniform(lo_num, hi_num), 2)
-        return int(random.randint(int(lo_num), int(hi_num)))
+            lo_f, hi_f = 0.0, 100.0
+        if lo_f > hi_f:
+            lo_f, hi_f = hi_f, lo_f
+        return {
+            "mode": "legacy", "lo": lo_f, "hi": hi_f,
+            "is_float": bool(rule.config.get("float", False)),
+        }
 
     if not variants:
-        return int(random.randint(0, 100))
+        return {"mode": "default"}
 
-    if len(variants) == 1:
-        return _generate_number(variants[0])
+    parsed = [_parse_variant(v) for v in variants]
+    if len(parsed) == 1:
+        return {"mode": "single", "variant": parsed[0]}
 
-    # Weighted selection among variants
-    weights_input = []  # type: List[float]
+    weights = []  # type: List[float]
     for v in variants:
         try:
-            weights_input.append(float(v.get("weight", 1)))
+            weights.append(float(v.get("weight", 1)))
         except (TypeError, ValueError):
-            weights_input.append(1.0)
+            weights.append(1.0)
+    return {"mode": "weighted", "variants": parsed, "weights": normalize_weights(weights)}
 
-    weights = normalize_weights(weights_input)
-    chosen = random.choices(variants, weights=weights, k=1)[0]
-    return _generate_number(chosen)
+
+def generate(rule: GeneratorRule, index: int, prepared: Any = None) -> str:
+    """Generate a random number as a string, with optional prefix/suffix."""
+    if prepared is None:
+        prepared = prepare(rule)
+    mode = prepared["mode"]
+    if mode == "legacy":
+        if prepared["is_float"]:
+            return str(round(random.uniform(prepared["lo"], prepared["hi"]), 2))
+        return str(random.randint(int(prepared["lo"]), int(prepared["hi"])))
+    if mode == "default":
+        return str(random.randint(0, 100))
+    if mode == "single":
+        return _generate_from_parsed(prepared["variant"])
+    # mode == "weighted": pick a variant then generate from its pre-parsed params
+    chosen = random.choices(prepared["variants"], weights=prepared["weights"], k=1)[0]
+    return _generate_from_parsed(chosen)

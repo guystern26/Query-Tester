@@ -39,27 +39,40 @@ def _generate_ip(variant: Dict[str, Any]) -> str:
     return prefix + ip + suffix
 
 
-def generate(rule: GeneratorRule, index: int) -> str:
-    # Legacy format: {subnet: "10.0.0"} — used by old config_parser normalization
+def prepare(rule: GeneratorRule) -> Dict[str, Any]:
+    """Pre-parse IP config. Pre-computes weights for multi-variant mode."""
+    # Legacy format: {subnet: "10.0.0"}
     if "subnet" in rule.config and "variants" not in rule.config:
-        subnet = rule.config.get("subnet", "10.0.0")
-        return "{0}.{1}".format(subnet, random.randint(1, 254))
+        return {"mode": "legacy", "subnet": rule.config.get("subnet", "10.0.0")}
 
     variants = rule.config.get("variants") or []
     if not variants:
-        return "10.0.0.{0}".format(random.randint(1, 254))
+        return {"mode": "default"}
 
     if len(variants) == 1:
-        return _generate_ip(variants[0])
+        return {"mode": "single", "variant": variants[0]}
 
-    # Weighted selection among variants
-    weights_input = []  # type: List[float]
+    # Multi-variant: pre-compute normalized weights once
+    weights = []  # type: List[float]
     for v in variants:
         try:
-            weights_input.append(float(v.get("weight", 1)))
+            weights.append(float(v.get("weight", 1)))
         except (TypeError, ValueError):
-            weights_input.append(1.0)
+            weights.append(1.0)
+    return {"mode": "weighted", "variants": variants, "weights": normalize_weights(weights)}
 
-    weights = normalize_weights(weights_input)
-    chosen = random.choices(variants, weights=weights, k=1)[0]
+
+def generate(rule: GeneratorRule, index: int, prepared: Any = None) -> str:
+    """Generate an IP address string."""
+    if prepared is None:
+        prepared = prepare(rule)
+    mode = prepared["mode"]
+    if mode == "legacy":
+        return "{0}.{1}".format(prepared["subnet"], random.randint(1, 254))
+    if mode == "default":
+        return "10.0.0.{0}".format(random.randint(1, 254))
+    if mode == "single":
+        return _generate_ip(prepared["variant"])
+    # mode == "weighted": pick variant, then generate
+    chosen = random.choices(prepared["variants"], weights=prepared["weights"], k=1)[0]
     return _generate_ip(chosen)

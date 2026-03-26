@@ -34,6 +34,12 @@ export default defineConfig({
         target: process.env.VITE_SPLUNK_DEV_HOST || 'http://localhost:8000',
         changeOrigin: true,
         secure: false
+      },
+      '/llm-proxy': {
+        target: 'https://api.openai.com',
+        changeOrigin: true,
+        secure: true,
+        rewrite: (p) => p.replace(/^\/llm-proxy/, ''),
       }
     }
   },

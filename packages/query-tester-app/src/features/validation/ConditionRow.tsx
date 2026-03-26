@@ -14,7 +14,8 @@ export interface ConditionRowProps {
 }
 
 export function ConditionRow({ testId, groupId, condition, isOnly }: ConditionRowProps) {
-  const store = useTestStore();
+  const updateCondition = useTestStore((s) => s.updateConditionInGroup);
+  const removeCondition = useTestStore((s) => s.removeConditionFromGroup);
   const hideValue = VALUELESS_OPS.has(condition.operator);
 
   return (
@@ -22,7 +23,7 @@ export function ConditionRow({ testId, groupId, condition, isOnly }: ConditionRo
       <select
         className={`${selectCls} w-40`}
         value={condition.operator}
-        onChange={(e) => store.updateConditionInGroup(testId, groupId, condition.id, { operator: e.target.value as ConditionOperator })}
+        onChange={(e) => updateCondition(testId, groupId, condition.id, { operator: e.target.value as ConditionOperator })}
       >
         {OP_GROUPS.map((g) => (
           <optgroup key={g.label} label={g.label}>
@@ -34,13 +35,13 @@ export function ConditionRow({ testId, groupId, condition, isOnly }: ConditionRo
         <input
           className={`${inputCls} flex-1 min-w-0`}
           value={condition.value}
-          onChange={(e) => store.updateConditionInGroup(testId, groupId, condition.id, { value: e.target.value })}
+          onChange={(e) => updateCondition(testId, groupId, condition.id, { value: e.target.value })}
           placeholder="expected value"
         />
       )}
       <button
         className="text-slate-600 hover:text-red-400 px-1 rounded transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-        onClick={() => store.removeConditionFromGroup(testId, groupId, condition.id)}
+        onClick={() => removeCondition(testId, groupId, condition.id)}
         disabled={isOnly}
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">

@@ -17,25 +17,25 @@ import { SetupCard } from './features/layout/SetupCard';
 import { useTutorial } from './features/tutorial/useTutorial';
 import { TutorialOverlay } from './features/tutorial/TutorialOverlay';
 
-/* ── page component ─────────────────────────────────────────── */
-
 export interface StartPageProps {
     onNavigateLibrary?: () => void;
     loadTestId?: string;
 }
 
 export function StartPage({ onNavigateLibrary, loadTestId }: StartPageProps = {}) {
-    const state = useTestStore();
-    const activeTest = selectActiveTest(state);
-    const activeTestId = selectActiveTestId(state);
+    const activeTest = useTestStore(selectActiveTest);
+    const activeTestId = useTestStore(selectActiveTestId);
+    const barExpanded = useTestStore((s) => s.resultsBarExpanded);
+    const updateTestName = useTestStore((s) => s.updateTestName);
+    const updateApp = useTestStore((s) => s.updateApp);
     const { isLoadingTest, loadError } = useLoadTest(loadTestId);
 
     const [localName, setLocalName] = useState(activeTest?.name ?? '');
     useEffect(() => { setLocalName(activeTest?.name ?? ''); }, [activeTestId, activeTest?.name]);
 
     const debouncedUpdateName = useMemo(
-        () => debounce((id: string, name: string) => { state.updateTestName(id, name); }, 300),
-        [state.updateTestName],
+        () => debounce((id: string, name: string) => { updateTestName(id, name); }, 300),
+        [updateTestName],
     );
     useEffect(() => () => { debouncedUpdateName.cancel(); }, [debouncedUpdateName]);
 
@@ -49,7 +49,6 @@ export function StartPage({ onNavigateLibrary, loadTestId }: StartPageProps = {}
     const queryRef = useRef<HTMLDivElement>(null);
     const dataRef = useRef<HTMLDivElement>(null);
     const validationRef = useRef<HTMLDivElement>(null);
-    const barExpanded = state.resultsBarExpanded;
 
     const app = activeTest?.app ?? '';
     const testType = activeTest?.testType ?? 'standard';
@@ -64,7 +63,7 @@ export function StartPage({ onNavigateLibrary, loadTestId }: StartPageProps = {}
     const tutorial = useTutorial();
 
     const handleAppChange = (appValue: string): void => {
-        if (activeTest) state.updateApp(activeTest.id, appValue);
+        if (activeTest) updateApp(activeTest.id, appValue);
     };
 
     const handleStepClick = useCallback((stepId: string) => {

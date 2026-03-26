@@ -22,12 +22,12 @@ function getItems(rule: FieldGenerationRule): PickListItem[] {
   }));
 }
 
-export function PickListConfig({ testId, scenarioId, inputId, rule }: PickListConfigProps) {
-  const store = useTestStore();
+function PickListConfigInner({ testId, scenarioId, inputId, rule }: PickListConfigProps) {
+  const updateGeneratorRule = useTestStore((s) => s.updateGeneratorRule);
   const items = getItems(rule);
 
   const save = (next: PickListItem[]) => {
-    store.updateGeneratorRule(testId, scenarioId, inputId, rule.id, {
+    updateGeneratorRule(testId, scenarioId, inputId, rule.id, {
       config: { ...rule.config, items: next } as any,
     });
   };
@@ -86,3 +86,5 @@ export function PickListConfig({ testId, scenarioId, inputId, rule }: PickListCo
     </div>
   );
 }
+
+export const PickListConfig = React.memo(PickListConfigInner);

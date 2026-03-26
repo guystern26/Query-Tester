@@ -27,13 +27,14 @@ function inputHasContent(input: TestInput): boolean {
   return input.events.some((e) => e.fieldValues.some((fv) => fv.field.trim() || fv.value.trim()));
 }
 
-export function InputCard({ testId, scenarioId, input, index, isOpen = true, onToggle, accentBorder = '' }: InputCardProps) {
-  const state = useTestStore();
+function InputCardInner({ testId, scenarioId, input, index, isOpen = true, onToggle, accentBorder = '' }: InputCardProps) {
+  const setInputMode = useTestStore((s) => s.setInputMode);
+  const deleteInput = useTestStore((s) => s.deleteInput);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const num = index ?? 1;
 
   const setMode = (mode: InputMode) => {
-    state.setInputMode(testId, scenarioId, input.id, mode);
+    setInputMode(testId, scenarioId, input.id, mode);
   };
 
   const fieldCount = input.events.length === 0 ? 0 : Math.max(0, ...input.events.map((e) => e.fieldValues.length));
@@ -67,12 +68,12 @@ export function InputCard({ testId, scenarioId, input, index, isOpen = true, onT
     if (inputHasContent(input)) {
       setDeleteOpen(true);
     } else {
-      state.deleteInput(testId, scenarioId, input.id);
+      deleteInput(testId, scenarioId, input.id);
     }
   };
 
   const confirmDelete = () => {
-    state.deleteInput(testId, scenarioId, input.id);
+    deleteInput(testId, scenarioId, input.id);
     setDeleteOpen(false);
   };
 
@@ -181,3 +182,5 @@ export function InputCard({ testId, scenarioId, input, index, isOpen = true, onT
     </>
   );
 }
+
+export const InputCard = React.memo(InputCardInner);

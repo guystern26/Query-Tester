@@ -2,10 +2,13 @@
 """Numbered field generator — produces prefix_N values with optional padding."""
 from __future__ import annotations
 
+from typing import Any, Tuple
+
 from core.models import GeneratorRule
 
 
-def generate(rule: GeneratorRule, index: int) -> str:
+def prepare(rule: GeneratorRule) -> Tuple[str, int, int]:
+    """Pre-parse config once. Returns (prefix, start, padding)."""
     prefix = rule.config.get("prefix", rule.field_name)
     start = rule.config.get("start", 1)
     try:
@@ -17,11 +20,14 @@ def generate(rule: GeneratorRule, index: int) -> str:
         padding = int(padding)
     except (TypeError, ValueError):
         padding = 0
+    return (prefix, start, padding)
 
+
+def generate(rule: GeneratorRule, index: int, prepared: Any = None) -> str:
+    """Generate prefix_N with optional zero-padding."""
+    if prepared is None:
+        prepared = prepare(rule)
+    prefix, start, padding = prepared
     number = index + start
-    if padding > 0:
-        num_str = str(number).zfill(padding)
-    else:
-        num_str = str(number)
-
+    num_str = str(number).zfill(padding) if padding > 0 else str(number)
     return "{0}_{1}".format(prefix, num_str)

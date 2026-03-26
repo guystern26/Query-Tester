@@ -50,11 +50,14 @@ _FIELD_MAP = [
     ("smtp_username", None, str),
     ("email_auth_method", None, str),
     ("tls_mode", None, str),
+    ("llm_endpoint", "LLM_ENDPOINT", str),
+    ("llm_model", "LLM_MODEL", str),
+    ("llm_max_tokens", "LLM_MAX_TOKENS", int),
     ("log_level", "LOG_LEVEL", str),
 ]
 
 # Secret fields read from storage/passwords instead of KVStore
-_SECRET_FIELDS = frozenset(["hec_token", "smtp_password"])
+_SECRET_FIELDS = frozenset(["hec_token", "smtp_password", "llm_api_key"])
 
 
 def _to_bool(val):

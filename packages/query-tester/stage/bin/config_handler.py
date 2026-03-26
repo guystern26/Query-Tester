@@ -25,9 +25,9 @@ COLLECTION = "query_tester_config"
 CONFIG_KEY = "main"
 REQUIRED_FIELDS = frozenset(["hec_token", "splunk_host", "hec_host"])
 CONFIG_CACHE_TTL = 60
-
 _config_cache = None   # type: Optional[Dict[str, Any]]
 _config_cache_time = 0.0
+
 
 def invalidate_config_cache():
     # type: () -> None
@@ -154,15 +154,12 @@ class ConfigHandler(PersistentServerConnectionApplication):
             stored = kv.get_by_id(COLLECTION, CONFIG_KEY)
         except ValueError:
             return json_response({"configured": False, "is_admin": admin})
-        service = get_splunk_service(session_key)
-        secrets = read_all_secrets(service)
-        for field in REQUIRED_FIELDS:
-            if field in SECRET_FIELDS:
-                if not secrets.get(field):
-                    return json_response({"configured": False, "is_admin": admin})
-            elif not stored.get(field):
-                return json_response({"configured": False, "is_admin": admin})
-        return json_response({"configured": True, "is_admin": admin})
+        secrets = read_all_secrets(get_splunk_service(session_key))
+        configured = all(
+            secrets.get(f) if f in SECRET_FIELDS else stored.get(f)
+            for f in REQUIRED_FIELDS
+        )
+        return json_response({"configured": configured, "is_admin": admin})
 
     def _handle_get_secret(self, request, path):
         # type: (Dict[str, Any], str) -> Dict[str, Any]

@@ -1,7 +1,8 @@
 /** Paginated result rows table with per-row validation. Failed rows sorted to top. */
 import React, { useState, useMemo } from 'react';
 import type { ValidationDetail } from 'core/types';
-import { HIDDEN_SPLUNK_FIELDS, MAX_DISPLAY_ROWS, MANY_COLUMNS_THRESHOLD, PAGE_SIZE, humanizeCondition, isInjectedRunId, isNestedJsonField, getRowValidation } from './resultHelpers';
+import { HIDDEN_SPLUNK_FIELDS, MAX_DISPLAY_ROWS, MANY_COLUMNS_THRESHOLD, PAGE_SIZE, isInjectedRunId, isNestedJsonField, getRowValidation } from './resultHelpers';
+import { ResultRowsPagination } from './ResultRowsPagination';
 
 export interface ResultRowsTableProps {
   rows: Record<string, unknown>[];
@@ -171,32 +172,14 @@ export function ResultRowsTable({ rows, hiddenColumns, onToggleColumn, fieldFail
         </table>
       </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center gap-2 justify-between px-1">
-          <span className="text-[11px] text-slate-500">
-            Page {page + 1} of {totalPages} ({totalRows} row{totalRows !== 1 ? 's' : ''}{isTruncated ? ' of ' + sortedRows.length + ' total' : ''})
-          </span>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              disabled={page === 0}
-              onClick={() => setPage(page - 1)}
-              className="px-2 py-0.5 text-[11px] rounded bg-navy-800 text-slate-400 hover:text-slate-200 border border-slate-700/50 cursor-pointer disabled:opacity-30 disabled:cursor-default transition-colors"
-            >
-              Prev
-            </button>
-            <button
-              type="button"
-              disabled={page >= totalPages - 1}
-              onClick={() => setPage(page + 1)}
-              className="px-2 py-0.5 text-[11px] rounded bg-navy-800 text-slate-400 hover:text-slate-200 border border-slate-700/50 cursor-pointer disabled:opacity-30 disabled:cursor-default transition-colors"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      )}
+      <ResultRowsPagination
+        page={page}
+        totalPages={totalPages}
+        totalRows={totalRows}
+        isTruncated={isTruncated}
+        unfilteredCount={sortedRows.length}
+        onPageChange={setPage}
+      />
     </div>
   );
 }

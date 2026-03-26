@@ -8,7 +8,6 @@ import SearchInput from '@splunk/react-search/components/Input';
 import { useTestStore } from 'core/store/testStore';
 import { selectActiveTest, selectInput } from 'core/store/selectors';
 import type { EntityId } from 'core/types';
-import { getSavedSearchSpl } from '../../api/splunkApi';
 import { useSavedSearches } from '../../hooks/useSavedSearches';
 import { Select } from '../../common';
 import { TimeRangePicker } from '../../features/query/TimeRangePicker';
@@ -21,9 +20,12 @@ export interface QueryDataViewProps {
 }
 
 export function QueryDataView({ testId, scenarioId, inputId }: QueryDataViewProps) {
-  const store = useTestStore();
-  const test = selectActiveTest(store);
-  const input = selectInput(store, scenarioId, inputId);
+  const test = useTestStore(selectActiveTest);
+  const input = useTestStore((s) => selectInput(s, scenarioId, inputId));
+  const updateQueryDataSpl = useTestStore((s) => s.updateQueryDataSpl);
+  const updateQueryDataSavedSearch = useTestStore((s) => s.updateQueryDataSavedSearch);
+  const updateQueryDataTimeRange = useTestStore((s) => s.updateQueryDataTimeRange);
+  const fetchQueryDataSavedSearchSpl = useTestStore((s) => s.fetchQueryDataSavedSearchSpl);
   const config = input?.queryDataConfig;
   const spl = config?.spl ?? '';
   const savedSearchName = config?.savedSearchName ?? '';
@@ -40,15 +42,13 @@ export function QueryDataView({ testId, scenarioId, inputId }: QueryDataViewProp
   const handleSavedSearch = async (value: string) => {
     if (!app || !value) return;
     try {
-      const content = await getSavedSearchSpl(app, value);
-      store.updateQueryDataSpl(testId, scenarioId, inputId, content);
-      store.updateQueryDataSavedSearch(testId, scenarioId, inputId, value);
+      await fetchQueryDataSavedSearchSpl(testId, scenarioId, inputId, app, value);
     } catch { /* leave SPL unchanged */ }
   };
 
   const handleSplChange = (_e: React.SyntheticEvent, { value }: { value: string }) => {
-    store.updateQueryDataSpl(testId, scenarioId, inputId, value);
-    store.updateQueryDataSavedSearch(testId, scenarioId, inputId, null);
+    updateQueryDataSpl(testId, scenarioId, inputId, value);
+    updateQueryDataSavedSearch(testId, scenarioId, inputId, null);
   };
 
   const isEmpty = spl.trim() === '';
@@ -84,7 +84,7 @@ export function QueryDataView({ testId, scenarioId, inputId }: QueryDataViewProp
         <div className="flex-shrink-0 pt-0.5">
           <TimeRangePicker
             value={timeRange}
-            onChange={(tr) => store.updateQueryDataTimeRange(testId, scenarioId, inputId, tr)}
+            onChange={(tr) => updateQueryDataTimeRange(testId, scenarioId, inputId, tr)}
           />
         </div>
       </div>

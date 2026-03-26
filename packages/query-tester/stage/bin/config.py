@@ -65,6 +65,14 @@ LOG_LEVEL = "INFO"            # DEBUG | INFO | WARNING | ERROR
 
 ADMIN_ROLES = ["admin", "sc_admin", "query_tester_admin"]
 
+# ─── LLM / AI ────────────────────────────────────────────────────────────────
+# Used by the Extract Fields / Suggest Fields AI buttons.
+# Set LLM_ENDPOINT to "" to disable AI features.
+
+LLM_ENDPOINT = ""                     # e.g. "https://api.openai.com/v1/chat/completions"
+LLM_MODEL = "gpt-4o-mini"
+LLM_MAX_TOKENS = 1024
+
 # ─── Limits ──────────────────────────────────────────────────────────────────
 
 MAX_QUERY_DATA_EVENTS = 10000  # max events from a Query Data sub-query

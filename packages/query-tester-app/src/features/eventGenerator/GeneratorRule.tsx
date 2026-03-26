@@ -42,19 +42,20 @@ export interface GeneratorRuleProps {
 }
 
 export function GeneratorRule({ testId, scenarioId, inputId, rule, availableFields = [], usedFields = [] }: GeneratorRuleProps) {
-  const store = useTestStore();
+  const updateGeneratorRule = useTestStore((s) => s.updateGeneratorRule);
+  const deleteGeneratorRule = useTestStore((s) => s.deleteGeneratorRule);
 
   const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const v = e.target.value;
     if (!v) return;
-    store.updateGeneratorRule(testId, scenarioId, inputId, rule.id, {
+    updateGeneratorRule(testId, scenarioId, inputId, rule.id, {
       type: v as GeneratorType,
       config: {},
     });
   };
 
   const handleFieldChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    store.updateGeneratorRule(testId, scenarioId, inputId, rule.id, { field: e.target.value });
+    updateGeneratorRule(testId, scenarioId, inputId, rule.id, { field: e.target.value });
   };
 
   // Fields available in dropdown: all defined fields minus those used by other rules
@@ -87,7 +88,7 @@ export function GeneratorRule({ testId, scenarioId, inputId, rule, availableFiel
             className={`${inputCls} flex-1 min-w-0 font-mono`}
             value={rule.field}
             onChange={(e) =>
-              store.updateGeneratorRule(testId, scenarioId, inputId, rule.id, { field: e.target.value })
+              updateGeneratorRule(testId, scenarioId, inputId, rule.id, { field: e.target.value })
             }
             placeholder="field name"
           />
@@ -106,7 +107,7 @@ export function GeneratorRule({ testId, scenarioId, inputId, rule, availableFiel
         <button
           type="button"
           className="border-none bg-transparent text-slate-500 cursor-pointer px-1.5 py-0.5 rounded transition-colors hover:text-red-400 shrink-0"
-          onClick={() => store.deleteGeneratorRule(testId, scenarioId, inputId, rule.id)}
+          onClick={() => deleteGeneratorRule(testId, scenarioId, inputId, rule.id)}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
             <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />

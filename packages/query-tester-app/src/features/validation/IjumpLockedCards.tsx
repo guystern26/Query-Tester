@@ -65,7 +65,9 @@ export function TimeCard() {
 /* ── reason card ───────────────────────────────────────────── */
 
 export function ReasonCard({ testId, group }: { testId: string; group: FieldConditionGroup | null }) {
-  const store = useTestStore();
+  const updateConditionInGroup = useTestStore((s) => s.updateConditionInGroup);
+  const removeConditionFromGroup = useTestStore((s) => s.removeConditionFromGroup);
+  const addConditionToGroup = useTestStore((s) => s.addConditionToGroup);
   const [expanded, setExpanded] = useState(false);
 
   // Additional conditions beyond the base is_not_empty
@@ -94,21 +96,21 @@ export function ReasonCard({ testId, group }: { testId: string; group: FieldCond
             return (
               <div key={c.id} className="flex items-center gap-2">
                 <select className={`${selectCls} w-[130px]`} value={c.operator}
-                  onChange={(e) => store.updateConditionInGroup(testId, group.id, c.id, { operator: e.target.value as ConditionOperator })}>
+                  onChange={(e) => updateConditionInGroup(testId, group.id, c.id, { operator: e.target.value as ConditionOperator })}>
                   {REASON_OPERATORS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
                 {!hideValue && (
                   <input className={`${inputCls} w-[140px]`} value={c.value}
-                    onChange={(e) => store.updateConditionInGroup(testId, group.id, c.id, { value: e.target.value })}
+                    onChange={(e) => updateConditionInGroup(testId, group.id, c.id, { value: e.target.value })}
                     placeholder="value" />
                 )}
                 <button className="text-sm text-slate-500 hover:text-red-400 px-1 rounded transition cursor-pointer"
-                  onClick={() => store.removeConditionFromGroup(testId, group.id, c.id)}>×</button>
+                  onClick={() => removeConditionFromGroup(testId, group.id, c.id)}>×</button>
               </div>
             );
           })}
           <button className="text-xs text-slate-400 hover:text-accent-300 transition cursor-pointer py-1"
-            onClick={() => store.addConditionToGroup(testId, group.id, { operator: 'equals' as ConditionOperator, value: '' })}>
+            onClick={() => addConditionToGroup(testId, group.id, { operator: 'equals' as ConditionOperator, value: '' })}>
             + Add Condition
           </button>
         </div>

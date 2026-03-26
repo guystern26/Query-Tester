@@ -25,12 +25,12 @@ function getVariants(rule: FieldGenerationRule): RandomNumberVariant[] {
   }));
 }
 
-export function RandomNumberConfig({ testId, scenarioId, inputId, rule }: RandomNumberConfigProps) {
-  const store = useTestStore();
+function RandomNumberConfigInner({ testId, scenarioId, inputId, rule }: RandomNumberConfigProps) {
+  const updateGeneratorRule = useTestStore((s) => s.updateGeneratorRule);
   const variants = getVariants(rule);
 
   const save = (next: RandomNumberVariant[]) => {
-    store.updateGeneratorRule(testId, scenarioId, inputId, rule.id, {
+    updateGeneratorRule(testId, scenarioId, inputId, rule.id, {
       config: { ...rule.config, variants: next } as any,
     });
   };
@@ -83,3 +83,5 @@ export function RandomNumberConfig({ testId, scenarioId, inputId, rule }: Random
     </div>
   );
 }
+
+export const RandomNumberConfig = React.memo(RandomNumberConfigInner);
