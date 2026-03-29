@@ -7,9 +7,24 @@ export interface SetupCardProps {
     onNameChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
     app: string;
     onAppChange: (value: string) => void;
+    isIde?: boolean;
 }
 
-export function SetupCard({ localName, onNameChange, app, onAppChange }: SetupCardProps) {
+export function SetupCard({ localName, onNameChange, app, onAppChange, isIde }: SetupCardProps) {
+    if (isIde) {
+        return (
+            <div className="flex-1 flex items-center justify-center px-5 pt-4 animate-fadeIn">
+                <div className="w-full max-w-md bg-navy-900 rounded-2xl border border-slate-800 shadow-lg p-8 flex flex-col gap-5">
+                    <div className="text-center">
+                        <h2 className="text-base font-semibold text-slate-200">Select a Splunk App</h2>
+                        <p className="text-[13px] text-slate-400 mt-1">Choose the app context for your query</p>
+                    </div>
+                    <AppSelector value={app} onChange={onAppChange} autoFocus />
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="flex-1 flex items-center justify-center px-5 pt-4 animate-fadeIn">
             <div className="w-full max-w-xl bg-navy-900 rounded-2xl border border-slate-800 shadow-lg p-8 flex flex-col gap-6">

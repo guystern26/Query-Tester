@@ -46,16 +46,16 @@ const MARKER_CSS = `
     .spl-lint-blocked {
       border-bottom-style: dashed !important;
     }
-    .spl-field-0 { position:absolute; background:rgba(59,130,246,0.18); border-radius:2px; z-index:3; }
-    .spl-field-1 { position:absolute; background:rgba(34,197,94,0.18); border-radius:2px; z-index:3; }
-    .spl-field-2 { position:absolute; background:rgba(245,158,11,0.18); border-radius:2px; z-index:3; }
-    .spl-field-3 { position:absolute; background:rgba(236,72,153,0.18); border-radius:2px; z-index:3; }
-    .spl-field-4 { position:absolute; background:rgba(168,85,247,0.18); border-radius:2px; z-index:3; }
-    .spl-field-5 { position:absolute; background:rgba(249,115,22,0.18); border-radius:2px; z-index:3; }
-    .spl-field-6 { position:absolute; background:rgba(20,184,166,0.18); border-radius:2px; z-index:3; }
-    .spl-field-7 { position:absolute; background:rgba(139,92,246,0.18); border-radius:2px; z-index:3; }
-    .spl-field-8 { position:absolute; background:rgba(52,211,153,0.18); border-radius:2px; z-index:3; }
-    .spl-field-9 { position:absolute; background:rgba(251,113,133,0.18); border-radius:2px; z-index:3; }
+    .spl-field-0 { position:absolute; border-bottom:2px solid #60a5fa; z-index:3; }
+    .spl-field-1 { position:absolute; border-bottom:2px solid #4ade80; z-index:3; }
+    .spl-field-2 { position:absolute; border-bottom:2px solid #fbbf24; z-index:3; }
+    .spl-field-3 { position:absolute; border-bottom:2px solid #f472b6; z-index:3; }
+    .spl-field-4 { position:absolute; border-bottom:2px solid #c084fc; z-index:3; }
+    .spl-field-5 { position:absolute; border-bottom:2px solid #fb923c; z-index:3; }
+    .spl-field-6 { position:absolute; border-bottom:2px solid #2dd4bf; z-index:3; }
+    .spl-field-7 { position:absolute; border-bottom:2px solid #a78bfa; z-index:3; }
+    .spl-field-8 { position:absolute; border-bottom:2px solid #6ee7b7; z-index:3; }
+    .spl-field-9 { position:absolute; border-bottom:2px solid #fda4af; z-index:3; }
     .spl-lint-tooltip {
       position: absolute;
       z-index: 1000;

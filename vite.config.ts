@@ -49,10 +49,11 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        start: path.resolve(__dirname, 'index.html')
+        start: path.resolve(__dirname, 'index.html'),
+        ide: path.resolve(__dirname, 'ide.html'),
       },
       output: {
-        entryFileNames: 'start.js',
+        entryFileNames: '[name].js',
         assetFileNames: '[name].[ext]'
       }
     }

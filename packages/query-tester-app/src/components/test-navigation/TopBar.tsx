@@ -7,14 +7,16 @@ import { BugReportButton } from './BugReportButton';
 import { GearIcon } from '../GearIcon';
 import { SaveTestModal } from './SaveTestModal';
 import { TutorialLaunchButton } from '../../features/tutorial/TutorialLaunchButton';
+import { DestinationActions } from '../../features/ide/DestinationActions';
 
 export interface TopBarProps {
+  mode?: 'builder' | 'ide';
   onNavigateLibrary?: () => void;
   onNavigateSetup?: () => void;
   onStartTutorial?: () => void;
 }
 
-export function TopBar({ onNavigateLibrary, onNavigateSetup, onStartTutorial }: TopBarProps = {}) {
+export function TopBar({ mode = 'builder', onNavigateLibrary, onNavigateSetup, onStartTutorial }: TopBarProps = {}) {
   const activeTest = useTestStore(selectActiveTest);
   const isAdmin = useTestStore((s) => s.isAdmin);
   const setupRequired = useTestStore((s) => s.setupRequired);
@@ -77,29 +79,35 @@ export function TopBar({ onNavigateLibrary, onNavigateSetup, onStartTutorial }: 
     <>
       <header className="sticky top-0 z-50 h-14 bg-navy-900 border-b border-slate-800 px-5 flex items-center justify-between shrink-0 shadow-lg shadow-black/20">
         <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm" onClick={handleSave} data-tutorial="export-btn">Export</Button>
-          <Button variant="secondary" size="sm" onClick={handleLoadClick} data-tutorial="import-btn">Import</Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".json"
-            onChange={handleFileChange}
-            className="hidden"
-            aria-hidden="true"
-          />
-          <div className="w-px h-5 bg-slate-700 mx-1" />
-          <div className="relative flex items-center" data-tutorial="save-test-btn">
-            <Button variant="primary" size="sm" onClick={() => setSaveModalOpen(true)}>
-              Save Test
-            </Button>
-            {hasUnsavedChanges && savedTestId && (
-              <span
-                className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-400 border-2 border-navy-900"
-                title="Unsaved changes"
+          {mode === 'ide' ? (
+            <DestinationActions />
+          ) : (
+            <>
+              <Button variant="secondary" size="sm" onClick={handleSave} data-tutorial="export-btn">Export</Button>
+              <Button variant="secondary" size="sm" onClick={handleLoadClick} data-tutorial="import-btn">Import</Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json"
+                onChange={handleFileChange}
+                className="hidden"
+                aria-hidden="true"
               />
-            )}
-          </div>
-          <BugReportButton />
+              <div className="w-px h-5 bg-slate-700 mx-1" />
+              <div className="relative flex items-center" data-tutorial="save-test-btn">
+                <Button variant="primary" size="sm" onClick={() => setSaveModalOpen(true)}>
+                  Save Test
+                </Button>
+                {hasUnsavedChanges && savedTestId && (
+                  <span
+                    className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-400 border-2 border-navy-900"
+                    title="Unsaved changes"
+                  />
+                )}
+              </div>
+              <BugReportButton />
+            </>
+          )}
         </div>
         <div className="flex items-center gap-3">
           {onStartTutorial && <TutorialLaunchButton onClick={onStartTutorial} />}

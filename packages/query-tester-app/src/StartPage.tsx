@@ -3,32 +3,48 @@ import debounce from 'lodash/debounce';
 import { useTestStore } from 'core/store/testStore';
 import { selectActiveTest, selectActiveTestId, inputHasData } from 'core/store/selectors';
 import { useLoadTest } from './hooks/useLoadTest';
+import { useIdeTransfer } from './hooks/useIdeTransfer';
+import { useIdeKeyboardShortcuts } from './hooks/useIdeKeyboardShortcuts';
 import { TopBar } from './components/test-navigation/TopBar';
 import { AppSelector } from './components/AppSelector';
 import { TestTypeSelector } from './features/scenarios/TestTypeSelector';
 import { QuerySection } from './features/query/QuerySection';
-import { ScenarioPanel } from './features/scenarios/ScenarioPanel';
-import { ValidationSection } from './features/validation/ValidationSection';
 import { ResultsBar } from './features/results/ResultsBar';
+import { IdeResultsBar } from './features/results/IdeResultsBar';
+import { IntelligencePanel } from './features/ide/IntelligencePanel';
+import { DangerousCommandModal } from './features/ide/DangerousCommandModal';
+import { ContextInput } from './features/ide/ContextInput';
 import { usePipelineState } from './features/layout/usePipelineState';
 import { StepPipeline } from './features/layout/StepPipeline';
-import { PipelineConnector } from './features/layout/PipelineConnector';
+import { BuilderPanels } from './features/layout/BuilderPanels';
 import { SetupCard } from './features/layout/SetupCard';
 import { useTutorial } from './features/tutorial/useTutorial';
 import { TutorialOverlay } from './features/tutorial/TutorialOverlay';
 
 export interface StartPageProps {
+    mode?: 'builder' | 'ide';
     onNavigateLibrary?: () => void;
     loadTestId?: string;
 }
 
-export function StartPage({ onNavigateLibrary, loadTestId }: StartPageProps = {}) {
+export function StartPage({ mode = 'builder', onNavigateLibrary, loadTestId }: StartPageProps = {}) {
+    const isIde = mode === 'ide';
     const activeTest = useTestStore(selectActiveTest);
     const activeTestId = useTestStore(selectActiveTestId);
+    const chatExpanded = useTestStore((s) => s.chatExpanded);
     const barExpanded = useTestStore((s) => s.resultsBarExpanded);
     const updateTestName = useTestStore((s) => s.updateTestName);
     const updateApp = useTestStore((s) => s.updateApp);
+    const updateTestType = useTestStore((s) => s.updateTestType);
     const { isLoadingTest, loadError } = useLoadTest(loadTestId);
+
+    useEffect(() => {
+        if (isIde && activeTestId && activeTest?.testType !== 'query_only') {
+            updateTestType(activeTestId, 'query_only');
+        }
+    }, [isIde, activeTestId, activeTest?.testType, updateTestType]);
+
+    useIdeTransfer(mode);
 
     const [localName, setLocalName] = useState(activeTest?.name ?? '');
     useEffect(() => { setLocalName(activeTest?.name ?? ''); }, [activeTestId, activeTest?.name]);
@@ -51,52 +67,39 @@ export function StartPage({ onNavigateLibrary, loadTestId }: StartPageProps = {}
     const validationRef = useRef<HTMLDivElement>(null);
 
     const app = activeTest?.app ?? '';
+    const spl = activeTest?.query?.spl ?? '';
     const testType = activeTest?.testType ?? 'standard';
     const hasApp = app.trim() !== '';
-    const hasQuery = (activeTest?.query?.spl ?? '').trim() !== '';
+    const hasQuery = spl.trim() !== '';
+
+    const kbShortcuts = useIdeKeyboardShortcuts(isIde);
+
     const isStandard = testType === 'standard';
-    const showData = hasApp && hasQuery && isStandard;
+    const showData = !isIde && hasApp && hasQuery && isStandard;
     const dataDone = inputHasData(activeTest?.scenarios ?? []);
-    const showValidation = hasApp && hasQuery && (!isStandard || dataDone);
+    const showValidation = !isIde && hasApp && hasQuery && (!isStandard || dataDone);
 
     const pipeline = usePipelineState();
     const tutorial = useTutorial();
-
-    const handleAppChange = (appValue: string): void => {
-        if (activeTest) updateApp(activeTest.id, appValue);
-    };
+    const handleAppChange = (appValue: string): void => { if (activeTest) updateApp(activeTest.id, appValue); };
 
     const handleStepClick = useCallback((stepId: string) => {
-        const refMap: Record<string, React.RefObject<HTMLDivElement>> = {
-            query: queryRef,
-            data: dataRef,
-            validation: validationRef,
-        };
+        const refMap: Record<string, React.RefObject<HTMLDivElement>> = { query: queryRef, data: dataRef, validation: validationRef };
         const ref = refMap[stepId];
-        if (ref?.current) {
-            ref.current.scrollIntoView({ behavior: 'smooth', inline: 'center' });
-        }
+        if (ref?.current) ref.current.scrollIntoView({ behavior: 'smooth', inline: 'center' });
     }, []);
 
     const panelCount = (hasApp ? 1 : 0) + (showData ? 1 : 0) + (showValidation ? 1 : 0);
     const prevCount = useRef(panelCount);
-
-    const scrollToEnd = useCallback(() => {
-        const el = rowRef.current;
-        if (el) el.scrollTo({ left: el.scrollWidth, behavior: 'smooth' });
-    }, []);
-
-    useEffect(() => {
-        if (panelCount > prevCount.current) scrollToEnd();
-        prevCount.current = panelCount;
-    }, [panelCount, scrollToEnd]);
+    const scrollToEnd = useCallback(() => { const el = rowRef.current; if (el) el.scrollTo({ left: el.scrollWidth, behavior: 'smooth' }); }, []);
+    useEffect(() => { if (panelCount > prevCount.current) scrollToEnd(); prevCount.current = panelCount; }, [panelCount, scrollToEnd]);
 
     return (
         <div
             className="h-screen flex flex-col bg-gradient-to-br from-navy-900 to-navy-800 text-slate-100 overflow-hidden"
             style={{ paddingBottom: barExpanded ? '45vh' : '48px' }}
         >
-            <TopBar onNavigateLibrary={onNavigateLibrary} onNavigateSetup={() => { window.location.hash = 'setup'; }} onStartTutorial={tutorial.start} />
+            <TopBar mode={mode} onNavigateLibrary={onNavigateLibrary} onNavigateSetup={() => { window.location.hash = 'setup'; }} onStartTutorial={isIde ? undefined : tutorial.start} />
 
             {hasApp ? (
                 <>
@@ -112,30 +115,20 @@ export function StartPage({ onNavigateLibrary, loadTestId }: StartPageProps = {}
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="text-[11px] text-slate-500 uppercase tracking-wider">Name</span>
-                                <input
-                                    type="text"
-                                    value={localName}
-                                    onChange={handleNameChange}
-                                    maxLength={120}
-                                    placeholder="Test name..."
-                                    className="min-w-[140px] max-w-[220px] px-2.5 py-1 text-sm bg-navy-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-500/30 transition-all duration-200"
-                                />
+                                <input type="text" value={localName} onChange={handleNameChange} maxLength={120} placeholder="Test name..."
+                                    className="min-w-[140px] max-w-[220px] px-2.5 py-1 text-sm bg-navy-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-500/30 transition-all duration-200" />
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="text-[11px] text-slate-500 uppercase tracking-wider">App</span>
                                 <AppSelector value={app} onChange={handleAppChange} compact />
                             </div>
-                            <TestTypeSelector compact />
+                            {!isIde && <TestTypeSelector compact />}
                         </div>
                     </div>
-
-                    <StepPipeline
-                        steps={pipeline.steps}
-                        activeIndex={pipeline.activeIndex}
-                        allComplete={pipeline.allComplete}
-                        isRunning={pipeline.isRunning}
-                        onStepClick={handleStepClick}
-                    />
+                    {!isIde && (
+                        <StepPipeline steps={pipeline.steps} activeIndex={pipeline.activeIndex}
+                            allComplete={pipeline.allComplete} isRunning={pipeline.isRunning} onStepClick={handleStepClick} />
+                    )}
                 </>
             ) : isLoadingTest ? (
                 <div className="flex-1 flex items-center justify-center px-5 pt-4 animate-fadeIn">
@@ -157,63 +150,38 @@ export function StartPage({ onNavigateLibrary, loadTestId }: StartPageProps = {}
                         </div>
                         <p className="text-sm text-red-400">{loadError}</p>
                         {onNavigateLibrary && (
-                            <button
-                                type="button"
-                                onClick={onNavigateLibrary}
-                                className="px-4 py-2 text-sm font-medium rounded-lg bg-btnprimary text-white hover:bg-btnprimary-hover cursor-pointer transition-colors"
-                            >
+                            <button type="button" onClick={onNavigateLibrary}
+                                className="px-4 py-2 text-sm font-medium rounded-lg bg-btnprimary text-white hover:bg-btnprimary-hover cursor-pointer transition-colors">
                                 Go to Library
                             </button>
                         )}
                     </div>
                 </div>
             ) : (
-                <SetupCard localName={localName} onNameChange={handleNameChange} app={app} onAppChange={handleAppChange} />
+                <SetupCard localName={localName} onNameChange={handleNameChange} app={app} onAppChange={handleAppChange} isIde={isIde} />
             )}
 
-            {hasApp && (
-                <div ref={rowRef} className="flex gap-0 p-5 overflow-x-auto flex-1 items-stretch animate-fadeIn min-h-0">
-                    <div
-                        ref={queryRef}
-                        className="min-w-[300px] bg-navy-900 rounded-xl border border-slate-800 p-5 overflow-y-auto flex flex-col gap-4 animate-panelReveal panel-delay-0"
-                        style={{ flex: '32 1 0%' }}
-                    >
+            {hasApp && isIde ? (
+                <div className="flex gap-4 p-5 flex-1 animate-fadeIn min-h-0">
+                    <div className="flex-1 bg-navy-900 rounded-xl border border-slate-800 p-5 overflow-y-auto flex flex-col gap-4 min-w-0">
                         <span className="text-sm font-semibold text-slate-200">Query</span>
-                        <QuerySection />
+                        <QuerySection isIde />
+                        <ContextInput />
                     </div>
-
-                    {showData && (
-                        <>
-                            <PipelineConnector leftComplete={hasQuery} />
-                            <div
-                                ref={dataRef}
-                                className="min-w-[360px] bg-navy-900 rounded-xl border border-slate-800 p-5 overflow-y-auto flex flex-col gap-4 animate-panelReveal panel-delay-1"
-                                style={{ flex: '34 1 0%' }}
-                            >
-                                <span className="text-sm font-semibold text-slate-200">Data</span>
-                                <ScenarioPanel />
-                            </div>
-                        </>
-                    )}
-
-                    {showValidation && (
-                        <>
-                            <PipelineConnector leftComplete={showData ? dataDone : hasQuery} />
-                            <div
-                                ref={validationRef}
-                                className="min-w-[280px] bg-navy-900 rounded-xl border border-slate-800 p-5 overflow-y-auto flex flex-col gap-4 animate-panelReveal panel-delay-2"
-                                style={{ flex: '31 1 0%' }}
-                            >
-                                <span className="text-sm font-semibold text-slate-200">Validation</span>
-                                <ValidationSection />
-                            </div>
-                        </>
-                    )}
+                    <div className={`shrink-0 bg-navy-900 rounded-xl border border-slate-800 p-5 overflow-y-auto transition-all duration-300 ${chatExpanded ? 'w-[60%]' : 'w-[380px]'}`}>
+                        <IntelligencePanel />
+                    </div>
                 </div>
-            )}
+            ) : hasApp ? (
+                <BuilderPanels rowRef={rowRef} queryRef={queryRef} dataRef={dataRef} validationRef={validationRef}
+                    hasQuery={hasQuery} showData={showData} dataDone={dataDone} showValidation={showValidation} />
+            ) : null}
 
-            <ResultsBar />
-            <TutorialOverlay tutorial={tutorial} />
+            {isIde ? <IdeResultsBar /> : <ResultsBar />}
+            {!isIde && <TutorialOverlay tutorial={tutorial} />}
+            {kbShortcuts.dangerousCommands.length > 0 && (
+                <DangerousCommandModal commands={kbShortcuts.dangerousCommands} onConfirm={kbShortcuts.confirmDangerous} onCancel={kbShortcuts.cancelDangerous} />
+            )}
         </div>
     );
 }

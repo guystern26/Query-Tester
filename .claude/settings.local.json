@@ -200,7 +200,9 @@
       "Bash(wmic process:*)",
       "Bash(kill 14329 5484 3914 1092 3938 4021 2>/dev/null; sleep 1; ps aux | grep -i node | head -10)",
       "Bash(find /c/Users/guyst/splunk-ui-toolkit-apps/packages/query-tester-app/src/features/query -type f -name \"*.ts*\" 2>/dev/null | head -20)",
-      "Bash(find /c/Users/guyst/splunk-ui-toolkit-apps -name \"*review*SKILL.md\" -o -name \"*spl*review*.md\" 2>/dev/null | head -20)"
+      "Bash(find /c/Users/guyst/splunk-ui-toolkit-apps -name \"*review*SKILL.md\" -o -name \"*spl*review*.md\" 2>/dev/null | head -20)",
+      "Bash(taskkill //PID 155492 //F && taskkill //PID 96476 //F)",
+      "Bash(find /C/Users/guyst/splunk-ui-toolkit-apps -type f \\\\\\( -name \"*llm*\" -o -name \"*llmApi*\" -o -name \"*llmPrompts*\" \\\\\\) 2>/dev/null | head -20)"
     ]
   }
 }

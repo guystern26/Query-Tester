@@ -114,6 +114,55 @@ export async function extractValidationFields(spl: string): Promise<string[]> {
     }
 }
 
+// ── Multi-turn Chat ─────────────────────────────────────────────────────────────
+
+export interface ChatMessage {
+    role: 'user' | 'assistant';
+    content: string;
+}
+
+/**
+ * Multi-turn chat: sends full message history to the backend LLM proxy.
+ */
+export async function callLLMChat(systemPrompt: string, messages: ChatMessage[]): Promise<string> {
+    let url: string;
+    let init: RequestInit;
+
+    if (isSplunkEnv()) {
+        url =
+            createRESTURL(ENV.REST_PATH + '/llm', { app: 'QueryTester', owner: 'admin' }) +
+            '?output_mode=json';
+        const defaults = getDefaultFetchInit();
+        init = {
+            ...defaults,
+            method: 'POST',
+            headers: { ...defaults.headers, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ systemPrompt, messages }),
+        };
+    } else {
+        url = ENV.FALLBACK_ENDPOINT + '/llm?output_mode=json';
+        init = {
+            method: 'POST',
+            credentials: 'include' as RequestCredentials,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ systemPrompt, messages }),
+        };
+    }
+
+    const res = await fetch(url, init);
+    if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        throw new Error('LLM chat failed (' + res.status + '): ' + errText.slice(0, 200));
+    }
+
+    const data = await res.json();
+    const content = data?.content || data?.entry?.[0]?.content?.content;
+    if (!content) {
+        throw new Error('Empty response from LLM chat proxy');
+    }
+    return content;
+}
+
 // ── Analyze Query ────────────────────────────────────────────────────────────────
 
 export interface AnalyzeQueryNote {

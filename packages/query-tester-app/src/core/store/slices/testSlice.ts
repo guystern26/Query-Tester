@@ -102,5 +102,21 @@ export function testSlice(set: SetState, _get: GetState) {
         const t = findTest(draft.tests, testId);
         if (t) t.fieldExtraction = { sources, timestamp: new Date().toISOString() };
       }),
+
+    createTestFromTransfer: (spl: string, app: string, name: string) => {
+      skipNextTestsChange();
+      set((draft) => {
+        const newTest = createDefaultTest();
+        newTest.name = name || 'IDE Transfer';
+        newTest.app = app;
+        newTest.testType = 'query_only';
+        newTest.query.spl = spl;
+        draft.tests.push(newTest);
+        draft.activeTestId = newTest.id;
+        draft.savedTestId = null;
+        draft.savedTestVersion = null;
+        draft.hasUnsavedChanges = false;
+      });
+    },
   };
 }

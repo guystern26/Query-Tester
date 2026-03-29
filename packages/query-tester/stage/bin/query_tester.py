@@ -110,6 +110,10 @@ class QueryTesterHandler(PersistentServerConnectionApplication):
             return self._delegate_llm(request)
         if "/bug_report" in rest_path:
             return self._handle_bug_report(request)
+        if "/ide_run" in rest_path:
+            return self._delegate_ide_run(request)
+        if "/analyze_spl" in rest_path:
+            return self._delegate_analyze_spl(request)
 
         method = request.get("method", "GET").upper()
         if method == "GET":
@@ -136,6 +140,46 @@ class QueryTesterHandler(PersistentServerConnectionApplication):
         # type: (Dict[str, Any]) -> Dict[str, Any]
         from llm_proxy_handler import handle_llm_proxy
         return handle_llm_proxy(request)
+
+    def _delegate_analyze_spl(self, request):
+        # type: (Dict[str, Any]) -> Dict[str, Any]
+        """Delegate SPL analysis to the analyzer service."""
+        try:
+            session_key = get_session_key(request)
+            method = request.get("method", "GET").upper()
+            payload = normalize_payload(request.get("payload"))
+            from analysis.spl_analyzer_service import SplAnalyzerHandler
+            handler = SplAnalyzerHandler(session_key)
+            result, status_code = handler.handle(method, payload)
+            return json_response(result, status_code)
+        except ValueError as exc:
+            logger.warning("Analyze SPL validation error: %s", exc)
+            return json_response({"error": str(exc)}, 400)
+        except Exception as exc:
+            logger.error("Analyze SPL failed: %s", exc, exc_info=True)
+            return json_response(
+                {"error": "Analysis error: {0}".format(exc)}, 500,
+            )
+
+    def _delegate_ide_run(self, request):
+        # type: (Dict[str, Any]) -> Dict[str, Any]
+        """Delegate IDE query execution to the IDE run handler."""
+        try:
+            session_key = get_session_key(request)
+            method = request.get("method", "GET").upper()
+            payload = normalize_payload(request.get("payload"))
+            from ide.ide_run_handler import IdeRunHandler
+            handler = IdeRunHandler(session_key, request)
+            result, status_code = handler.handle(method, payload)
+            return json_response(result, status_code)
+        except ValueError as exc:
+            logger.warning("IDE run validation error: %s", exc)
+            return json_response({"error": str(exc)}, 400)
+        except Exception as exc:
+            logger.error("IDE run failed: %s", exc, exc_info=True)
+            return json_response(
+                {"error": "Internal server error: {0}".format(exc)}, 500,
+            )
 
     def _handle_bug_report(self, request):
         # type: (Dict[str, Any]) -> Dict[str, Any]

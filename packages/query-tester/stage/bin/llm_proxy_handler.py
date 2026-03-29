@@ -88,6 +88,51 @@ def _call_llm(llm_cfg, system_prompt, user_message):
     return content
 
 
+def _call_llm_chat(llm_cfg, system_prompt, messages):
+    # type: (Dict[str, Any], str, list) -> str
+    """POST multi-turn messages to the LLM endpoint. Returns assistant content."""
+    try:
+        from urllib.request import Request, urlopen
+        from urllib.error import HTTPError, URLError
+    except ImportError:
+        from urllib2 import Request, urlopen, HTTPError, URLError
+
+    api_messages = [{"role": "system", "content": system_prompt}]
+    for msg in messages:
+        role = str(msg.get("role", "user"))
+        content = str(msg.get("content", ""))
+        if role in ("user", "assistant") and content:
+            api_messages.append({"role": role, "content": content})
+
+    body = json.dumps({
+        "model": llm_cfg["model"],
+        "max_tokens": llm_cfg["max_tokens"],
+        "messages": api_messages,
+    }).encode("utf-8")
+
+    req = Request(llm_cfg["endpoint"], data=body, method="POST")
+    req.add_header("Content-Type", "application/json")
+    req.add_header("Authorization", "Bearer " + llm_cfg["api_key"])
+
+    ctx = ssl.create_default_context()
+    try:
+        resp = urlopen(req, timeout=120, context=ctx)
+        data = json.loads(resp.read().decode("utf-8"))
+    except HTTPError as exc:
+        err_body = exc.read().decode("utf-8", errors="replace")[:200]
+        logger.error("LLM chat HTTP %d: %s", exc.code, err_body)
+        raise ValueError("LLM request failed ({0}): {1}".format(exc.code, err_body))
+    except URLError as exc:
+        logger.error("LLM chat connection error: %s", exc.reason)
+        raise ValueError("Cannot reach LLM endpoint: {0}".format(exc.reason))
+
+    choice = (data.get("choices") or [{}])[0]
+    content = (choice.get("message") or {}).get("content", "")
+    if not content:
+        raise ValueError("Empty response from LLM.")
+    return content
+
+
 def handle_llm_proxy(request):
     # type: (Dict[str, Any]) -> Dict[str, Any]
     """Handle POST /data/tester/llm — proxy an LLM call."""
@@ -100,6 +145,19 @@ def handle_llm_proxy(request):
         payload = normalize_payload(request.get("payload"))
 
         system_prompt = str(payload.get("systemPrompt", "")).strip()
+        messages = payload.get("messages")
+
+        # Multi-turn chat mode: { systemPrompt, messages: [...] }
+        if isinstance(messages, list) and len(messages) > 0:
+            if not system_prompt:
+                return json_response(
+                    {"error": "systemPrompt is required for chat mode."}, 400,
+                )
+            llm_cfg = _get_llm_config(session_key)
+            content = _call_llm_chat(llm_cfg, system_prompt, messages)
+            return json_response({"content": content})
+
+        # Single-shot mode: { systemPrompt, userMessage }
         user_message = str(payload.get("userMessage", "")).strip()
         if not system_prompt or not user_message:
             return json_response(

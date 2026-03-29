@@ -20,6 +20,8 @@ import { scheduledTestsSlice, scheduledTestsInitialState } from './slices/schedu
 import { testLibrarySlice, testLibraryInitialState } from './slices/testLibrarySlice';
 import { configSlice, configInitialState, commandPolicyInitialState } from './slices/configSlice';
 import { llmActionsSlice } from './slices/llmActionsSlice';
+import { ideSlice, ideInitialState } from './slices/ideSlice';
+import { chatSlice, chatInitialState } from './slices/chatSlice';
 import { consumeSkip } from './changeDetectionFlag';
 
 export type { TestStoreState } from './storeTypes';
@@ -59,6 +61,12 @@ export const useTestStore = create<TestStoreState>()(
         ...configSlice(set),
 
         ...llmActionsSlice(set, get),
+
+        ...ideInitialState,
+        ...ideSlice(set, get),
+
+        ...chatInitialState,
+        ...chatSlice(set, get),
 
         setupRequired: false,
     }))

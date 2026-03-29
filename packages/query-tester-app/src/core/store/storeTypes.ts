@@ -11,8 +11,10 @@ import type {
 import type {
     AppConfig, CommandPolicyEntry, ConfigStatus, ConnectionTestResult, EmailDetectResult,
 } from '../types/config';
+import type { IdeSliceState } from './slices/ideSlice';
+import type { ChatSliceState } from './slices/chatSlice';
 
-export interface TestStoreState {
+export interface TestStoreState extends IdeSliceState, ChatSliceState {
     tests: TestDefinition[];
     activeTestId: EntityId | null;
     isRunning: boolean;
@@ -32,6 +34,7 @@ export interface TestStoreState {
     setActiveTest: (testId: EntityId | null) => void;
     updateTestType: (testId: EntityId, testType: TestType) => void;
     updateApp: (testId: EntityId, app: string) => void;
+    createTestFromTransfer: (spl: string, app: string, name: string) => void;
 
     // --- Scenarios ---
     addScenario: (testId: EntityId) => void;
