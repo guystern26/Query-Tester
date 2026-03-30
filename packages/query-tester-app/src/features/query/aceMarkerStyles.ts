@@ -22,6 +22,14 @@ export function fieldMarkerClass(colorIndex: number): string {
 // ── CSS injection ───────────────────────────────────────────────────────────────
 
 const MARKER_CSS = `
+    /* SPL syntax highlighting — matches Splunk's native dark theme palette */
+    .ace_editor .ace_command  { color: #789eff !important; }
+    .ace_editor .ace_function { color: #d97ed9 !important; }
+    .ace_editor .ace_argument { color: #95d640 !important; }
+    .ace_editor .ace_modifier { color: #f7a45b !important; }
+    .ace_editor .ace_comment  { color: #8da6c0 !important; font-style: italic; }
+    .ace_editor .ace_invalid  { color: #ff6b66 !important; }
+
     .spl-lint-warning {
       position: absolute;
       background: rgba(250,204,21,0.25);

@@ -1454,6 +1454,9 @@ video {
 .border-blue-500\/30 {
   border-color: rgb(59 130 246 / 0.3);
 }
+.border-blue-500\/40 {
+  border-color: rgb(59 130 246 / 0.4);
+}
 .border-blue-500\/50 {
   border-color: rgb(59 130 246 / 0.5);
 }
@@ -1996,6 +1999,9 @@ video {
 }
 .bg-slate-700\/60 {
   background-color: rgb(51 65 85 / 0.6);
+}
+.bg-slate-800\/40 {
+  background-color: rgb(30 41 59 / 0.4);
 }
 .bg-slate-800\/50 {
   background-color: rgb(30 41 59 / 0.5);
@@ -3006,6 +3012,11 @@ body {
 .hover\:text-slate-300:hover {
   --tw-text-opacity: 1;
   color: rgb(203 213 225 / var(--tw-text-opacity, 1));
+}
+
+.hover\:text-slate-400:hover {
+  --tw-text-opacity: 1;
+  color: rgb(148 163 184 / var(--tw-text-opacity, 1));
 }
 
 .hover\:text-white:hover {

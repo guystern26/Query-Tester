@@ -69,7 +69,7 @@ def _call_llm(llm_cfg, system_prompt, user_message):
     req.add_header("Content-Type", "application/json")
     req.add_header("Authorization", "Bearer " + llm_cfg["api_key"])
 
-    ctx = ssl.create_default_context()
+    ctx = ssl._create_unverified_context()
     try:
         resp = urlopen(req, timeout=60, context=ctx)
         data = json.loads(resp.read().decode("utf-8"))
@@ -104,6 +104,9 @@ def _call_llm_chat(llm_cfg, system_prompt, messages):
         if role in ("user", "assistant") and content:
             api_messages.append({"role": role, "content": content})
 
+    total_chars = sum(len(m["content"]) for m in api_messages)
+    logger.info("LLM chat: %d messages, ~%d chars total", len(api_messages), total_chars)
+
     body = json.dumps({
         "model": llm_cfg["model"],
         "max_tokens": llm_cfg["max_tokens"],
@@ -114,22 +117,34 @@ def _call_llm_chat(llm_cfg, system_prompt, messages):
     req.add_header("Content-Type", "application/json")
     req.add_header("Authorization", "Bearer " + llm_cfg["api_key"])
 
-    ctx = ssl.create_default_context()
+    ctx = ssl._create_unverified_context()
     try:
         resp = urlopen(req, timeout=120, context=ctx)
-        data = json.loads(resp.read().decode("utf-8"))
+        raw_resp = resp.read().decode("utf-8")
+        data = json.loads(raw_resp)
     except HTTPError as exc:
-        err_body = exc.read().decode("utf-8", errors="replace")[:200]
+        err_body = exc.read().decode("utf-8", errors="replace")[:500]
         logger.error("LLM chat HTTP %d: %s", exc.code, err_body)
         raise ValueError("LLM request failed ({0}): {1}".format(exc.code, err_body))
     except URLError as exc:
         logger.error("LLM chat connection error: %s", exc.reason)
         raise ValueError("Cannot reach LLM endpoint: {0}".format(exc.reason))
 
+    # Try standard OpenAI format first, then common alternatives
     choice = (data.get("choices") or [{}])[0]
     content = (choice.get("message") or {}).get("content", "")
     if not content:
-        raise ValueError("Empty response from LLM.")
+        # Some models use delta instead of message
+        content = (choice.get("delta") or {}).get("content", "")
+    if not content:
+        # Some models put content at response root
+        content = data.get("content", "")
+    if not content:
+        # Some models use output/text fields
+        content = data.get("output", data.get("text", ""))
+    if not content:
+        logger.error("LLM chat empty response. Raw: %s", raw_resp[:500])
+        raise ValueError("Empty response from LLM. Check query_tester.log for raw response.")
     return content
 
 

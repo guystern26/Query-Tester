@@ -58,7 +58,11 @@ export function useAnalyzeQuery(): AnalyzeQueryState {
     }, []);
 
     const markStale = useCallback(() => {
-        if (hasResults) setIsStale(true);
+        if (hasResults) {
+            setIsStale(true);
+            setAnalysisNotes([]);
+            setFieldHighlights([]);
+        }
     }, [hasResults]);
 
     const runAnalysis = useCallback((spl: string, skills?: SkillSnippet[]) => {

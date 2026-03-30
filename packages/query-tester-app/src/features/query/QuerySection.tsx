@@ -10,9 +10,10 @@ import { TimeRangePicker } from './TimeRangePicker';
 import { lintSpl, SplWarning } from './splLinter';
 import { useAceMarkers } from './useAceMarkers';
 import { useAnalyzeQuery } from './useAnalyzeQuery';
-import { AnalysisResultBar } from './AnalysisResultBar';
+import { AnalysisResultBar, TogglePill } from './AnalysisResultBar';
 import { IDE_POLICY } from './ideCommandPolicy';
 import { formatSpl } from './splFormatter';
+import { useSplSyntax } from '../../hooks/useSplSyntax';
 
 const APP_CHANGE_MSG = 'You changed the app. Some lookups and saved searches may not be available.';
 
@@ -37,6 +38,7 @@ export function QuerySection({ isIde }: QuerySectionProps) {
   const spl = test?.query?.spl ?? '';
   const origin = test?.query?.savedSearchOrigin ?? '';
   const effectivePolicy = isIde ? IDE_POLICY : commandPolicy;
+  const splSyntax = useSplSyntax();
 
   // Local SPL state for debounced store writes
   const [localSpl, setLocalSpl] = useState(spl);
@@ -53,6 +55,9 @@ export function QuerySection({ isIde }: QuerySectionProps) {
   const prevApp = useRef(app);
   const [appChanged, setAppChanged] = useState(false);
   const [splWarnings, setSplWarnings] = useState<SplWarning[]>([]);
+  const [editorFocused, setEditorFocused] = useState(false);
+  const [showNotes, setShowNotes] = useState(true);
+  const [showFields, setShowFields] = useState(true);
   const editorRef = useRef<HTMLDivElement>(null);
 
   // LLM analysis state
@@ -79,42 +84,32 @@ export function QuerySection({ isIde }: QuerySectionProps) {
     setStoreAnalysisNotes([...analysisNotes.map((w, i) => toNote(w, i, 'm-')), ...unmatched]);
   }, [hasAnalysis, analysisError, unmatchedNotes, analysisNotes, setStoreAnalysisNotes]);
 
-  // Merge linter warnings + analysis markers + field highlights
-  const mergedWarnings = useMemo<SplWarning[]>(
-    () => [...splWarnings, ...analysisNotes, ...fieldHighlights],
-    [splWarnings, analysisNotes, fieldHighlights],
-  );
+  // Merge warnings; hide all while focused; respect toggle filters
+  const mergedWarnings = useMemo<SplWarning[]>(() => {
+    if (editorFocused) return [];
+    return [...splWarnings, ...(showNotes ? analysisNotes : []), ...(showFields ? fieldHighlights : [])];
+  }, [editorFocused, splWarnings, analysisNotes, fieldHighlights, showNotes, showFields]);
 
   // Mark analysis stale when SPL changes — stale markers point to wrong positions
   const prevSplRef = useRef(localSpl);
   useEffect(() => {
-    if (prevSplRef.current !== localSpl) {
-      prevSplRef.current = localSpl;
-      markStale();
-    }
+    if (prevSplRef.current !== localSpl) { prevSplRef.current = localSpl; markStale(); }
   }, [localSpl, markStale]);
 
-  // Clear warnings while user is editing, re-lint on blur
-  const handleEditorFocus = useCallback(() => { setSplWarnings([]); }, []);
+  const handleEditorFocus = useCallback(() => { setEditorFocused(true); }, []);
   const handleEditorBlur = useCallback(() => {
-    debouncedUpdateSpl.flush();
+    debouncedUpdateSpl.flush(); setEditorFocused(false);
     setSplWarnings(lintSpl(localSpl, effectivePolicy));
   }, [localSpl, effectivePolicy, debouncedUpdateSpl]);
 
-  // Re-lint when SPL or policy changes externally
-  useEffect(() => {
-    if (!editorRef.current?.contains(document.activeElement)) {
-      setSplWarnings(lintSpl(localSpl, effectivePolicy));
-    }
+  useEffect(() => { // Re-lint on external SPL/policy change
+    if (!editorRef.current?.contains(document.activeElement)) setSplWarnings(lintSpl(localSpl, effectivePolicy));
   }, [localSpl, effectivePolicy]);
 
   // Apply inline Ace markers + gutter annotations + hover tooltips
   useAceMarkers(editorRef, mergedWarnings);
 
-  useEffect(() => {
-    if (app !== prevApp.current && prevApp.current !== '') setAppChanged(true);
-    prevApp.current = app;
-  }, [app]);
+  useEffect(() => { if (app !== prevApp.current && prevApp.current !== '') setAppChanged(true); prevApp.current = app; }, [app]);
   const options = savedSearches.map((s) => ({ value: s.name, label: s.name }));
 
   const handleSavedSearch = async (value: string) => {
@@ -162,7 +157,7 @@ export function QuerySection({ isIde }: QuerySectionProps) {
 
       <div className="flex gap-3 items-start">
         <div ref={editorRef} className="relative flex-1 min-w-0" onFocus={handleEditorFocus} onBlur={handleEditorBlur}>
-          <SearchInput value={localSpl} onChange={handleSplChange} placeholder="index=main sourcetype=access_combined | stats count by src_ip" minLines={6} maxLines={20} showLineNumbers />
+          <SearchInput value={localSpl} onChange={handleSplChange} syntax={splSyntax} placeholder="index=main sourcetype=access_combined | stats count by src_ip" minLines={6} maxLines={20} showLineNumbers />
           <span className="absolute right-3 bottom-2 text-[11px] text-slate-500 pointer-events-none">{localSpl.length} chars</span>
         </div>
 
@@ -183,6 +178,12 @@ export function QuerySection({ isIde }: QuerySectionProps) {
               {isAnalyzing ? 'Analyzing...' : analysisStale ? 'Re-analyze Query' : 'Analyze Query'}
             </button>
             {analysisStale && <span className="text-[11px] text-amber-400/80 text-center leading-tight">Query changed — re-analyze for updated results.</span>}
+            {hasAnalysis && !analysisStale && (
+              <div className="flex gap-1 justify-center">
+                <TogglePill label="Notes" active={showNotes} onClick={() => setShowNotes((v) => !v)} />
+                <TogglePill label="Fields" active={showFields} onClick={() => setShowFields((v) => !v)} />
+              </div>
+            )}
           </div>
         )}
       </div>
