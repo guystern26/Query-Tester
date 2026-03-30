@@ -4,7 +4,7 @@
  */
 import { useState, useRef, useCallback } from 'react';
 import type { SplWarning } from './splLinter';
-import type { AnalyzeQueryNote } from '../../api/llmApi';
+import type { AnalyzeQueryNote, SkillSnippet } from '../../api/llmApi';
 import { analyzeQuery } from '../../api/llmApi';
 import { mapNotesToWarnings, mapFieldsToHighlights, findUnmatchedNotes } from './splAnalyzer';
 
@@ -24,7 +24,7 @@ export interface AnalyzeQueryState {
     analysisError: string;
     unmatchedNotes: AnalyzeQueryNote[];
     trackedFields: TrackedField[];
-    runAnalysis: (spl: string) => void;
+    runAnalysis: (spl: string, skills?: SkillSnippet[]) => void;
     clearAnalysis: () => void;
     markStale: () => void;
 }
@@ -61,14 +61,14 @@ export function useAnalyzeQuery(): AnalyzeQueryState {
         if (hasResults) setIsStale(true);
     }, [hasResults]);
 
-    const runAnalysis = useCallback((spl: string) => {
+    const runAnalysis = useCallback((spl: string, skills?: SkillSnippet[]) => {
         if (!spl.trim()) return;
         splRef.current = spl;
         setIsAnalyzing(true);
         setIsStale(false);
         setAnalysisError('');
 
-        analyzeQuery(spl)
+        analyzeQuery(spl, skills)
             .then((result) => {
                 // Discard if SPL changed while awaiting
                 if (splRef.current !== spl) return;

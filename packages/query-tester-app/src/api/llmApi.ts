@@ -179,11 +179,25 @@ export interface AnalyzeQueryResult {
     summary: string;
 }
 
+export interface SkillSnippet {
+    name: string;
+    prompt: string;
+}
+
+function buildAnalyzerPrompt(skills?: SkillSnippet[]): string {
+    if (!skills || skills.length === 0) return ANALYZE_QUERY_PROMPT;
+    const skillBlock = skills
+        .map((s) => '## Skill: ' + s.name + '\n' + s.prompt)
+        .join('\n\n');
+    return ANALYZE_QUERY_PROMPT + '\n\n# Active Skills\n\n' + skillBlock;
+}
+
 /**
  * Send SPL to the LLM for code review, explanation, and field tracking.
+ * Optionally injects active skills into the system prompt.
  */
-export async function analyzeQuery(spl: string): Promise<AnalyzeQueryResult> {
-    const raw = await callLLM(ANALYZE_QUERY_PROMPT, spl);
+export async function analyzeQuery(spl: string, skills?: SkillSnippet[]): Promise<AnalyzeQueryResult> {
+    const raw = await callLLM(buildAnalyzerPrompt(skills), spl);
     const cleaned = cleanJsonResponse(raw);
 
     let parsed: AnalyzeQueryResult;

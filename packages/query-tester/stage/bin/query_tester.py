@@ -114,6 +114,8 @@ class QueryTesterHandler(PersistentServerConnectionApplication):
             return self._delegate_ide_run(request)
         if "/analyze_spl" in rest_path:
             return self._delegate_analyze_spl(request)
+        if "/chat_skills" in rest_path:
+            return self._delegate_chat_skills(request)
 
         method = request.get("method", "GET").upper()
         if method == "GET":
@@ -180,6 +182,20 @@ class QueryTesterHandler(PersistentServerConnectionApplication):
             return json_response(
                 {"error": "Internal server error: {0}".format(exc)}, 500,
             )
+
+    def _delegate_chat_skills(self, request):
+        # type: (Dict[str, Any]) -> Dict[str, Any]
+        try:
+            session_key = get_session_key(request)
+            method = request.get("method", "GET").upper()
+            payload = normalize_payload(request.get("payload"))
+            from chat_skills_handler import ChatSkillsHandler
+            handler = ChatSkillsHandler(session_key, get_username(request))
+            result, status_code = handler.handle(method, payload)
+            return json_response(result, status_code)
+        except Exception as exc:
+            logger.error("Chat skills error: %s", exc, exc_info=True)
+            return json_response({"error": str(exc)}, 500)
 
     def _handle_bug_report(self, request):
         # type: (Dict[str, Any]) -> Dict[str, Any]

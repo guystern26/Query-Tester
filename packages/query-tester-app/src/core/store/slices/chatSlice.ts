@@ -11,6 +11,14 @@ import { runIdeQuery } from '../../../api/ideApi';
 import { extractBaseSearch } from '../../../features/ide/chatUtils';
 import type { ParsedAction } from '../../../features/ide/chatUtils';
 import { abortChat, createSendChatMessage, createExecuteChatAction } from './chatActions';
+import { fetchChatSkills, createChatSkill, updateChatSkill, deleteChatSkill } from '../../../api/chatSkillsApi';
+
+export interface ChatSkill {
+    id: string;
+    name: string;
+    prompt: string;
+    enabled: boolean;
+}
 
 export interface ActionResult {
     status: 'loading' | 'success' | 'error';
@@ -35,17 +43,30 @@ export interface ChatSliceState {
     chatContextSpl: string | null;
     chatExpanded: boolean;
     chatPreviousResponse: IdeRunResponse | null;
+    chatCustomPrompt: string;
+    chatSkills: ChatSkill[];
     sendChatMessage: (text: string) => Promise<void>;
     syncChatContext: (response: IdeRunResponse, spl: string) => void;
     executeChatAction: (messageId: string, actionId: string) => Promise<void>;
     clearChat: () => void;
     toggleChatExpanded: () => void;
+    setChatCustomPrompt: (prompt: string) => void;
+    setChatSkills: (skills: ChatSkill[]) => void;
+    loadChatSkills: () => Promise<void>;
+    addChatSkill: (name: string, prompt: string) => Promise<void>;
+    saveChatSkill: (skill: ChatSkill) => Promise<void>;
+    removeChatSkill: (id: string) => Promise<void>;
+}
+
+const CUSTOM_PROMPT_KEY = 'qt_chat_custom_prompt';
+function loadCustomPrompt(): string {
+    try { return localStorage.getItem(CUSTOM_PROMPT_KEY) || ''; } catch { return ''; }
 }
 
 export const chatInitialState: Pick<
     ChatSliceState,
     | 'chatMessages' | 'chatLoading' | 'chatSampleData' | 'chatSampleLoading'
-    | 'chatContextSpl' | 'chatExpanded' | 'chatPreviousResponse'
+    | 'chatContextSpl' | 'chatExpanded' | 'chatPreviousResponse' | 'chatCustomPrompt' | 'chatSkills'
 > = {
     chatMessages: [],
     chatLoading: false,
@@ -54,6 +75,8 @@ export const chatInitialState: Pick<
     chatContextSpl: null,
     chatExpanded: false,
     chatPreviousResponse: null,
+    chatCustomPrompt: loadCustomPrompt(),
+    chatSkills: [],
 };
 
 interface StoreGet {
@@ -67,6 +90,8 @@ interface StoreGet {
         chatSampleLoading: boolean;
         chatContextSpl: string | null;
         chatPreviousResponse: IdeRunResponse | null;
+        chatCustomPrompt: string;
+        chatSkills: ChatSkill[];
         updateSpl: (testId: string, spl: string) => void;
         runIdeQuery: (spl: string, app: string, timeRange?: { earliest: string; latest: string }, userContext?: string, priorAnalysis?: Array<{ severity: string; category: string; message: string }>, allowBlocked?: boolean) => Promise<void>;
     };
@@ -77,10 +102,46 @@ type SetState = (recipe: (draft: ChatSliceState) => void) => void;
 export function chatSlice(
     set: SetState,
     get: StoreGet,
-): Pick<ChatSliceState, 'sendChatMessage' | 'syncChatContext' | 'executeChatAction' | 'clearChat' | 'toggleChatExpanded'> {
+): Pick<ChatSliceState, 'sendChatMessage' | 'syncChatContext' | 'executeChatAction' | 'clearChat' | 'toggleChatExpanded' | 'setChatCustomPrompt' | 'setChatSkills' | 'loadChatSkills' | 'addChatSkill' | 'saveChatSkill' | 'removeChatSkill'> {
     return {
         toggleChatExpanded: () => {
             set((d) => { d.chatExpanded = !d.chatExpanded; });
+        },
+
+        setChatCustomPrompt: (prompt: string) => {
+            set((d) => { d.chatCustomPrompt = prompt; });
+            try { localStorage.setItem(CUSTOM_PROMPT_KEY, prompt); } catch { /* ignore */ }
+        },
+
+        setChatSkills: (skills: ChatSkill[]) => {
+            set((d) => { d.chatSkills = skills; });
+        },
+
+        loadChatSkills: async () => {
+            try {
+                const skills = await fetchChatSkills();
+                set((d) => { d.chatSkills = skills; });
+            } catch { /* skills stay empty until backend is available */ }
+        },
+
+        addChatSkill: async (name: string, prompt: string) => {
+            try {
+                const skill = await createChatSkill({ name, prompt, enabled: true });
+                set((d) => { d.chatSkills.push(skill); });
+            } catch { /* ignore — UI will still show local state */ }
+        },
+
+        saveChatSkill: async (skill: ChatSkill) => {
+            set((d) => {
+                const idx = d.chatSkills.findIndex((s) => s.id === skill.id);
+                if (idx >= 0) d.chatSkills[idx] = skill;
+            });
+            try { await updateChatSkill(skill); } catch { /* local state already updated */ }
+        },
+
+        removeChatSkill: async (id: string) => {
+            set((d) => { d.chatSkills = d.chatSkills.filter((s) => s.id !== id); });
+            try { await deleteChatSkill(id); } catch { /* local state already updated */ }
         },
 
         syncChatContext: (response: IdeRunResponse, spl: string) => {

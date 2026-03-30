@@ -21,6 +21,8 @@ interface ChatStoreGet {
         chatMessages: ChatMessageEntry[];
         chatSampleData: Record<string, string>[] | null;
         chatPreviousResponse: IdeRunResponse | null;
+        chatCustomPrompt: string;
+        chatSkills: Array<{ id: string; name: string; prompt: string; enabled: boolean }>;
         updateSpl: (testId: string, spl: string) => void;
         runIdeQuery: (spl: string, app: string, timeRange?: { earliest: string; latest: string }) => Promise<void>;
     };
@@ -84,8 +86,13 @@ export function createSendChatMessage(set: SetState, get: ChatStoreGet): (text: 
             content: m.content,
         }));
 
+        const enabledSkills = state.chatSkills
+            .filter((s) => s.enabled)
+            .map((s) => ({ name: s.name, prompt: s.prompt }));
+
         const systemPrompt = buildChatSystemPrompt(
             spl, app, test.query?.timeRange, state.ideUserContext, contextData,
+            state.chatCustomPrompt, enabledSkills,
         );
 
         if (chatAbortController) chatAbortController.abort();

@@ -31,6 +31,7 @@ export function QuerySection({ isIde }: QuerySectionProps) {
   const clearSplDriftWarning = useTestStore((s) => s.clearSplDriftWarning);
   const setStoreAnalysisNotes = useTestStore((s) => s.setAnalysisNotes);
   const setStoreAnalysisLoading = useTestStore((s) => s.setAnalysisLoading);
+  const chatSkills = useTestStore((s) => s.chatSkills);
 
   const app = test?.app ?? '';
   const spl = test?.query?.spl ?? '';
@@ -84,14 +85,17 @@ export function QuerySection({ isIde }: QuerySectionProps) {
     [splWarnings, analysisNotes, fieldHighlights],
   );
 
-  // Clear analysis markers when SPL changes — stale markers point to wrong positions
-  useEffect(() => { clearAnalysis(); }, [localSpl, clearAnalysis]);
+  // Mark analysis stale when SPL changes — stale markers point to wrong positions
+  const prevSplRef = useRef(localSpl);
+  useEffect(() => {
+    if (prevSplRef.current !== localSpl) {
+      prevSplRef.current = localSpl;
+      markStale();
+    }
+  }, [localSpl, markStale]);
 
   // Clear warnings while user is editing, re-lint on blur
-  const handleEditorFocus = useCallback(() => {
-    setSplWarnings([]);
-  }, []);
-
+  const handleEditorFocus = useCallback(() => { setSplWarnings([]); }, []);
   const handleEditorBlur = useCallback(() => {
     debouncedUpdateSpl.flush();
     setSplWarnings(lintSpl(localSpl, effectivePolicy));
@@ -111,7 +115,6 @@ export function QuerySection({ isIde }: QuerySectionProps) {
     if (app !== prevApp.current && prevApp.current !== '') setAppChanged(true);
     prevApp.current = app;
   }, [app]);
-
   const options = savedSearches.map((s) => ({ value: s.name, label: s.name }));
 
   const handleSavedSearch = async (value: string) => {
@@ -174,7 +177,8 @@ export function QuerySection({ isIde }: QuerySectionProps) {
                   setLocalSpl(formatted);
                   if (test) updateSpl(test.id, formatted);
                 }
-                runAnalysis(formatted);
+                const skills = chatSkills.filter((s) => s.enabled).map((s) => ({ name: s.name, prompt: s.prompt }));
+                runAnalysis(formatted, skills.length > 0 ? skills : undefined);
               }}>
               {isAnalyzing ? 'Analyzing...' : analysisStale ? 'Re-analyze Query' : 'Analyze Query'}
             </button>

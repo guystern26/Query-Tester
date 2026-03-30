@@ -1,9 +1,23 @@
 /**
  * chatPrompts.ts — System prompt builder for the IDE multi-turn chat.
+ *
+ * Structure:
+ *   1. User's custom base prompt (editable from the Chat settings gear)
+ *   2. Auto-injected context: current SPL, app, time range, query output, sample data
+ *   3. Action syntax instructions (so the LLM can emit run_query / update_spl blocks)
  */
 
+export const DEFAULT_BASE_PROMPT =
+    'You are an expert Splunk SPL assistant embedded in an IDE. ' +
+    'Help the user understand, debug, and optimize their SPL query.\n\n' +
+    'When debugging:\n' +
+    '1. Explain what each pipe stage does\n' +
+    '2. Suggest stripping back to the base search to inspect raw fields\n' +
+    '3. Use run_query actions to let the user test partial queries inline\n' +
+    '4. Point out common issues: missing fields, wrong field names, narrow time range, incorrect sourcetype';
+
 const ACTION_INSTRUCTIONS = `
-## Actions
+## Response Actions
 You can embed actions in your response for the user to execute:
 
 To suggest running a partial query:
@@ -11,24 +25,15 @@ To suggest running a partial query:
 index=main sourcetype=access_combined | head 10
 ~~~
 
-To suggest updating the editor SPL:
+To suggest replacing the editor SPL:
 ~~~action:update_spl
 index=main sourcetype=access_combined | stats count by status
 ~~~
 
-Only use actions when they clearly help the user. Always explain what the action does before or after the block.`;
+Only use actions when they clearly help. Always explain what the action does.`;
 
-const DEBUGGING_GUIDANCE = `
-## Debugging Guidance
-When the user asks for help debugging:
-1. First explain what each pipe stage does
-2. Suggest stripping the query back to before the first aggregation (stats/chart/timechart) to inspect raw fields
-3. Use run_query actions to let the user execute partial queries inline
-4. Point out common issues: missing fields, wrong field names, time range too narrow, incorrect sourcetype`;
-
-function formatSampleTable(rows: Record<string, string>[]): string {
-    if (!rows || rows.length === 0) return 'No sample data available.';
-
+function formatTable(rows: Record<string, string>[]): string {
+    if (!rows || rows.length === 0) return 'No data available.';
     const keys = Object.keys(rows[0]);
     const header = '| ' + keys.join(' | ') + ' |';
     const sep = '| ' + keys.map(() => '---').join(' | ') + ' |';
@@ -47,85 +52,67 @@ export interface ChatContextData {
     previousQueryCount: number | null;
 }
 
+export interface SkillEntry {
+    name: string;
+    prompt: string;
+}
+
 export function buildChatSystemPrompt(
     spl: string,
     app: string,
     timeRange: { earliest: string; latest: string } | undefined,
     userContext: string,
     context: ChatContextData,
+    customPrompt?: string,
+    skills?: SkillEntry[],
 ): string {
-    const parts: string[] = [
-        'You are an expert Splunk SPL assistant embedded in an IDE. Help the user understand, debug, and improve their SPL query.',
-        '',
-        '## Current Query',
-        '```spl',
-        spl || '(empty)',
-        '```',
-        '',
-        '## Context',
-        '- App: ' + (app || 'not set'),
-    ];
+    // ── Part 1: User's custom base prompt ──
+    const base = (customPrompt || '').trim() || DEFAULT_BASE_PROMPT;
+    const parts: string[] = [base, ''];
 
-    if (timeRange) {
-        parts.push('- Time range: ' + timeRange.earliest + ' to ' + timeRange.latest);
-    }
-    if (userContext) {
-        parts.push('- User notes: ' + userContext);
+    // ── Part 1b: Active skills ──
+    if (skills && skills.length > 0) {
+        parts.push('# Active Skills', '');
+        for (const skill of skills) {
+            parts.push('## Skill: ' + skill.name, skill.prompt, '');
+        }
     }
 
+    // ── Part 2: Auto-injected context (always appended) ──
+    parts.push('---', '', '# Auto-injected context (do not repeat this to the user)', '');
+    parts.push('## Current Query', '```spl', spl || '(empty)', '```', '');
+    parts.push('- App: ' + (app || 'not set'));
+    if (timeRange) parts.push('- Time range: ' + timeRange.earliest + ' to ' + timeRange.latest);
+    if (userContext) parts.push('- User notes: ' + userContext);
     parts.push('');
 
-    // Full query results — the LLM sees what the query actually produces
     if (context.queryError) {
         parts.push('## Query Execution Result');
-        parts.push('The query **failed** with error:');
-        parts.push('```');
-        parts.push(context.queryError);
-        parts.push('```');
-        parts.push('This is important context — the user may be asking for help with this error.');
-        parts.push('');
+        parts.push('The query **failed** with error:', '```', context.queryError, '```');
+        parts.push('The user may be asking for help with this error.', '');
     } else if (context.queryRows && context.queryRows.length > 0) {
-        parts.push(
-            '## Query Output (first ' +
-                Math.min(context.queryRows.length, 10) +
-                ' of ' +
-                (context.queryResultCount ?? context.queryRows.length) +
-                ' total rows)',
-        );
-        parts.push(formatSampleTable(context.queryRows.slice(0, 10)));
-        parts.push('');
+        const shown = Math.min(context.queryRows.length, 10);
+        const total = context.queryResultCount ?? context.queryRows.length;
+        parts.push('## Query Output (first ' + shown + ' of ' + total + ' total rows)');
+        parts.push(formatTable(context.queryRows.slice(0, 10)), '');
     } else if (context.queryRows !== null) {
-        parts.push('## Query Output');
-        parts.push('The query returned **0 results**.');
-        parts.push('');
+        parts.push('## Query Output', 'The query returned **0 results**.', '');
     }
 
-    // Previous query results for comparison (after an optimization was applied)
     if (context.previousQueryRows && context.previousQueryRows.length > 0) {
-        parts.push(
-            '## Previous Query Output (before optimization, ' +
-                (context.previousQueryCount ?? context.previousQueryRows.length) +
-                ' total rows)',
-        );
-        parts.push(formatSampleTable(context.previousQueryRows.slice(0, 10)));
-        parts.push('Compare the current output above with this previous output to assess the optimization.');
-        parts.push('');
+        const total = context.previousQueryCount ?? context.previousQueryRows.length;
+        parts.push('## Previous Query Output (before optimization, ' + total + ' total rows)');
+        parts.push(formatTable(context.previousQueryRows.slice(0, 10)));
+        parts.push('Compare current output with this previous output to assess the optimization.', '');
     }
 
-    // Raw sample events from the base search (before aggregation)
     if (context.sampleRows && context.sampleRows.length > 0) {
-        parts.push(
-            '## Raw Sample Events (base search before aggregation, ' +
-                context.sampleRows.length +
-                ' events)',
-        );
-        parts.push(formatSampleTable(context.sampleRows));
-        parts.push('');
+        parts.push('## Raw Sample Events (base search, ' + context.sampleRows.length + ' events)');
+        parts.push(formatTable(context.sampleRows), '');
     }
 
+    // ── Part 3: Action syntax (always last) ──
     parts.push(ACTION_INSTRUCTIONS);
-    parts.push('');
-    parts.push(DEBUGGING_GUIDANCE);
 
     return parts.join('\n');
 }
