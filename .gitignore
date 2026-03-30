@@ -23,3 +23,5 @@ __pycache__
 skills-lock.json
 packages/query-tester/build/
 ide.html
+*.zip
+*.LICENSE.txt
