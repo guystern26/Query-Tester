@@ -124,7 +124,7 @@ export function TogglePill({ label, active, onClick }: { label: string; active: 
         <button
             type="button"
             onClick={onClick}
-            className={`px-2 py-0.5 rounded-full text-[11px] font-medium transition cursor-pointer border ${active ? 'bg-blue-500/20 border-blue-500/40 text-blue-300' : 'bg-slate-800/40 border-slate-700/40 text-slate-500 hover:text-slate-400'}`}
+            className={`px-3 py-1 rounded-full text-[12px] font-semibold transition cursor-pointer border ${active ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300' : 'bg-slate-800/40 border-slate-700/40 text-slate-500 hover:text-slate-400'}`}
         >
             {label}
         </button>

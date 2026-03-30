@@ -179,9 +179,12 @@ export function QuerySection({ isIde }: QuerySectionProps) {
             </button>
             {analysisStale && <span className="text-[11px] text-amber-400/80 text-center leading-tight">Query changed — re-analyze for updated results.</span>}
             {hasAnalysis && !analysisStale && (
-              <div className="flex gap-1 justify-center">
-                <TogglePill label="Notes" active={showNotes} onClick={() => setShowNotes((v) => !v)} />
-                <TogglePill label="Fields" active={showFields} onClick={() => setShowFields((v) => !v)} />
+              <div className="flex flex-col items-center gap-1">
+                <span className="text-[11px] text-slate-500">Show:</span>
+                <div className="flex gap-1.5">
+                  <TogglePill label="Notes" active={showNotes} onClick={() => setShowNotes((v) => !v)} />
+                  <TogglePill label="Fields" active={showFields} onClick={() => setShowFields((v) => !v)} />
+                </div>
               </div>
             )}
           </div>
