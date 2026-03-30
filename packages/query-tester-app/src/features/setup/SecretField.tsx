@@ -22,6 +22,7 @@ export function SecretField({
 }: SecretFieldProps) {
     const getSecret = useTestStore((s) => s.getSecret);
     const [isRevealed, setIsRevealed] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
     const [revealedValue, setRevealedValue] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
@@ -41,8 +42,14 @@ export function SecretField({
         }
     }, [isRevealed, getSecret, secretKey]);
 
+    const handleEdit = useCallback(() => {
+        setIsRevealed(false);
+        setRevealedValue('');
+        setIsEditing(true);
+    }, []);
+
     const hasNewValue = value.length > 0;
-    const showMasked = isSet && !hasNewValue && !isRevealed;
+    const showMasked = isSet && !hasNewValue && !isRevealed && !isEditing;
 
     return (
         <div>
@@ -62,6 +69,14 @@ export function SecretField({
                         </div>
                         <button
                             type="button"
+                            onClick={handleEdit}
+                            className="px-2 py-2 text-slate-400 hover:text-slate-200 cursor-pointer"
+                            title="Change"
+                        >
+                            <PencilIcon />
+                        </button>
+                        <button
+                            type="button"
                             onClick={handleReveal}
                             disabled={isLoading}
                             className="px-2 py-2 text-slate-400 hover:text-slate-200 cursor-pointer"
@@ -75,6 +90,14 @@ export function SecretField({
                         <div className={INPUT_CLS + ' flex-1 text-slate-200 font-mono text-xs'}>
                             {revealedValue}
                         </div>
+                        <button
+                            type="button"
+                            onClick={handleEdit}
+                            className="px-2 py-2 text-slate-400 hover:text-slate-200 cursor-pointer"
+                            title="Change"
+                        >
+                            <PencilIcon />
+                        </button>
                         <button
                             type="button"
                             onClick={handleReveal}
@@ -103,6 +126,14 @@ function EyeIcon() {
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
             <circle cx="12" cy="12" r="3" />
+        </svg>
+    );
+}
+
+function PencilIcon() {
+    return (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
         </svg>
     );
 }

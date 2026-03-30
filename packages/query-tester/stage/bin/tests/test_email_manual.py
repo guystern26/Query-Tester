@@ -97,7 +97,7 @@ SMTP_ATTEMPTS = [
 
 def build_test_email_via_module():
     """Use the real alert_email module to build the HTML body."""
-    from alert_email import build_failure_email
+    from alerts.alert_email import build_failure_email
 
     test_name = "E2E Email Test — Manual Verification"
     ran_at = "2026-03-16T14:30:00Z"

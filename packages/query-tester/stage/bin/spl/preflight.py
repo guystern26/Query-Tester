@@ -44,7 +44,7 @@ def get_blocked_commands_set(session_key):
     Falls back to the hardcoded UNAUTHORIZED_COMMANDS set on any failure.
     """
     try:
-        from command_policy_handler import get_cached_policy
+        from handlers.command_policy_handler import get_cached_policy
         policy = get_cached_policy(session_key)
         return {
             entry["command"]

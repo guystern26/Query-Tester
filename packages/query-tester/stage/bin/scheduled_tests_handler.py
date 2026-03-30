@@ -22,7 +22,7 @@ from handler_utils import (
     normalize_payload, extract_id, now_iso,
     handle_rest_request, check_ownership, check_and_increment_version,
 )
-from scheduled_search_manager import (
+from scheduling.scheduled_search_manager import (
     create_saved_search, update_saved_search, delete_saved_search,
 )
 

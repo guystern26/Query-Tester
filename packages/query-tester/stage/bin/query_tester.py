@@ -130,17 +130,17 @@ class QueryTesterHandler(PersistentServerConnectionApplication):
 
     def _delegate_config(self, in_string):
         # type: (str) -> Dict[str, Any]
-        from config_handler import ConfigHandler
+        from config_admin.config_handler import ConfigHandler
         return ConfigHandler().handle(in_string)
 
     def _delegate_command_policy(self, in_string):
         # type: (str) -> Dict[str, Any]
-        from command_policy_handler import CommandPolicyHandler
+        from handlers.command_policy_handler import CommandPolicyHandler
         return CommandPolicyHandler().handle(in_string)
 
     def _delegate_llm(self, request):
         # type: (Dict[str, Any]) -> Dict[str, Any]
-        from llm_proxy_handler import handle_llm_proxy
+        from handlers.llm_proxy_handler import handle_llm_proxy
         return handle_llm_proxy(request)
 
     def _delegate_analyze_spl(self, request):
@@ -189,7 +189,7 @@ class QueryTesterHandler(PersistentServerConnectionApplication):
             session_key = get_session_key(request)
             method = request.get("method", "GET").upper()
             payload = normalize_payload(request.get("payload"))
-            from chat_skills_handler import ChatSkillsHandler
+            from handlers.chat_skills_handler import ChatSkillsHandler
             handler = ChatSkillsHandler(session_key, get_username(request))
             result, status_code = handler.handle(method, payload)
             return json_response(result, status_code)
@@ -208,7 +208,7 @@ class QueryTesterHandler(PersistentServerConnectionApplication):
             if not description:
                 return json_response({"error": "Description is required."}, 400)
             report_type = payload.get("reportType", "bug")
-            from bug_report_handler import send_bug_report
+            from alerts.bug_report_handler import send_bug_report
             send_bug_report(session_key, report_type, description,
                             get_username(request), {
                                 "reportGeneratedAt": payload.get("reportGeneratedAt", ""),

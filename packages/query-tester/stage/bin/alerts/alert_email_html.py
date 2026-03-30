@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
-from alert_email_tables import esc, format_result_rows_table
+from alerts.alert_email_tables import esc, format_result_rows_table
 
 
 def _format_validation_row(v):

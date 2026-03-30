@@ -13,7 +13,7 @@ if _bin_dir not in sys.path:
 EMAIL = "guystern007@gmail.com"
 PASSWORD = "ggdneiqkpowiluxh"
 
-from alert_email import build_failure_email
+from alerts.alert_email import build_failure_email
 subject, body = build_failure_email(
     test_name="E2E Email Test - Manual Verification",
     ran_at="2026-03-16T14:30:00Z", status="fail",

@@ -48,7 +48,7 @@ class LlmSplAnalyzer:
         user_message = "App: {0}\n\nSPL:\n{1}".format(app, spl)
 
         try:
-            from llm_proxy_handler import _call_llm
+            from handlers.llm_proxy_handler import _call_llm
             raw = _call_llm(llm_cfg, system_prompt, user_message)
             return self._parse_response(raw)
         except Exception as exc:

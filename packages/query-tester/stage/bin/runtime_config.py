@@ -97,7 +97,7 @@ def _read_secrets(session_key):
     # type: (str) -> Dict[str, str]
     """Read secret fields from storage/passwords."""
     try:
-        from config_secrets import get_splunk_service, read_all_secrets
+        from config_admin.config_secrets import get_splunk_service, read_all_secrets
         service = get_splunk_service(session_key)
         return read_all_secrets(service)
     except Exception as exc:

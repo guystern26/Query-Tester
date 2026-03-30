@@ -51,7 +51,7 @@ class AiResultsAnalyzer:
         )
 
         try:
-            from llm_proxy_handler import _call_llm
+            from handlers.llm_proxy_handler import _call_llm
             raw = _call_llm(llm_cfg, RESULTS_SYSTEM_PROMPT, user_message)
             return self._parse_response(raw)
         except Exception as exc:

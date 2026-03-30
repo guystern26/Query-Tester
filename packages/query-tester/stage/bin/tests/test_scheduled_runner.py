@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from cron_matcher import cron_matches as _cron_matches, _field_matches
+from scheduling.cron_matcher import cron_matches as _cron_matches, _field_matches
 
 
 class TestFieldMatches:

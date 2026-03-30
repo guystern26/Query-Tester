@@ -17,8 +17,8 @@ from typing import Any, Dict, List, Optional
 
 from config import SPLUNK_WEB_URL
 from logger import get_logger
-from email_utils import get_email_config, is_valid_email, send_smtp_message
-from alert_email_body import build_failure_email
+from alerts.email_utils import get_email_config, is_valid_email, send_smtp_message
+from alerts.alert_email_body import build_failure_email
 
 logger = get_logger(__name__)
 

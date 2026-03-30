@@ -15,11 +15,11 @@ if _bin_dir not in sys.path:
 
 from logger import get_logger
 from kvstore_client import KVStoreClient
-from alert_email import (
+from alerts.alert_email import (
     send_failure_emails, extract_scenario_results, build_result_summary,
 )
-from spl_drift import check_spl_drift
-from scheduled_runner_helpers import build_test_payload
+from scheduling.spl_drift import check_spl_drift
+from scheduling.scheduled_runner_helpers import build_test_payload
 
 logger = get_logger(__name__)
 

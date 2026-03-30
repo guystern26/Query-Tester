@@ -19,9 +19,9 @@ if _bin_dir not in sys.path:
 
 from logger import get_logger
 from kvstore_client import KVStoreClient
-from cron_matcher import cron_matches, is_enabled
-from spl_drift import diff_spl, get_last_passed_spl
-from scheduled_runner_helpers import (
+from scheduling.cron_matcher import cron_matches, is_enabled
+from scheduling.spl_drift import diff_spl, get_last_passed_spl
+from scheduling.scheduled_runner_helpers import (
     write_history_record, build_scenario_results,
     build_summary, build_test_payload,
 )
@@ -113,7 +113,7 @@ def _run_single_test(kv, session_key, scheduled):
     should_alert = alert_flag in (True, "1", "true", "True")
     if status in ("fail", "error") and should_alert:
         try:
-            from alert_email import send_failure_emails
+            from alerts.alert_email import send_failure_emails
             recipients = scheduled.get("emailRecipients", [])
             full_scenario_results = result.get(
                 "scenarioResults", scenario_results,

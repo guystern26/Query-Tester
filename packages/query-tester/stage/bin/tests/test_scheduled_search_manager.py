@@ -5,7 +5,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 import pytest
 
-from scheduled_search_manager import (
+from scheduling.scheduled_search_manager import (
     saved_search_name, _is_enabled, _search_kwargs,
     create_saved_search, update_saved_search, delete_saved_search,
 )
@@ -68,8 +68,8 @@ class TestSearchKwargs:
 
 
 class TestCreateSavedSearch:
-    @patch("scheduled_search_manager._find_saved_search", return_value=None)
-    @patch("scheduled_search_manager._connect")
+    @patch("scheduling.scheduled_search_manager._find_saved_search", return_value=None)
+    @patch("scheduling.scheduled_search_manager._connect")
     def test_creates_with_schedule_config(self, mock_connect, mock_find):
         service = MagicMock()
         mock_connect.return_value = service
@@ -93,8 +93,8 @@ class TestCreateSavedSearch:
         assert kwargs["cron_schedule"] == "0 */6 * * *"
         assert kwargs["is_scheduled"] == "1"
 
-    @patch("scheduled_search_manager._find_saved_search", return_value=None)
-    @patch("scheduled_search_manager._connect")
+    @patch("scheduling.scheduled_search_manager._find_saved_search", return_value=None)
+    @patch("scheduling.scheduled_search_manager._connect")
     def test_sets_app_level_acl(self, mock_connect, mock_find):
         service = MagicMock()
         mock_connect.return_value = service
@@ -104,8 +104,8 @@ class TestCreateSavedSearch:
         create_saved_search("key", {"id": "t1", "testName": "T", "enabled": True})
         ss_mock.acl_update.assert_called_once()
 
-    @patch("scheduled_search_manager._find_saved_search", return_value=None)
-    @patch("scheduled_search_manager._connect")
+    @patch("scheduling.scheduled_search_manager._find_saved_search", return_value=None)
+    @patch("scheduling.scheduled_search_manager._connect")
     def test_handles_create_failure(self, mock_connect, mock_find):
         service = MagicMock()
         mock_connect.return_value = service
@@ -114,7 +114,7 @@ class TestCreateSavedSearch:
         # Should not raise
         create_saved_search("key", {"id": "t2", "testName": "T"})
 
-    @patch("scheduled_search_manager._find_saved_search")
+    @patch("scheduling.scheduled_search_manager._find_saved_search")
     def test_updates_existing_instead_of_creating(self, mock_find):
         existing = MagicMock()
         mock_find.return_value = existing
@@ -126,7 +126,7 @@ class TestCreateSavedSearch:
 
 
 class TestUpdateSavedSearch:
-    @patch("scheduled_search_manager._find_saved_search")
+    @patch("scheduling.scheduled_search_manager._find_saved_search")
     def test_updates_existing(self, mock_find):
         search_obj = MagicMock()
         mock_find.return_value = search_obj
@@ -138,8 +138,8 @@ class TestUpdateSavedSearch:
         kwargs = search_obj.update.call_args[1]
         assert kwargs["cron_schedule"] == "*/30 * * * *"
 
-    @patch("scheduled_search_manager._find_saved_search", return_value=None)
-    @patch("scheduled_search_manager.create_saved_search")
+    @patch("scheduling.scheduled_search_manager._find_saved_search", return_value=None)
+    @patch("scheduling.scheduled_search_manager.create_saved_search")
     def test_recreates_when_not_found(self, mock_create, mock_find):
         record = {"id": "u2", "testName": "T", "cronSchedule": "0 * * * *"}
         update_saved_search("key", record)
@@ -148,7 +148,7 @@ class TestUpdateSavedSearch:
 
 
 class TestDeleteSavedSearch:
-    @patch("scheduled_search_manager._find_saved_search")
+    @patch("scheduling.scheduled_search_manager._find_saved_search")
     def test_deletes_found_search(self, mock_find):
         search_obj = MagicMock()
         search_obj.name = "QT - T [abc12345]"
@@ -158,7 +158,7 @@ class TestDeleteSavedSearch:
 
         search_obj.delete.assert_called_once()
 
-    @patch("scheduled_search_manager._find_saved_search", return_value=None)
+    @patch("scheduling.scheduled_search_manager._find_saved_search", return_value=None)
     def test_logs_when_not_found(self, mock_find):
         # Should not raise
         delete_saved_search("key", "nonexistent")

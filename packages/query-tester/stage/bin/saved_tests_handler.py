@@ -21,7 +21,7 @@ from handler_utils import (
     normalize_payload, extract_id, now_iso,
     handle_rest_request, check_ownership, check_and_increment_version,
 )
-from scheduled_search_manager import delete_saved_search
+from scheduling.scheduled_search_manager import delete_saved_search
 from config import MAX_DEFINITION_SIZE_BYTES
 
 logger = get_logger(__name__)

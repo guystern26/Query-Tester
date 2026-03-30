@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Tuple
 
-from alert_email_tables import esc
-from alert_email_html import format_scenario_block
+from alerts.alert_email_tables import esc
+from alerts.alert_email_html import format_scenario_block
 
 APP_ROUTE = "/app/QueryTester/QueryTesterApp"
 

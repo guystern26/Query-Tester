@@ -12,9 +12,9 @@ from splunk.persistconn.application import PersistentServerConnectionApplication
 from logger import get_logger
 from kvstore_client import KVStoreClient
 from handler_utils import get_session_key, json_response, normalize_payload
-from config_detection import detect_local_splunk_config, detect_email_config
-from config_test_connectivity import test_connectivity
-from config_secrets import (
+from config_admin.config_detection import detect_local_splunk_config, detect_email_config
+from config_admin.config_test_connectivity import test_connectivity
+from config_admin.config_secrets import (
     SECRET_FIELDS, get_splunk_service, read_secret, read_all_secrets,
     write_secret,
 )

@@ -49,7 +49,7 @@ def _invalidate_connection(session_key, owner="nobody"):
 
 def _is_enabled(record):
     # type: (Dict[str, Any]) -> bool
-    from cron_matcher import is_enabled
+    from scheduling.cron_matcher import is_enabled
     return is_enabled(record)
 
 

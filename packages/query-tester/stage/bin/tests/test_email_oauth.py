@@ -71,7 +71,7 @@ def xoauth2_string(user, token):
 
 def build_email():
     """Build the test email using the real alert_email module."""
-    from alert_email import build_failure_email
+    from alerts.alert_email import build_failure_email
 
     scenario_results = [
         {

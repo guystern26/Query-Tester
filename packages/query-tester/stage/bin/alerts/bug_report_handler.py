@@ -13,8 +13,8 @@ from email import encoders
 from typing import Any, Dict
 
 from logger import get_logger
-from email_utils import get_email_config, is_valid_email, send_smtp_message
-from alert_email_tables import esc
+from alerts.email_utils import get_email_config, is_valid_email, send_smtp_message
+from alerts.alert_email_tables import esc
 
 logger = get_logger(__name__)
 
