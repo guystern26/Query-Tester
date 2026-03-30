@@ -33,7 +33,7 @@ export const ENV = {
   // ─── LLM / AI ─────────────────────────────────────────────────────────
   // Set to empty string '' to disable AI extract buttons
   LLM_ENDPOINT: 'https://api.openai.com/v1/chat/completions',
-  LLM_API_KEY: 'REDACTED',  // move to secure storage for production
+  LLM_API_KEY: '',  // configured via Splunk Setup page (storage/passwords)
   LLM_MODEL: 'gpt-4o-mini',
   LLM_MAX_TOKENS: 1024,
 
