@@ -14,3 +14,6 @@ packages/*/types/
 __pycache__
 .env.local
 *.png
+**/stage/local/
+**/local/passwords.conf
+**/metadata/local.meta
