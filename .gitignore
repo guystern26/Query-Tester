@@ -17,3 +17,9 @@ __pycache__
 **/stage/local/
 **/local/passwords.conf
 **/metadata/local.meta
+.agents/
+.windsurf/
+.claude/skills/
+skills-lock.json
+packages/query-tester/build/
+ide.html
