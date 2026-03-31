@@ -145,11 +145,23 @@ export function chatSlice(
         },
 
         saveChatSkill: async (skill: ChatSkill) => {
+            const prev = get().chatSkills.find((s) => s.id === skill.id);
             set((d) => {
                 const idx = d.chatSkills.findIndex((s) => s.id === skill.id);
                 if (idx >= 0) d.chatSkills[idx] = skill;
             });
-            try { await updateChatSkill(skill); } catch { /* local state already updated */ }
+            try {
+                await updateChatSkill(skill);
+            } catch {
+                // Revert local state on failure so UI reflects the real backend state
+                if (prev) {
+                    set((d) => {
+                        const idx = d.chatSkills.findIndex((s) => s.id === skill.id);
+                        if (idx >= 0) d.chatSkills[idx] = prev;
+                    });
+                }
+                throw new Error('Failed to save skill. Check that Splunk has been restarted after the latest update.');
+            }
         },
 
         removeChatSkill: async (id: string) => {

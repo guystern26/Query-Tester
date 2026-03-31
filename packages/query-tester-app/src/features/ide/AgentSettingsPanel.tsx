@@ -91,27 +91,35 @@ interface SystemPromptEditorProps {
 function SystemPromptEditor({ skill, role, onSave, onCreate, onDirtyChange }: SystemPromptEditorProps): React.ReactElement {
     const [draft, setDraft] = useState('');
     const [dirty, setDirty] = useState(false);
+    const [saveError, setSaveError] = useState('');
 
     useEffect(() => {
         setDraft(skill?.prompt || '');
         setDirty(false);
+        setSaveError('');
         if (onDirtyChange) onDirtyChange(false);
     }, [skill?.id, skill?.prompt, role, onDirtyChange]);
 
     const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setDraft(e.target.value);
         setDirty(true);
+        setSaveError('');
         if (onDirtyChange) onDirtyChange(true);
     }, [onDirtyChange]);
 
-    const handleSave = useCallback(() => {
-        if (skill) {
-            onSave({ ...skill, prompt: draft });
-        } else {
-            void onCreate(ROLE_LABELS[role] + ' System Prompt', draft, role, true);
+    const handleSave = useCallback(async () => {
+        try {
+            if (skill) {
+                await onSave({ ...skill, prompt: draft });
+            } else {
+                await onCreate(ROLE_LABELS[role] + ' System Prompt', draft, role, true);
+            }
+            setDirty(false);
+            setSaveError('');
+            if (onDirtyChange) onDirtyChange(false);
+        } catch (e) {
+            setSaveError((e as Error).message || 'Failed to save');
         }
-        setDirty(false);
-        if (onDirtyChange) onDirtyChange(false);
     }, [skill, draft, role, onSave, onCreate, onDirtyChange]);
 
     return (
@@ -122,6 +130,9 @@ function SystemPromptEditor({ skill, role, onSave, onCreate, onDirtyChange }: Sy
                 placeholder={'Enter the ' + ROLE_LABELS[role] + ' agent system prompt...'}
                 className="w-full px-2.5 py-2 text-[12px] leading-relaxed bg-navy-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 resize-y font-mono"
             />
+            {saveError && (
+                <span className="text-[11px] text-red-400">{saveError}</span>
+            )}
             {dirty && (
                 <button type="button" onClick={handleSave}
                     className="self-end px-3 py-1 text-[11px] font-medium rounded bg-blue-500 text-white hover:bg-blue-400 transition cursor-pointer">
