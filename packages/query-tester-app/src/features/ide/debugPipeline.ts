@@ -95,17 +95,27 @@ export async function runDebugPipeline(
                 : prefix + ' | head 5';
             const resp = await executeQuery(safePrefix);
             const rows = resp.resultRows || [];
-            onStep({ ...step, status: 'success', rows, resultCount: resp.resultCount });
+            const count = resp.resultCount ?? 0;
+            onStep({ ...step, status: 'success', rows, resultCount: count });
             parts.push('## Stage ' + (i + 1) + ': `' + prefix.slice(-80) + '`');
-            parts.push(resp.resultCount + ' results. Sample:');
+            parts.push(count + ' results. Sample:');
             parts.push(formatRows(rows, 3));
             parts.push('');
+
+            // Stop at the stage where results drop to 0 — this is the problem stage
+            if (count === 0 && i > 0) {
+                parts.push('**>>> Results dropped to 0 at stage ' + (i + 1) + '.** This pipe is likely the cause of the issue. The previous stage had results, so focus debugging here.');
+                parts.push('');
+                break;
+            }
         } catch (e) {
             const err = e as { message?: string };
             onStep({ ...step, status: 'error', error: err.message });
             parts.push('## Stage ' + (i + 1) + ': `' + prefix.slice(-80) + '`');
-            parts.push('ERROR: ' + (err.message || 'Query failed'));
+            parts.push('**ERROR at stage ' + (i + 1) + ':** ' + (err.message || 'Query failed'));
+            parts.push('This stage caused an error. Focus debugging here.');
             parts.push('');
+            break;
         }
     }
 

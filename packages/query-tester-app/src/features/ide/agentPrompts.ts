@@ -79,7 +79,7 @@ export function buildSpecialistPrompt(
         parts.push(formatContextTable(contextData.queryRows, 10));
     }
     if (contextData.sampleRows && contextData.sampleRows.length > 0) {
-        parts.push('\n## Raw Sample Events');
+        parts.push('\n## Raw Sample Events (auto-fetched — use internally, do not dump to user)');
         parts.push(formatContextTable(contextData.sampleRows, 5));
     }
 
@@ -128,9 +128,12 @@ To auto-execute a read-only query (result feeds back to you automatically):
 index=main sourcetype=access_combined | stats count by sourcetype | head 5
 ~~~
 
-To debug the current query pipe-by-pipe (runs each prefix automatically):
+To debug the current query pipe-by-pipe (runs each prefix, stops where results drop to 0):
 ~~~action:debug_pipeline
 ~~~
 
+When the user asks to debug, ALWAYS use debug_pipeline first. It will automatically find the problematic pipe stage.
+
 NEVER use auto_query with data-modifying commands (delete, outputlookup, collect, etc.).
+NEVER add /* */ or // comments inside SPL queries — they break SPL. Splunk only supports \`\`\`comment\`\`\` (triple backtick) comments. Prefer explaining in your message text instead of inline comments.
 Only use actions when they clearly help. Always explain what the action does.`;

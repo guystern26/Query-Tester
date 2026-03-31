@@ -8,10 +8,12 @@ import { callLLMChat } from '../../../api/llmApi';
 import { runIdeQuery } from '../../../api/ideApi';
 import { buildChatSystemPrompt } from '../../../api/chatPrompts';
 import type { ChatContextData } from '../../../api/chatPrompts';
-import { parseActionBlocks } from '../../../features/ide/chatUtils';
+import { parseActionBlocks, extractBaseSearch } from '../../../features/ide/chatUtils';
 import { runAgentPipeline } from '../../../features/ide/agentLoop';
 import type { AgentPipelineConfig } from '../../../features/ide/agentLoop';
 import type { ChatMessageEntry, ChatSliceState, AgentRole } from './chatSlice';
+
+const AUTO_SAMPLE_ROWS = 5;
 
 interface ChatStoreGet {
     (): {
@@ -85,8 +87,22 @@ export function createSendChatMessage(set: SetState, get: ChatStoreGet): (text: 
 
         set((d) => { d.chatMessages.push(makeEntry('user', text)); d.chatLoading = true; d.chatAgentSteps = []; });
 
+        // Auto-sample: if no query has been run yet, silently fetch base search rows for context
+        let autoSample: Record<string, string>[] | null = null;
         const cur = get();
-        const ctx = buildContext(state.ideResponse, cur.chatSampleData, cur.chatPreviousResponse);
+        if (!state.ideResponse && spl.trim() && !cur.chatSampleData) {
+            try {
+                set((d) => { d.chatSampleLoading = true; });
+                const baseSpl = extractBaseSearch(spl);
+                const sampleResp = await runIdeQuery(app, baseSpl + ' | head ' + AUTO_SAMPLE_ROWS, timeRange);
+                autoSample = sampleResp.resultRows || [];
+                set((d) => { d.chatSampleData = autoSample; d.chatSampleLoading = false; });
+            } catch {
+                set((d) => { d.chatSampleLoading = false; });
+            }
+        }
+        const sampleData = autoSample || cur.chatSampleData;
+        const ctx = buildContext(state.ideResponse, sampleData, cur.chatPreviousResponse);
         const history: ChatMessage[] = cur.chatMessages.map((m) => ({ role: m.role, content: m.content }));
         if (chatAbortController) chatAbortController.abort();
         chatAbortController = new AbortController();

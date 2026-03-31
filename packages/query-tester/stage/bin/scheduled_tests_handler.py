@@ -58,6 +58,17 @@ def _async_saved_search_delete(session_key, record_id):
         logger.warning("Async saved search delete failed for %s: %s", record_id, exc)
 
 
+def _validate_cron(cron):
+    # type: (str) -> None
+    """Reject cron schedules that run every minute — too aggressive for test runs."""
+    parts = cron.strip().split()
+    if len(parts) == 5 and parts[0] == '*' and parts[1] == '*':
+        raise ValueError(
+            "Schedule runs too frequently (every minute). "
+            "Use at least a 5-minute interval (e.g. */5 * * * *)."
+        )
+
+
 def _build_record(payload, username="unknown"):
     # type: (Dict[str, Any], str) -> Dict[str, Any]
     record_id = payload.get("id") or str(uuid.uuid4())
@@ -110,6 +121,7 @@ class ScheduledTestsHandler(PersistentServerConnectionApplication):
             raise ValueError("testId is required.")
         if not str(payload.get("cronSchedule", "")).strip():
             raise ValueError("cronSchedule is required.")
+        _validate_cron(payload["cronSchedule"])
         record = _build_record(payload, get_username(request))
         record["version"] = 1
         kv = KVStoreClient(session_key)
@@ -135,6 +147,9 @@ class ScheduledTestsHandler(PersistentServerConnectionApplication):
         forbidden = check_ownership(existing, get_username(request), session_key)
         if forbidden:
             return forbidden
+
+        if "cronSchedule" in payload:
+            _validate_cron(str(payload["cronSchedule"]))
 
         ok, new_version = check_and_increment_version(existing, payload.pop("version", None))
         if not ok:

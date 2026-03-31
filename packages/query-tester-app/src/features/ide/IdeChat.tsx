@@ -35,12 +35,19 @@ export function IdeChat(): React.ReactElement {
     const [input, setInput] = useState('');
     const scrollRef = useRef<HTMLDivElement>(null);
 
+    const scrollToBottom = useCallback(() => {
+        const el = scrollRef.current;
+        if (el) el.scrollTop = el.scrollHeight;
+    }, []);
+
     const handleSend = useCallback(() => {
         const text = input.trim();
         if (!text || loading) return;
         setInput('');
         sendMessage(text);
-    }, [input, loading, sendMessage]);
+        // Auto-scroll after user sends (use rAF so the new message renders first)
+        requestAnimationFrame(scrollToBottom);
+    }, [input, loading, sendMessage, scrollToBottom]);
 
     const handleKeyDown = useCallback(
         (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -56,8 +63,9 @@ export function IdeChat(): React.ReactElement {
         (text: string) => {
             if (loading) return;
             sendMessage(text);
+            requestAnimationFrame(scrollToBottom);
         },
-        [loading, sendMessage],
+        [loading, sendMessage, scrollToBottom],
     );
 
     const hasContext = ideResponse !== null;

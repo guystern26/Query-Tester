@@ -13,12 +13,13 @@ export const DEFAULT_BASE_PROMPT =
     'IMPORTANT RULES:\n' +
     '- Keep responses SHORT (3-5 sentences max). Let the user ask follow-ups.\n' +
     '- Do NOT repeat the query back unless the user asks.\n' +
-    '- NEVER emit run_query actions with data-modifying commands: delete, outputlookup, collect, sendemail, outputcsv, outputtelemetry. Only use read-only queries in run_query actions.\n\n' +
+    '- NEVER emit run_query actions with data-modifying commands: delete, outputlookup, collect, sendemail, outputcsv, outputtelemetry. Only use read-only queries in run_query actions.\n' +
+    '- NEVER add /* */ or // comments inside SPL queries — they break SPL. Splunk only supports ```comment``` (triple backtick) comments. Prefer explaining in your message text instead of inline comments.\n\n' +
     'When debugging:\n' +
-    '1. Explain what each pipe stage does\n' +
-    '2. Suggest stripping back to the base search to inspect raw fields\n' +
-    '3. Use run_query actions to let the user test partial queries inline\n' +
-    '4. Point out common issues: missing fields, wrong field names, narrow time range, incorrect sourcetype';
+    '1. Use debug_pipeline to run the query pipe-by-pipe — it stops at the stage where results drop to 0\n' +
+    '2. Focus your analysis on the failing stage and explain why it produces 0 results\n' +
+    '3. Point out common issues: missing fields, wrong field names, narrow time range, incorrect sourcetype\n' +
+    '4. Use the sample data (auto-fetched from the base search) to identify available fields';
 
 const ACTION_INSTRUCTIONS = `
 ## Response Actions
@@ -39,9 +40,11 @@ To auto-execute a read-only query (result feeds back automatically):
 index=main sourcetype=access_combined | stats count by sourcetype | head 5
 ~~~
 
-To debug the current query pipe-by-pipe (each prefix runs automatically):
+To debug the current query pipe-by-pipe (runs each prefix, stops where results drop to 0):
 ~~~action:debug_pipeline
 ~~~
+
+When the user asks to debug, ALWAYS use debug_pipeline first. It will automatically find the problematic pipe stage.
 
 NEVER use auto_query with data-modifying commands (delete, outputlookup, collect, etc.).
 Only use actions when they clearly help. Always explain what the action does.`;
@@ -93,8 +96,8 @@ export function buildChatSystemPrompt(
     }
 
     // ── Part 2: Auto-injected context (always appended) ──
-    parts.push('---', '', '# Auto-injected context (do not repeat this to the user)', '');
-    parts.push('## Current Query', '```spl', spl || '(empty)', '```', '');
+    parts.push('---', '', '# Auto-injected context (refreshed on every message — always reflects the CURRENT editor state)', '');
+    parts.push('## Current Query (live from the editor — this is the latest version)', '```spl', spl || '(empty)', '```', '');
     parts.push('- App: ' + (app || 'not set'));
     if (timeRange) parts.push('- Time range: ' + timeRange.earliest + ' to ' + timeRange.latest);
     if (userContext) parts.push('- User notes: ' + userContext);
@@ -121,7 +124,8 @@ export function buildChatSystemPrompt(
     }
 
     if (context.sampleRows && context.sampleRows.length > 0) {
-        parts.push('## Raw Sample Events (base search, ' + context.sampleRows.length + ' events)');
+        parts.push('## Raw Sample Events (auto-fetched from base search, ' + context.sampleRows.length + ' events)');
+        parts.push('These show the available fields and data shape. Do NOT show these raw rows to the user — use them internally to understand the data.');
         parts.push(formatTable(context.sampleRows), '');
     }
 

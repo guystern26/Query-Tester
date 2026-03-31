@@ -69,6 +69,10 @@ export function getCronError(expr: string): string | null {
     if (parts.length !== 5) {
         return 'Must have exactly 5 fields separated by spaces (minute hour day month weekday)';
     }
+    // Block every-minute schedules — too aggressive for test runs
+    if (parts[0] === '*' && parts[1] === '*') {
+        return 'Schedule runs too frequently (every minute). Use at least a 5-minute interval (e.g. */5 * * * *)';
+    }
     for (let i = 0; i < 5; i++) {
         if (!/^[0-9*,/\-]+$/.test(parts[i])) {
             return FIELD_NAMES[i] + ': "' + parts[i] + '" contains invalid characters';
