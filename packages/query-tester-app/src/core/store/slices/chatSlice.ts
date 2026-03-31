@@ -35,6 +35,8 @@ export interface ChatMessageEntry {
     id: string;
     role: 'user' | 'assistant';
     content: string;
+    /** Original LLM response with action blocks intact — used for conversation history. */
+    rawContent?: string;
     timestamp: number;
     actions?: ParsedAction[];
     actionResults?: Record<string, ActionResult>;

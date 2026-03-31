@@ -135,7 +135,7 @@ async function runSpecialist(
     exec: (q: string) => Promise<IdeRunResponse>,
     onStep: (step: AgentStep) => void, signal: AbortSignal,
     steps: AgentStep[], feedback?: string,
-): Promise<{ content: string; actions: ParsedAction[] }> {
+): Promise<{ content: string; rawContent: string; actions: ParsedAction[] }> {
     const sys = buildSpecialistPrompt(cfg, spl, app, timeRange, ctx);
     const aug = [...history];
     if (feedback) aug.push({ role: 'user', content: '[Validator feedback]: ' + feedback });
@@ -153,7 +153,7 @@ async function runSpecialist(
         const autos = actions.filter((a) => a.type === 'auto_query');
         const hasDebug = actions.some((a) => a.type === 'debug_pipeline');
         if (autos.length === 0 && !hasDebug) {
-            return { content: cleanContent, actions: actions.filter((a) => MANUAL_TYPES.includes(a.type)) };
+            return { content: cleanContent, rawContent: raw, actions: actions.filter((a) => MANUAL_TYPES.includes(a.type)) };
         }
         const results = await executeAutoQueries(autos, spl, i + 1, exec, onStep, signal, steps, hasDebug);
         aug.push({ role: 'assistant', content: raw });
@@ -167,7 +167,7 @@ async function runSpecialist(
         throw new Error('LLM call failed: ' + (err.message || 'unknown error') + '. Check your LLM settings in the Setup page.');
     }
     const final = parseActionBlocks(finalRaw);
-    return { content: final.cleanContent, actions: final.actions.filter((a) => MANUAL_TYPES.includes(a.type)) };
+    return { content: final.cleanContent, rawContent: finalRaw, actions: final.actions.filter((a) => MANUAL_TYPES.includes(a.type)) };
 }
 
 async function runValidator(
@@ -202,13 +202,14 @@ export async function runAgentPipeline(
     contextData: ChatContextData, history: ChatMessage[],
     executeQuery: (q: string) => Promise<IdeRunResponse>,
     onStep: (step: AgentStep) => void, signal: AbortSignal,
-): Promise<{ content: string; actions: ParsedAction[]; steps: AgentStep[] }> {
+): Promise<{ content: string; rawContent: string; actions: ParsedAction[]; steps: AgentStep[] }> {
     const steps: AgentStep[] = [];
     checkAbort(signal);
     const specialist = await routeViaManager(config, userMessage, spl, app, timeRange, onStep, steps);
     const specialistCfg = specialist === 'writer' ? config.writer : config.explainer;
 
     let lastContent = '';
+    let lastRawContent = '';
     let lastActions: ParsedAction[] = [];
     let feedback: string | undefined;
 
@@ -218,11 +219,12 @@ export async function runAgentPipeline(
             specialistCfg, spl, app, timeRange, contextData, history, executeQuery, onStep, signal, steps, feedback,
         );
         lastContent = result.content;
+        lastRawContent = result.rawContent;
         lastActions = result.actions;
         checkAbort(signal);
         const v = await runValidator(config, userMessage, lastContent, spl, app, onStep, steps);
         if (v.valid) break;
         feedback = v.feedback;
     }
-    return { content: lastContent, actions: lastActions, steps };
+    return { content: lastContent, rawContent: lastRawContent, actions: lastActions, steps };
 }

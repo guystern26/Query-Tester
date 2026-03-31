@@ -103,7 +103,8 @@ export function createSendChatMessage(set: SetState, get: ChatStoreGet): (text: 
         }
         const sampleData = autoSample || cur.chatSampleData;
         const ctx = buildContext(state.ideResponse, sampleData, cur.chatPreviousResponse);
-        const history: ChatMessage[] = cur.chatMessages.map((m) => ({ role: m.role, content: m.content }));
+        // Use rawContent (with action blocks) for history so the AI knows what it previously suggested
+        const history: ChatMessage[] = cur.chatMessages.map((m) => ({ role: m.role, content: m.rawContent || m.content }));
         if (chatAbortController) chatAbortController.abort();
         chatAbortController = new AbortController();
         const signal = chatAbortController.signal;
@@ -125,6 +126,7 @@ export function createSendChatMessage(set: SetState, get: ChatStoreGet): (text: 
                         });
                     }, signal);
                 entry = makeEntry('assistant', r.content, {
+                    rawContent: r.rawContent,
                     actions: r.actions.length > 0 ? r.actions : undefined,
                     agentSteps: r.steps.length > 0 ? r.steps : undefined,
                 });
@@ -133,7 +135,10 @@ export function createSendChatMessage(set: SetState, get: ChatStoreGet): (text: 
                 const sys = buildChatSystemPrompt(spl, app, timeRange, state.ideUserContext, ctx, state.chatCustomPrompt, sk);
                 const raw = await callLLMChat(sys, history);
                 const { cleanContent, actions } = parseActionBlocks(raw);
-                entry = makeEntry('assistant', cleanContent, { actions: actions.length > 0 ? actions : undefined });
+                entry = makeEntry('assistant', cleanContent, {
+                    rawContent: raw,
+                    actions: actions.length > 0 ? actions : undefined,
+                });
             }
             set((d) => { d.chatMessages.push(entry); d.chatLoading = false; });
         } catch (e) {

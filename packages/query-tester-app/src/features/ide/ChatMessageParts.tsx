@@ -85,14 +85,19 @@ export function MessageBubble({ message, onExecuteAction }: MessageBubbleProps):
 
 // ── Message content with markdown rendering ─────────────────────
 
+// Match code fences only when ``` is at the start of a line (standard markdown).
+// Inline ``` in SPL (comment syntax) should NOT be treated as code fences.
+const CODE_FENCE_RE = /((?:^|\n)```\w*\n[\s\S]*?\n```)/g;
+
 function MessageContent({ content }: { content: string }): React.ReactElement {
-    const parts = content.split(/(```[\s\S]*?```)/g);
+    const parts = content.split(CODE_FENCE_RE);
 
     return (
         <React.Fragment>
             {parts.map((part, i) => {
-                if (part.startsWith('```')) {
-                    const code = part.replace(/^```\w*\n?/, '').replace(/\n?```$/, '');
+                const trimmed = part.replace(/^\n/, '');
+                if (trimmed.startsWith('```') && trimmed.endsWith('```') && trimmed.includes('\n')) {
+                    const code = trimmed.replace(/^```\w*\n/, '').replace(/\n```$/, '');
                     return <CodeBlock key={i} code={code} />;
                 }
                 return <MarkdownBlock key={i} text={part} />;
