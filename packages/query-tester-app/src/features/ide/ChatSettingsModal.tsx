@@ -21,8 +21,19 @@ export function ChatSettingsModal({ onClose }: ChatSettingsModalProps): React.Re
     const chatCustomPrompt = useTestStore((s) => s.chatCustomPrompt);
     const setChatCustomPrompt = useTestStore((s) => s.setChatCustomPrompt);
     const chatSkills = useTestStore((s) => s.chatSkills);
+    const [agentDirty, setAgentDirty] = useState(false);
 
     const [draft, setDraft] = useState(chatCustomPrompt || DEFAULT_BASE_PROMPT);
+
+    const handleClose = useCallback(() => {
+        if (agentDirty && tab === 'agents') {
+            const confirmed = window.confirm(
+                'You have unsaved changes to a system prompt. Discard?',
+            );
+            if (!confirmed) return;
+        }
+        onClose();
+    }, [agentDirty, tab, onClose]);
 
     const handleSavePrompt = useCallback(() => {
         const trimmed = draft.trim();
@@ -35,7 +46,7 @@ export function ChatSettingsModal({ onClose }: ChatSettingsModalProps): React.Re
     const enabledCount = chatSkills.filter((s) => s.enabled).length;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={handleClose}>
             <div className="w-[660px] max-h-[82vh] bg-navy-900 border border-slate-700 rounded-xl shadow-2xl flex flex-col"
                 onClick={(e) => e.stopPropagation()}>
                 {/* Header with tabs */}
@@ -53,7 +64,7 @@ export function ChatSettingsModal({ onClose }: ChatSettingsModalProps): React.Re
                             )}
                         </button>
                     </div>
-                    <button type="button" onClick={onClose} className="text-slate-500 hover:text-slate-300 transition cursor-pointer mb-1.5">
+                    <button type="button" onClick={handleClose} className="text-slate-500 hover:text-slate-300 transition cursor-pointer mb-1.5">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                         </svg>
@@ -78,7 +89,7 @@ export function ChatSettingsModal({ onClose }: ChatSettingsModalProps): React.Re
                             </p>
                         </div>
                     ) : (
-                        <AgentSettingsPanel />
+                        <AgentSettingsPanel onDirtyChange={setAgentDirty} />
                     )}
                 </div>
 
@@ -95,7 +106,7 @@ export function ChatSettingsModal({ onClose }: ChatSettingsModalProps): React.Re
                         </span>
                     )}
                     <div className="flex gap-2">
-                        <button type="button" onClick={onClose}
+                        <button type="button" onClick={handleClose}
                             className="px-3 py-1.5 text-[12px] rounded border border-slate-700 text-slate-400 hover:text-slate-200 transition cursor-pointer">
                             {tab === 'agents' ? 'Done' : 'Cancel'}
                         </button>

@@ -89,7 +89,11 @@ export async function runDebugPipeline(
         onStep(step);
 
         try {
-            const resp = await executeQuery(prefix + ' | head 5');
+            const trimmed = prefix.trimEnd();
+            const safePrefix = trimmed.endsWith(']')
+                ? trimmed.slice(0, -1) + ' | head 5]'
+                : prefix + ' | head 5';
+            const resp = await executeQuery(safePrefix);
             const rows = resp.resultRows || [];
             onStep({ ...step, status: 'success', rows, resultCount: resp.resultCount });
             parts.push('## Stage ' + (i + 1) + ': `' + prefix.slice(-80) + '`');

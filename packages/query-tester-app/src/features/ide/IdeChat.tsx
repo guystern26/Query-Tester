@@ -6,6 +6,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useTestStore } from 'core/store/testStore';
 import { selectActiveTest } from 'core/store/selectors';
 import { ChatEmptyState, MessageBubble } from './ChatMessageParts';
+import { AgentStepCard } from './AgentStepCard';
 
 export function IdeChat(): React.ReactElement {
     const messages = useTestStore((s) => s.chatMessages);
@@ -19,6 +20,7 @@ export function IdeChat(): React.ReactElement {
     const syncContext = useTestStore((s) => s.syncChatContext);
     const executeAction = useTestStore((s) => s.executeChatAction);
     const clearChat = useTestStore((s) => s.clearChat);
+    const agentSteps = useTestStore((s) => s.chatAgentSteps);
 
     const spl = test?.query?.spl ?? '';
 
@@ -114,9 +116,18 @@ export function IdeChat(): React.ReactElement {
                     />
                 ))}
                 {loading && (
-                    <div className="flex items-center gap-2 py-2 text-[12px] text-slate-400">
-                        <span className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                        Thinking...
+                    <div className="py-2">
+                        {agentSteps.length > 0 && (
+                            <div className="flex flex-col gap-1 mb-2">
+                                {agentSteps.map((step) => (
+                                    <AgentStepCard key={step.id} step={step} />
+                                ))}
+                            </div>
+                        )}
+                        <div className="flex items-center gap-2 text-[12px] text-slate-400">
+                            <span className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                            {agentSteps.length > 0 ? 'Processing...' : 'Thinking...'}
+                        </div>
                     </div>
                 )}
             </div>

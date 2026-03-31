@@ -1,7 +1,7 @@
 /**
  * AgentSettingsPanel — 4-tab agent settings (Manager/Explainer/Writer/Validator).
  * Each tab has a system prompt textarea and a list of additional skills.
- * Replaces the flat SkillsManager.
+ * Each tab has a system prompt textarea and a list of additional skills.
  */
 import React, { useState, useCallback, useEffect } from 'react';
 import { useTestStore } from 'core/store/testStore';
@@ -17,7 +17,11 @@ const TAB_BASE = 'px-2.5 py-1 text-[11px] font-medium transition cursor-pointer 
 const TAB_ACTIVE = TAB_BASE + ' text-slate-200 border-blue-400';
 const TAB_INACTIVE = TAB_BASE + ' text-slate-500 hover:text-slate-300 border-transparent';
 
-export function AgentSettingsPanel(): React.ReactElement {
+interface AgentSettingsPanelProps {
+    onDirtyChange?: (dirty: boolean) => void;
+}
+
+export function AgentSettingsPanel({ onDirtyChange }: AgentSettingsPanelProps): React.ReactElement {
     const skills = useTestStore((s) => s.chatSkills);
     const loadSkills = useTestStore((s) => s.loadChatSkills);
     const addSkill = useTestStore((s) => s.addChatSkill);
@@ -56,6 +60,7 @@ export function AgentSettingsPanel(): React.ReactElement {
             <SystemPromptEditor
                 skill={systemPromptSkill} role={activeRole}
                 onSave={saveSkill} onCreate={addSkill}
+                onDirtyChange={onDirtyChange}
             />
             <div className="flex flex-col gap-1.5">
                 <span className="text-[11px] text-slate-500 font-medium">
@@ -80,21 +85,24 @@ interface SystemPromptEditorProps {
     role: AgentRole;
     onSave: (skill: ChatSkill) => void;
     onCreate: (name: string, prompt: string, role: AgentRole, isSystemPrompt: boolean) => Promise<void>;
+    onDirtyChange?: (dirty: boolean) => void;
 }
 
-function SystemPromptEditor({ skill, role, onSave, onCreate }: SystemPromptEditorProps): React.ReactElement {
+function SystemPromptEditor({ skill, role, onSave, onCreate, onDirtyChange }: SystemPromptEditorProps): React.ReactElement {
     const [draft, setDraft] = useState('');
     const [dirty, setDirty] = useState(false);
 
     useEffect(() => {
         setDraft(skill?.prompt || '');
         setDirty(false);
-    }, [skill?.id, skill?.prompt, role]);
+        if (onDirtyChange) onDirtyChange(false);
+    }, [skill?.id, skill?.prompt, role, onDirtyChange]);
 
     const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setDraft(e.target.value);
         setDirty(true);
-    }, []);
+        if (onDirtyChange) onDirtyChange(true);
+    }, [onDirtyChange]);
 
     const handleSave = useCallback(() => {
         if (skill) {
@@ -103,7 +111,8 @@ function SystemPromptEditor({ skill, role, onSave, onCreate }: SystemPromptEdito
             void onCreate(ROLE_LABELS[role] + ' System Prompt', draft, role, true);
         }
         setDirty(false);
-    }, [skill, draft, role, onSave, onCreate]);
+        if (onDirtyChange) onDirtyChange(false);
+    }, [skill, draft, role, onSave, onCreate, onDirtyChange]);
 
     return (
         <div className="flex flex-col gap-1.5">

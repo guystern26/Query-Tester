@@ -9,6 +9,7 @@ const TYPE_LABELS: Record<AgentStep['type'], string> = {
     auto_query: 'Query',
     debug_step: 'Debug',
     validation: 'Validate',
+    routing: 'Route',
 };
 
 const STATUS_COLORS: Record<AgentStep['status'], string> = {

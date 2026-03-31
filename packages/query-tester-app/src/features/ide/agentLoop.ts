@@ -13,7 +13,7 @@ import { runDebugPipeline } from './debugPipeline';
 
 export interface AgentStep {
     id: string;
-    type: 'auto_query' | 'debug_step' | 'validation';
+    type: 'auto_query' | 'debug_step' | 'validation' | 'routing';
     spl?: string;
     status: 'running' | 'success' | 'error' | 'blocked';
     rows?: Record<string, string>[];
@@ -59,14 +59,35 @@ function parseJsonBlock(raw: string): Record<string, unknown> {
 async function routeViaManager(
     config: AgentPipelineConfig, userMessage: string, spl: string,
     app: string, timeRange: { earliest: string; latest: string } | undefined,
+    onStep: (step: AgentStep) => void, steps: AgentStep[],
 ): Promise<'explainer' | 'writer'> {
+    const routeStep: AgentStep = {
+        id: 'route-' + steps.length, type: 'routing', status: 'running', label: 'Routing to specialist',
+    };
+    steps.push(routeStep);
+    onStep(routeStep);
+
     const specialists = { explainer: config.explainer, writer: config.writer };
     const prompt = buildManagerRoutingPrompt(config.manager, spl, app, timeRange, specialists, userMessage);
     try {
         const raw = await callLLMChat(prompt, [{ role: 'user', content: userMessage }]);
         const name = String((parseJsonBlock(raw) as { specialist?: string }).specialist || '').toLowerCase();
-        if (name === 'explainer' || name === 'writer') return name;
-    } catch { /* default */ }
+        if (name === 'explainer' || name === 'writer') {
+            const upd = { ...routeStep, status: 'success' as const, label: 'Routed to ' + name };
+            steps[steps.length - 1] = upd;
+            onStep(upd);
+            return name;
+        }
+    } catch (e) {
+        const err = e as { message?: string };
+        const upd = {
+            ...routeStep, status: 'error' as const,
+            label: 'Routing failed, defaulting to explainer',
+            error: 'LLM call failed: ' + (err.message || 'unknown error') + '. Check your LLM settings in the Setup page.',
+        };
+        steps[steps.length - 1] = upd;
+        onStep(upd);
+    }
     return 'explainer';
 }
 
@@ -121,7 +142,13 @@ async function runSpecialist(
 
     for (let i = 0; i < MAX_AGENT_ITERATIONS; i++) {
         checkAbort(signal);
-        const raw = await callLLMChat(sys, aug);
+        let raw: string;
+        try {
+            raw = await callLLMChat(sys, aug);
+        } catch (e) {
+            const err = e as { message?: string };
+            throw new Error('LLM call failed: ' + (err.message || 'unknown error') + '. Check your LLM settings in the Setup page.');
+        }
         const { cleanContent, actions } = parseActionBlocks(raw);
         const autos = actions.filter((a) => a.type === 'auto_query');
         const hasDebug = actions.some((a) => a.type === 'debug_pipeline');
@@ -132,7 +159,13 @@ async function runSpecialist(
         aug.push({ role: 'assistant', content: raw });
         aug.push({ role: 'user', content: '[Auto-query results]:\n\n' + results.join('\n\n') });
     }
-    const finalRaw = await callLLMChat(sys, aug);
+    let finalRaw: string;
+    try {
+        finalRaw = await callLLMChat(sys, aug);
+    } catch (e) {
+        const err = e as { message?: string };
+        throw new Error('LLM call failed: ' + (err.message || 'unknown error') + '. Check your LLM settings in the Setup page.');
+    }
     const final = parseActionBlocks(finalRaw);
     return { content: final.cleanContent, actions: final.actions.filter((a) => MANUAL_TYPES.includes(a.type)) };
 }
@@ -172,7 +205,7 @@ export async function runAgentPipeline(
 ): Promise<{ content: string; actions: ParsedAction[]; steps: AgentStep[] }> {
     const steps: AgentStep[] = [];
     checkAbort(signal);
-    const specialist = await routeViaManager(config, userMessage, spl, app, timeRange);
+    const specialist = await routeViaManager(config, userMessage, spl, app, timeRange, onStep, steps);
     const specialistCfg = specialist === 'writer' ? config.writer : config.explainer;
 
     let lastContent = '';

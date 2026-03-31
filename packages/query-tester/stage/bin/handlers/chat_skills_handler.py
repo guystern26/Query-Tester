@@ -38,7 +38,8 @@ class ChatSkillsHandler:
         # type: () -> List[Dict[str, Any]]
         try:
             records = self._kv.get_all(COLLECTION)
-            return sorted(records, key=lambda r: r.get("sortOrder", 0))
+            normalized = [self._normalize(r) for r in records]
+            return sorted(normalized, key=lambda r: r.get("sortOrder", 0))
         except Exception as exc:
             logger.error("Failed to read chat skills: %s", exc)
             return []

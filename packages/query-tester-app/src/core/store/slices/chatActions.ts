@@ -98,7 +98,16 @@ export function createSendChatMessage(set: SetState, get: ChatStoreGet): (text: 
             if (agentConfig) {
                 const exec = (q: string) => runIdeQuery(app, q, timeRange);
                 const r = await runAgentPipeline(agentConfig, text, spl, app, timeRange, ctx, history, exec,
-                    (step) => { set((d) => { d.chatAgentSteps = [...d.chatAgentSteps, step]; }); }, signal);
+                    (step) => {
+                        set((d) => {
+                            const idx = d.chatAgentSteps.findIndex((s) => s.id === step.id);
+                            if (idx >= 0) {
+                                d.chatAgentSteps[idx] = step;
+                            } else {
+                                d.chatAgentSteps.push(step);
+                            }
+                        });
+                    }, signal);
                 entry = makeEntry('assistant', r.content, {
                     actions: r.actions.length > 0 ? r.actions : undefined,
                     agentSteps: r.steps.length > 0 ? r.steps : undefined,
