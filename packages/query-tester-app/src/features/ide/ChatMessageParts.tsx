@@ -7,6 +7,7 @@ import type { ChatMessageEntry, ActionResult } from '../../core/store/slices/cha
 import type { ParsedAction } from './chatUtils';
 import { ChatActionResult } from './ChatActionResult';
 import { AgentStepCard } from './AgentStepCard';
+import { MarkdownBlock } from './ChatMarkdown';
 
 const COPIED_TIMEOUT_MS = 1500;
 
@@ -82,7 +83,7 @@ export function MessageBubble({ message, onExecuteAction }: MessageBubbleProps):
     );
 }
 
-// ── Message content with code blocks ────────────────────────────
+// ── Message content with markdown rendering ─────────────────────
 
 function MessageContent({ content }: { content: string }): React.ReactElement {
     const parts = content.split(/(```[\s\S]*?```)/g);
@@ -94,7 +95,7 @@ function MessageContent({ content }: { content: string }): React.ReactElement {
                     const code = part.replace(/^```\w*\n?/, '').replace(/\n?```$/, '');
                     return <CodeBlock key={i} code={code} />;
                 }
-                return <span key={i} className="whitespace-pre-wrap">{part}</span>;
+                return <MarkdownBlock key={i} text={part} />;
             })}
         </React.Fragment>
     );
