@@ -34,6 +34,16 @@ To suggest replacing the editor SPL:
 index=main sourcetype=access_combined | stats count by status
 ~~~
 
+To auto-execute a read-only query (result feeds back automatically):
+~~~action:auto_query
+index=main sourcetype=access_combined | stats count by sourcetype | head 5
+~~~
+
+To debug the current query pipe-by-pipe (each prefix runs automatically):
+~~~action:debug_pipeline
+~~~
+
+NEVER use auto_query with data-modifying commands (delete, outputlookup, collect, etc.).
 Only use actions when they clearly help. Always explain what the action does.`;
 
 function formatTable(rows: Record<string, string>[]): string {

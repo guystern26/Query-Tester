@@ -52,6 +52,7 @@ export async function fetchChatSkills(): Promise<ChatSkill[]> {
 export async function createChatSkill(skill: Omit<ChatSkill, 'id'>): Promise<ChatSkill> {
     const resp = await fetch(buildUrl(), buildInit('POST', {
         name: skill.name, prompt: skill.prompt, enabled: skill.enabled,
+        role: skill.role, isSystemPrompt: skill.isSystemPrompt,
     }));
     if (!resp.ok) throw new Error('Failed to create skill');
     const data = await resp.json();
@@ -62,7 +63,8 @@ export async function createChatSkill(skill: Omit<ChatSkill, 'id'>): Promise<Cha
 export async function updateChatSkill(skill: ChatSkill): Promise<ChatSkill> {
     const resp = await fetch(buildUrl(), buildInit('PUT', {
         id: skill.id, name: skill.name, prompt: skill.prompt,
-        enabled: skill.enabled, sortOrder: skill.enabled ? 0 : 999,
+        enabled: skill.enabled, role: skill.role, isSystemPrompt: skill.isSystemPrompt,
+        sortOrder: skill.enabled ? 0 : 999,
     }));
     if (!resp.ok) throw new Error('Failed to update skill');
     const data = await resp.json();
@@ -77,10 +79,19 @@ export async function deleteChatSkill(id: string): Promise<void> {
 
 function normalizeChatSkill(raw: Record<string, unknown>): ChatSkill {
     const enabled = raw.enabled;
+    const isSys = raw.isSystemPrompt;
     return {
         id: String(raw.id || ''),
         name: String(raw.name || ''),
         prompt: String(raw.prompt || ''),
         enabled: enabled === true || enabled === '1' || enabled === 'true',
+        role: normalizeRole(raw.role),
+        isSystemPrompt: isSys === true || isSys === '1' || isSys === 'true',
     };
+}
+
+function normalizeRole(val: unknown): ChatSkill['role'] {
+    const s = String(val || 'manager');
+    if (s === 'explainer' || s === 'writer' || s === 'validator') return s;
+    return 'manager';
 }

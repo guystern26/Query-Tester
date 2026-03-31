@@ -10,14 +10,19 @@ import type { IdeRunResponse } from '../../../api/ideApi';
 import { runIdeQuery } from '../../../api/ideApi';
 import { extractBaseSearch } from '../../../features/ide/chatUtils';
 import type { ParsedAction } from '../../../features/ide/chatUtils';
+import type { AgentStep } from '../../../features/ide/agentLoop';
 import { abortChat, createSendChatMessage, createExecuteChatAction } from './chatActions';
 import { fetchChatSkills, createChatSkill, updateChatSkill, deleteChatSkill } from '../../../api/chatSkillsApi';
+
+export type AgentRole = 'manager' | 'explainer' | 'writer' | 'validator';
 
 export interface ChatSkill {
     id: string;
     name: string;
     prompt: string;
     enabled: boolean;
+    role: AgentRole;
+    isSystemPrompt: boolean;
 }
 
 export interface ActionResult {
@@ -33,6 +38,7 @@ export interface ChatMessageEntry {
     timestamp: number;
     actions?: ParsedAction[];
     actionResults?: Record<string, ActionResult>;
+    agentSteps?: AgentStep[];
 }
 
 export interface ChatSliceState {
@@ -45,6 +51,7 @@ export interface ChatSliceState {
     chatPreviousResponse: IdeRunResponse | null;
     chatCustomPrompt: string;
     chatSkills: ChatSkill[];
+    chatAgentSteps: AgentStep[];
     sendChatMessage: (text: string) => Promise<void>;
     syncChatContext: (response: IdeRunResponse, spl: string) => void;
     executeChatAction: (messageId: string, actionId: string) => Promise<void>;
@@ -53,7 +60,7 @@ export interface ChatSliceState {
     setChatCustomPrompt: (prompt: string) => void;
     setChatSkills: (skills: ChatSkill[]) => void;
     loadChatSkills: () => Promise<void>;
-    addChatSkill: (name: string, prompt: string) => Promise<void>;
+    addChatSkill: (name: string, prompt: string, role?: AgentRole, isSystemPrompt?: boolean) => Promise<void>;
     saveChatSkill: (skill: ChatSkill) => Promise<void>;
     removeChatSkill: (id: string) => Promise<void>;
 }
@@ -66,7 +73,8 @@ function loadCustomPrompt(): string {
 export const chatInitialState: Pick<
     ChatSliceState,
     | 'chatMessages' | 'chatLoading' | 'chatSampleData' | 'chatSampleLoading'
-    | 'chatContextSpl' | 'chatExpanded' | 'chatPreviousResponse' | 'chatCustomPrompt' | 'chatSkills'
+    | 'chatContextSpl' | 'chatExpanded' | 'chatPreviousResponse' | 'chatCustomPrompt'
+    | 'chatSkills' | 'chatAgentSteps'
 > = {
     chatMessages: [],
     chatLoading: false,
@@ -77,6 +85,7 @@ export const chatInitialState: Pick<
     chatPreviousResponse: null,
     chatCustomPrompt: loadCustomPrompt(),
     chatSkills: [],
+    chatAgentSteps: [],
 };
 
 interface StoreGet {
@@ -92,6 +101,7 @@ interface StoreGet {
         chatPreviousResponse: IdeRunResponse | null;
         chatCustomPrompt: string;
         chatSkills: ChatSkill[];
+        chatAgentSteps: AgentStep[];
         updateSpl: (testId: string, spl: string) => void;
         runIdeQuery: (spl: string, app: string, timeRange?: { earliest: string; latest: string }, userContext?: string, priorAnalysis?: Array<{ severity: string; category: string; message: string }>, allowBlocked?: boolean) => Promise<void>;
     };
@@ -124,9 +134,12 @@ export function chatSlice(
             } catch { /* skills stay empty until backend is available */ }
         },
 
-        addChatSkill: async (name: string, prompt: string) => {
+        addChatSkill: async (name: string, prompt: string, role?: AgentRole, isSystemPrompt?: boolean) => {
             try {
-                const skill = await createChatSkill({ name, prompt, enabled: true });
+                const skill = await createChatSkill({
+                    name, prompt, enabled: true,
+                    role: role || 'manager', isSystemPrompt: isSystemPrompt || false,
+                });
                 set((d) => { d.chatSkills.push(skill); });
             } catch { /* ignore — UI will still show local state */ }
         },
@@ -190,6 +203,7 @@ export function chatSlice(
                 d.chatSampleLoading = false;
                 d.chatContextSpl = null;
                 d.chatPreviousResponse = null;
+                d.chatAgentSteps = [];
             });
         },
     };

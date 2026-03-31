@@ -51,11 +51,15 @@ class ChatSkillsHandler:
 
         skill_id = str(uuid.uuid4())
         existing = self._get_all()
+        role = str(payload.get("role", "manager")).strip()
+        is_sys = payload.get("isSystemPrompt", False)
         record = {
             "id": skill_id,
             "name": name,
             "prompt": str(payload.get("prompt", "")),
             "enabled": "1" if payload.get("enabled", True) else "0",
+            "role": role if role in ("manager", "explainer", "writer", "validator") else "manager",
+            "isSystemPrompt": "1" if is_sys in (True, "1", "true", "True") else "0",
             "createdBy": self._username,
             "createdAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "sortOrder": len(existing),
@@ -79,6 +83,13 @@ class ChatSkillsHandler:
             existing["prompt"] = str(payload["prompt"])
         if "enabled" in payload:
             existing["enabled"] = "1" if payload["enabled"] else "0"
+        if "role" in payload:
+            role = str(payload["role"]).strip()
+            if role in ("manager", "explainer", "writer", "validator"):
+                existing["role"] = role
+        if "isSystemPrompt" in payload:
+            is_sys = payload["isSystemPrompt"]
+            existing["isSystemPrompt"] = "1" if is_sys in (True, "1", "true", "True") else "0"
         if "sortOrder" in payload:
             existing["sortOrder"] = int(payload["sortOrder"])
 
@@ -100,11 +111,14 @@ class ChatSkillsHandler:
     def _normalize(record):
         # type: (Dict[str, Any]) -> Dict[str, Any]
         enabled_raw = record.get("enabled", "1")
+        is_sys_raw = record.get("isSystemPrompt", "0")
         return {
             "id": record.get("id", ""),
             "name": record.get("name", ""),
             "prompt": record.get("prompt", ""),
             "enabled": enabled_raw in (True, "1", "true", "True"),
+            "role": record.get("role", "manager"),
+            "isSystemPrompt": is_sys_raw in (True, "1", "true", "True"),
             "createdBy": record.get("createdBy", ""),
             "createdAt": record.get("createdAt", ""),
             "sortOrder": int(record.get("sortOrder", 0)),

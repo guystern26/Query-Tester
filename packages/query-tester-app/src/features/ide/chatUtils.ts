@@ -4,7 +4,7 @@
 
 export interface ParsedAction {
     id: string;
-    type: 'run_query' | 'update_spl';
+    type: 'run_query' | 'update_spl' | 'auto_query' | 'debug_pipeline';
     payload: string;
 }
 
@@ -29,7 +29,7 @@ export function extractBaseSearch(spl: string): string {
     return before || spl.trim();
 }
 
-const ACTION_BLOCK_REGEX = /~~~action:(run_query|update_spl)\n([\s\S]*?)~~~/g;
+const ACTION_BLOCK_REGEX = /~~~action:(run_query|update_spl|auto_query|debug_pipeline)\n([\s\S]*?)~~~/g;
 
 const DANGEROUS_COMMANDS = /\b(delete|outputlookup|collect|sendemail|outputcsv|outputtelemetry)\b/i;
 
@@ -47,7 +47,7 @@ export function parseActionBlocks(content: string): {
 
     const cleanContent = content.replace(ACTION_BLOCK_REGEX, (_match, type, payload) => {
         const trimmed = (payload as string).trim();
-        if (type === 'run_query' && DANGEROUS_COMMANDS.test(trimmed)) {
+        if ((type === 'run_query' || type === 'auto_query') && DANGEROUS_COMMANDS.test(trimmed)) {
             return '\n(Blocked: query contains a data-modifying command)\n';
         }
         actions.push({

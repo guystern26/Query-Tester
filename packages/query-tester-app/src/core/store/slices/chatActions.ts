@@ -2,7 +2,6 @@
  * chatActions — Action implementations for the chat slice.
  * Extracted to keep chatSlice.ts under 200 lines.
  */
-
 import type { ChatMessage } from '../../../api/llmApi';
 import type { IdeRunResponse } from '../../../api/ideApi';
 import { callLLMChat } from '../../../api/llmApi';
@@ -10,7 +9,9 @@ import { runIdeQuery } from '../../../api/ideApi';
 import { buildChatSystemPrompt } from '../../../api/chatPrompts';
 import type { ChatContextData } from '../../../api/chatPrompts';
 import { parseActionBlocks } from '../../../features/ide/chatUtils';
-import type { ChatMessageEntry, ChatSliceState } from './chatSlice';
+import { runAgentPipeline } from '../../../features/ide/agentLoop';
+import type { AgentPipelineConfig } from '../../../features/ide/agentLoop';
+import type { ChatMessageEntry, ChatSliceState, AgentRole } from './chatSlice';
 
 interface ChatStoreGet {
     (): {
@@ -22,21 +23,16 @@ interface ChatStoreGet {
         chatSampleData: Record<string, string>[] | null;
         chatPreviousResponse: IdeRunResponse | null;
         chatCustomPrompt: string;
-        chatSkills: Array<{ id: string; name: string; prompt: string; enabled: boolean }>;
+        chatSkills: Array<{ id: string; name: string; prompt: string; enabled: boolean; role: AgentRole; isSystemPrompt: boolean }>;
         updateSpl: (testId: string, spl: string) => void;
         runIdeQuery: (spl: string, app: string, timeRange?: { earliest: string; latest: string }) => Promise<void>;
     };
 }
-
 type SetState = (recipe: (draft: ChatSliceState) => void) => void;
-
 let chatAbortController: AbortController | null = null;
 
 export function abortChat(): void {
-    if (chatAbortController) {
-        chatAbortController.abort();
-        chatAbortController = null;
-    }
+    if (chatAbortController) { chatAbortController.abort(); chatAbortController = null; }
 }
 
 function buildContext(
@@ -56,84 +52,70 @@ function buildContext(
         queryResultCount: null, previousQueryRows: null, previousQueryCount: null };
 }
 
+function buildAgentConfig(
+    skills: Array<{ name: string; prompt: string; enabled: boolean; role: AgentRole; isSystemPrompt: boolean }>,
+): AgentPipelineConfig | null {
+    const roles: AgentRole[] = ['manager', 'explainer', 'writer', 'validator'];
+    const config: Partial<AgentPipelineConfig> = {};
+    for (const role of roles) {
+        const rs = skills.filter((s) => s.role === role);
+        const sys = rs.find((s) => s.isSystemPrompt && s.prompt.trim());
+        if (!sys) return null;
+        config[role] = {
+            systemPrompt: sys.prompt,
+            skills: rs.filter((s) => !s.isSystemPrompt && s.enabled && s.prompt.trim())
+                .map((s) => ({ name: s.name, prompt: s.prompt })),
+        };
+    }
+    return config as AgentPipelineConfig;
+}
+
+function makeEntry(role: 'user' | 'assistant', content: string, extra?: Partial<ChatMessageEntry>): ChatMessageEntry {
+    return { id: crypto.randomUUID(), role, content, timestamp: Date.now(), ...extra };
+}
+
 export function createSendChatMessage(set: SetState, get: ChatStoreGet): (text: string) => Promise<void> {
     return async (text: string) => {
         const state = get();
         const test = state.tests.find((t) => t.id === state.activeTestId);
         if (!test) return;
-
         const spl = test.query?.spl ?? '';
         const app = test.app ?? '';
-        const ideResponse = state.ideResponse;
+        const timeRange = test.query?.timeRange;
 
-        const userEntry: ChatMessageEntry = {
-            id: crypto.randomUUID(),
-            role: 'user',
-            content: text,
-            timestamp: Date.now(),
-        };
+        set((d) => { d.chatMessages.push(makeEntry('user', text)); d.chatLoading = true; d.chatAgentSteps = []; });
 
-        set((d) => {
-            d.chatMessages.push(userEntry);
-            d.chatLoading = true;
-        });
-
-        const currentState = get();
-        const contextData = buildContext(ideResponse, currentState.chatSampleData, currentState.chatPreviousResponse);
-
-        const history: ChatMessage[] = currentState.chatMessages.map((m) => ({
-            role: m.role,
-            content: m.content,
-        }));
-
-        const enabledSkills = state.chatSkills
-            .filter((s) => s.enabled)
-            .map((s) => ({ name: s.name, prompt: s.prompt }));
-
-        const systemPrompt = buildChatSystemPrompt(
-            spl, app, test.query?.timeRange, state.ideUserContext, contextData,
-            state.chatCustomPrompt, enabledSkills,
-        );
-
+        const cur = get();
+        const ctx = buildContext(state.ideResponse, cur.chatSampleData, cur.chatPreviousResponse);
+        const history: ChatMessage[] = cur.chatMessages.map((m) => ({ role: m.role, content: m.content }));
         if (chatAbortController) chatAbortController.abort();
         chatAbortController = new AbortController();
+        const signal = chatAbortController.signal;
+        const agentConfig = buildAgentConfig(state.chatSkills);
 
         try {
-            const rawResponse = await callLLMChat(systemPrompt, history);
-            const { cleanContent, actions } = parseActionBlocks(rawResponse);
-
-            const assistantEntry: ChatMessageEntry = {
-                id: crypto.randomUUID(),
-                role: 'assistant',
-                content: cleanContent,
-                timestamp: Date.now(),
-                actions: actions.length > 0 ? actions : undefined,
-                actionResults: undefined,
-            };
-
-            set((d) => {
-                d.chatMessages.push(assistantEntry);
-                d.chatLoading = false;
-            });
+            let entry: ChatMessageEntry;
+            if (agentConfig) {
+                const exec = (q: string) => runIdeQuery(app, q, timeRange);
+                const r = await runAgentPipeline(agentConfig, text, spl, app, timeRange, ctx, history, exec,
+                    (step) => { set((d) => { d.chatAgentSteps = [...d.chatAgentSteps, step]; }); }, signal);
+                entry = makeEntry('assistant', r.content, {
+                    actions: r.actions.length > 0 ? r.actions : undefined,
+                    agentSteps: r.steps.length > 0 ? r.steps : undefined,
+                });
+            } else {
+                const sk = state.chatSkills.filter((s) => s.enabled).map((s) => ({ name: s.name, prompt: s.prompt }));
+                const sys = buildChatSystemPrompt(spl, app, timeRange, state.ideUserContext, ctx, state.chatCustomPrompt, sk);
+                const raw = await callLLMChat(sys, history);
+                const { cleanContent, actions } = parseActionBlocks(raw);
+                entry = makeEntry('assistant', cleanContent, { actions: actions.length > 0 ? actions : undefined });
+            }
+            set((d) => { d.chatMessages.push(entry); d.chatLoading = false; });
         } catch (e) {
             const err = e as { name?: string; message?: string };
-            if (err.name === 'AbortError') {
-                set((d) => { d.chatLoading = false; });
-                return;
-            }
-            const errorEntry: ChatMessageEntry = {
-                id: crypto.randomUUID(),
-                role: 'assistant',
-                content: 'Error: ' + (err.message || 'Chat request failed'),
-                timestamp: Date.now(),
-            };
-            set((d) => {
-                d.chatMessages.push(errorEntry);
-                d.chatLoading = false;
-            });
-        } finally {
-            chatAbortController = null;
-        }
+            if (err.name === 'AbortError') { set((d) => { d.chatLoading = false; }); return; }
+            set((d) => { d.chatMessages.push(makeEntry('assistant', 'Error: ' + (err.message || 'Chat request failed'))); d.chatLoading = false; });
+        } finally { chatAbortController = null; }
     };
 }
 

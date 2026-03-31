@@ -6,6 +6,7 @@ import React, { useState, useCallback } from 'react';
 import type { ChatMessageEntry, ActionResult } from '../../core/store/slices/chatSlice';
 import type { ParsedAction } from './chatUtils';
 import { ChatActionResult } from './ChatActionResult';
+import { AgentStepCard } from './AgentStepCard';
 
 const COPIED_TIMEOUT_MS = 1500;
 
@@ -60,6 +61,9 @@ export function MessageBubble({ message, onExecuteAction }: MessageBubbleProps):
                         : 'bg-navy-800 text-slate-300 border border-slate-700/50'
                 }`}
             >
+                {!isUser && message.agentSteps && message.agentSteps.length > 0 && (
+                    <AgentActivity steps={message.agentSteps} />
+                )}
                 <MessageContent content={message.content} />
                 {message.actions && message.actions.length > 0 && (
                     <div className="flex flex-col gap-1.5 mt-2">
@@ -160,6 +164,32 @@ function ActionButton({ action, result, onExecute }: ActionButtonProps): React.R
                 </span>
             )}
             {result && isRunQuery && <ChatActionResult result={result} />}
+        </div>
+    );
+}
+
+// ── Agent activity (collapsible step list) ───────────────────────
+
+import type { AgentStep } from './agentLoop';
+
+function AgentActivity({ steps }: { steps: AgentStep[] }): React.ReactElement {
+    const [open, setOpen] = useState(false);
+
+    return (
+        <div className="mb-2">
+            <button type="button" onClick={() => setOpen(!open)}
+                className="flex items-center gap-1.5 text-[10px] text-slate-500 hover:text-slate-300 transition cursor-pointer">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    strokeWidth="2" strokeLinecap="round" className={'transition ' + (open ? 'rotate-90' : '')}>
+                    <polyline points="9 18 15 12 9 6" />
+                </svg>
+                Agent activity ({steps.length} step{steps.length !== 1 ? 's' : ''})
+            </button>
+            {open && (
+                <div className="flex flex-col gap-1 mt-1">
+                    {steps.map((step) => <AgentStepCard key={step.id} step={step} />)}
+                </div>
+            )}
         </div>
     );
 }

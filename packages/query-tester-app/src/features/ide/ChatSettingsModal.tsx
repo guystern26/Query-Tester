@@ -4,9 +4,9 @@
 import React, { useState, useCallback } from 'react';
 import { useTestStore } from 'core/store/testStore';
 import { DEFAULT_BASE_PROMPT } from '../../api/chatPrompts';
-import { SkillsManager } from './SkillsManager';
+import { AgentSettingsPanel } from './AgentSettingsPanel';
 
-type SettingsTab = 'prompt' | 'skills';
+type SettingsTab = 'prompt' | 'agents';
 
 const TAB_BASE = 'px-3 py-1.5 text-[12px] font-medium transition cursor-pointer border-b-2';
 const TAB_ACTIVE = TAB_BASE + ' text-slate-200 border-blue-400';
@@ -44,8 +44,8 @@ export function ChatSettingsModal({ onClose }: ChatSettingsModalProps): React.Re
                         <button type="button" onClick={() => setTab('prompt')} className={tab === 'prompt' ? TAB_ACTIVE : TAB_INACTIVE}>
                             Base Prompt
                         </button>
-                        <button type="button" onClick={() => setTab('skills')} className={tab === 'skills' ? TAB_ACTIVE : TAB_INACTIVE}>
-                            Skills
+                        <button type="button" onClick={() => setTab('agents')} className={tab === 'agents' ? TAB_ACTIVE : TAB_INACTIVE}>
+                            Agents
                             {enabledCount > 0 && (
                                 <span className="ml-1.5 px-1.5 py-0.5 text-[10px] rounded-full bg-blue-500/20 text-blue-400">
                                     {enabledCount}
@@ -78,7 +78,7 @@ export function ChatSettingsModal({ onClose }: ChatSettingsModalProps): React.Re
                             </p>
                         </div>
                     ) : (
-                        <SkillsManager />
+                        <AgentSettingsPanel />
                     )}
                 </div>
 
@@ -97,7 +97,7 @@ export function ChatSettingsModal({ onClose }: ChatSettingsModalProps): React.Re
                     <div className="flex gap-2">
                         <button type="button" onClick={onClose}
                             className="px-3 py-1.5 text-[12px] rounded border border-slate-700 text-slate-400 hover:text-slate-200 transition cursor-pointer">
-                            {tab === 'skills' ? 'Done' : 'Cancel'}
+                            {tab === 'agents' ? 'Done' : 'Cancel'}
                         </button>
                         {tab === 'prompt' && (
                             <button type="button" onClick={handleSavePrompt}
