@@ -61,6 +61,7 @@ export function IdeChat(): React.ReactElement {
     );
 
     const hasContext = ideResponse !== null;
+    const splChanged = hasContext && contextSpl !== null && contextSpl !== spl;
 
     return (
         <div className="flex flex-col h-full">
@@ -86,6 +87,11 @@ export function IdeChat(): React.ReactElement {
                     {!sampleLoading && sampleData && sampleData.length > 0 && (
                         <span className="px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400">
                             {sampleData.length} sample events
+                        </span>
+                    )}
+                    {splChanged && (
+                        <span className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400">
+                            SPL edited
                         </span>
                     )}
                     {!hasContext && (
