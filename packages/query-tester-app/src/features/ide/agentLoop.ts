@@ -60,7 +60,8 @@ async function routeViaManager(
     config: AgentPipelineConfig, userMessage: string, spl: string,
     app: string, timeRange: { earliest: string; latest: string } | undefined,
 ): Promise<'explainer' | 'writer'> {
-    const prompt = buildManagerRoutingPrompt(config.manager, spl, app, timeRange, ['explainer', 'writer'], userMessage);
+    const specialists = { explainer: config.explainer, writer: config.writer };
+    const prompt = buildManagerRoutingPrompt(config.manager, spl, app, timeRange, specialists, userMessage);
     try {
         const raw = await callLLMChat(prompt, [{ role: 'user', content: userMessage }]);
         const name = String((parseJsonBlock(raw) as { specialist?: string }).specialist || '').toLowerCase();

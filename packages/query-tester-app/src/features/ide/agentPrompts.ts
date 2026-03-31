@@ -32,7 +32,7 @@ export function buildManagerRoutingPrompt(
     spl: string,
     app: string,
     timeRange: { earliest: string; latest: string } | undefined,
-    specialistNames: string[],
+    specialists: Record<string, AgentRoleConfig>,
     userMessage: string,
 ): string {
     const parts: string[] = [managerConfig.systemPrompt];
@@ -42,7 +42,12 @@ export function buildManagerRoutingPrompt(
     parts.push('App: ' + (app || 'not set'));
     if (timeRange) parts.push('Time range: ' + timeRange.earliest + ' to ' + timeRange.latest);
     parts.push('SPL (first 500 chars): ' + (spl || '(empty)').slice(0, 500));
-    parts.push('\nAvailable specialists: ' + specialistNames.join(', '));
+    parts.push('\n# Available Specialists');
+    for (const [name, cfg] of Object.entries(specialists)) {
+        const skillNames = cfg.skills.map((s) => s.name);
+        parts.push('- **' + name + '**: ' + cfg.systemPrompt.slice(0, 120));
+        if (skillNames.length > 0) parts.push('  Skills: ' + skillNames.join(', '));
+    }
     parts.push('\nUser message: ' + userMessage);
     parts.push('\nRespond with ONLY a JSON object: {"specialist": "<name>"}');
     return parts.join('\n');
