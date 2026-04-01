@@ -81,6 +81,29 @@ export function StartPage({ mode = 'builder', onNavigateLibrary, loadTestId }: S
 
     const pipeline = usePipelineState();
     const tutorial = useTutorial();
+    const setupRequired = useTestStore((s) => s.setupRequired);
+    const [showTourPrompt, setShowTourPrompt] = useState(false);
+
+    // Show tour prompt on first-ever visit (per browser)
+    useEffect(() => {
+        if (isIde || setupRequired) return;
+        try {
+            if (!localStorage.getItem('qt_tour_seen')) {
+                localStorage.setItem('qt_tour_seen', '1');
+                setShowTourPrompt(true);
+            }
+        } catch { /* localStorage unavailable */ }
+    }, [setupRequired]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const handleTourAccept = useCallback(() => {
+        setShowTourPrompt(false);
+        tutorial.start();
+    }, [tutorial]);
+
+    const handleTourSkip = useCallback(() => {
+        setShowTourPrompt(false);
+    }, []);
+
     const handleAppChange = (appValue: string): void => { if (activeTest) updateApp(activeTest.id, appValue); };
 
     const handleStepClick = useCallback((stepId: string) => {
@@ -179,6 +202,28 @@ export function StartPage({ mode = 'builder', onNavigateLibrary, loadTestId }: S
 
             {isIde ? <IdeResultsBar /> : <ResultsBar />}
             {!isIde && <TutorialOverlay tutorial={tutorial} />}
+            {showTourPrompt && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50">
+                    <div className="bg-navy-900 border border-slate-700 rounded-xl p-6 max-w-sm shadow-2xl shadow-black/40 text-center">
+                        <div className="mx-auto mb-4 w-12 h-12 rounded-full bg-blue-500/15 flex items-center justify-center">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-blue-400">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M12 18h.01" />
+                                <circle cx="12" cy="12" r="9.5" />
+                            </svg>
+                        </div>
+                        <h3 className="text-base font-bold text-slate-100 mb-1">First time here?</h3>
+                        <p className="text-sm text-slate-400 mb-5">Take a quick tour to learn how Query Tester works.</p>
+                        <div className="flex items-center justify-center gap-3">
+                            <button type="button" onClick={handleTourSkip} className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-slate-200 cursor-pointer">
+                                Skip
+                            </button>
+                            <button type="button" onClick={handleTourAccept} className="px-5 py-2 text-sm font-semibold rounded-lg bg-btnprimary hover:bg-btnprimary-hover text-white cursor-pointer">
+                                Let's go
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             {kbShortcuts.dangerousCommands.length > 0 && (
                 <DangerousCommandModal commands={kbShortcuts.dangerousCommands} onConfirm={kbShortcuts.confirmDangerous} onCancel={kbShortcuts.cancelDangerous} />
             )}

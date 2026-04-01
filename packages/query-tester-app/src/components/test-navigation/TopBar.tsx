@@ -27,10 +27,19 @@ export function TopBar({ mode = 'builder', onNavigateLibrary, onNavigateSetup, o
   const loadFromFile = useTestStore((s) => s.loadFromFile);
   const saveCurrentTest = useTestStore((s) => s.saveCurrentTest);
   const updateSavedTest = useTestStore((s) => s.updateSavedTest);
+  const resetToNewTest = useTestStore((s) => s.resetToNewTest);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+
+  const handleClearClick = useCallback(() => setClearConfirmOpen(true), []);
+  const handleClearConfirm = useCallback(() => {
+    setClearConfirmOpen(false);
+    resetToNewTest();
+  }, [resetToNewTest]);
+  const handleClearCancel = useCallback(() => setClearConfirmOpen(false), []);
 
   const handleSave = () => saveToFile();
 
@@ -83,6 +92,8 @@ export function TopBar({ mode = 'builder', onNavigateLibrary, onNavigateSetup, o
             <DestinationActions />
           ) : (
             <>
+              <Button variant="secondary" size="sm" onClick={handleClearClick}>Clear</Button>
+              <div className="w-px h-5 bg-slate-700 mx-1" />
               <Button variant="secondary" size="sm" onClick={handleSave} data-tutorial="export-btn">Export</Button>
               <Button variant="secondary" size="sm" onClick={handleLoadClick} data-tutorial="import-btn">Import</Button>
               <input
@@ -158,6 +169,24 @@ export function TopBar({ mode = 'builder', onNavigateLibrary, onNavigateSetup, o
         onSaveNew={handleSaveNew}
         onUpdate={handleUpdate}
       />
+
+      {/* Clear confirmation */}
+      {clearConfirmOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50">
+          <div className="bg-navy-900 border border-slate-700 rounded-xl p-6 max-w-sm shadow-2xl shadow-black/40 text-center">
+            <h3 className="text-base font-bold text-slate-100 mb-2">Clear builder?</h3>
+            <p className="text-sm text-slate-400 mb-5">The current test will be reset. Unsaved changes will be lost.</p>
+            <div className="flex items-center justify-center gap-3">
+              <button type="button" onClick={handleClearCancel} className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-slate-200 cursor-pointer">
+                Cancel
+              </button>
+              <button type="button" onClick={handleClearConfirm} className="px-5 py-2 text-sm font-semibold rounded-lg bg-red-600 hover:bg-red-500 text-white cursor-pointer">
+                Clear
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

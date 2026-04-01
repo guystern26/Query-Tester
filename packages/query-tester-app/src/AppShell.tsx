@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { StartPage } from './StartPage';
 import { LibraryPage } from './features/library';
 import { SetupPage } from './features/setup/SetupPage';
+import { SetupWizard } from './features/setup/SetupWizard';
+import { SetupPending } from './features/setup/SetupPending';
 import { useTestStore } from 'core/store/testStore';
 import { UnsavedChangesModal } from './features/layout/UnsavedChangesModal';
 import { SaveTestModal } from './components/test-navigation/SaveTestModal';
@@ -49,13 +51,20 @@ export function AppShell(): React.ReactElement {
     const [route, setRoute] = useState(getRoute);
     const [pendingTarget, setPendingTarget] = useState<string | null>(null);
     const suppressGuardRef = useRef(false);
+    const setupRequired = useTestStore((s) => s.setupRequired);
+    const isAdmin = useTestStore((s) => s.isAdmin);
+    const [statusChecked, setStatusChecked] = useState(false);
 
     useEffect(() => {
         const el = document.getElementById('qt-loading');
         if (el) el.remove();
     }, []);
 
-    useEffect(() => { const s = useTestStore.getState(); void s.fetchConfigStatus(); void s.fetchCommandPolicy(); }, []);
+    useEffect(() => {
+        const s = useTestStore.getState();
+        void s.fetchConfigStatus().then(() => setStatusChecked(true));
+        void s.fetchCommandPolicy();
+    }, []);
 
     // Browser tab close / refresh guard
     useEffect(() => {
@@ -163,6 +172,16 @@ export function AppShell(): React.ReactElement {
         const activeTest = state.tests.find((t) => t.id === state.activeTestId);
         return activeTest?.name || '';
     })();
+
+    // Wait for config status before deciding what to render
+    if (!statusChecked) {
+        return <div className="min-h-screen bg-gradient-to-br from-navy-900 to-navy-800" />;
+    }
+
+    // First-run wizard: admin sees wizard, non-admin sees pending message
+    if (setupRequired && route.page !== 'setup') {
+        return isAdmin ? <SetupWizard /> : <SetupPending />;
+    }
 
     return (
         <>

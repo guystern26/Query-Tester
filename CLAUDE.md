@@ -553,6 +553,13 @@ Scripted input that runs every 60 seconds via `inputs.conf`. NOT the same as `al
 ### Per-Test Timeout
 `TEST_TIMEOUT_SECONDS = 300` (5 min). Each future is awaited with `future.result(timeout=300)`. If a test hangs (e.g. stuck Splunk search), the worker slot is freed after 5 minutes and the test is reset to `idle` for retry. The underlying thread may continue briefly but stale detection (10 min) catches any stragglers.
 
+### Missed-Run Sweep
+`_sweep_missed_runs()` catches tests that should have run but didn't (e.g. Splunk restart, crash, gap in execution). Runs on two triggers:
+- **Startup:** First invocation after Splunk restart — immediate catch-up without waiting for `:00`.
+- **Hourly:** Every tick where `minute == 0`.
+
+Logic: for each idle+enabled test with a known `intervalKey`, check if `lastRunAt` exceeds `interval * 1.5` (e.g. a 6h test is missed after 9h). Tests that never ran (`lastRunAt` is None) are always enqueued. Tests without `intervalKey` (legacy) are skipped. Uses `INTERVAL_SECONDS` dict for lookup — no cron parsing needed.
+
 ### Crash Recovery
 - **Stale detection:** Tests stuck in `running` for >10 minutes (crashed/timed-out worker) are reset to `idle` on the next cycle.
 - **O(1) dedup:** `_ran_recently()` checks `lastRunAt` on the record itself (not a history scan). Prevents re-running a test that completed <2 minutes ago.
