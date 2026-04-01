@@ -65,6 +65,27 @@ def _load_config_from_storage(session_key):
     return merged
 
 
+def _is_configured(session_key):
+    # type: (str) -> bool
+    """App is configured when HEC token is set (required for test execution)."""
+    try:
+        kv = KVStoreClient(session_key)
+        try:
+            stored = kv.get_by_id(COLLECTION, CONFIG_KEY)
+        except ValueError:
+            stored = {}
+        # Check HEC token in KVStore config first
+        hec_token = stored.get("hec_token", "")
+        if not hec_token:
+            # Fall back to storage/passwords
+            service = get_splunk_service(session_key)
+            secrets = read_all_secrets(service)
+            hec_token = secrets.get("hec_token", "")
+        return bool(hec_token and hec_token.strip())
+    except Exception:
+        return False
+
+
 class ConfigHandler(PersistentServerConnectionApplication):
     def __init__(self, command_line="", command_arg=""):
         # type: (str, str) -> None
@@ -149,16 +170,7 @@ class ConfigHandler(PersistentServerConnectionApplication):
         session_key = get_session_key(request)
         from auth_utils import is_admin as check_admin
         admin = check_admin(session_key)
-        kv = KVStoreClient(session_key)
-        try:
-            stored = kv.get_by_id(COLLECTION, CONFIG_KEY)
-        except ValueError:
-            return json_response({"configured": False, "is_admin": admin})
-        secrets = read_all_secrets(get_splunk_service(session_key))
-        configured = all(
-            secrets.get(f) if f in SECRET_FIELDS else stored.get(f)
-            for f in REQUIRED_FIELDS
-        )
+        configured = _is_configured(session_key)
         return json_response({"configured": configured, "is_admin": admin})
 
     def _handle_get_secret(self, request, path):

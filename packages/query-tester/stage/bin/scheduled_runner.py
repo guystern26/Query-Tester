@@ -47,9 +47,23 @@ STATUS_VALID = ("pass", "fail", "partial")
 TEST_TIMEOUT_SECONDS = 300    # 5 min max per individual test
 DEDUP_WINDOW_SECONDS = 120    # skip if ran in last 2 min
 STALE_RUNNING_SECONDS = 600   # reset 'running' after 10 min (crashed/timed-out worker)
+MISSED_RUN_MULTIPLIER = 1.5   # consider missed if lastRunAt > interval * 1.5
+
+# Interval key → expected seconds between runs
+INTERVAL_SECONDS = {
+    "hourly": 3600,
+    "2h": 7200,
+    "4h": 14400,
+    "6h": 21600,
+    "12h": 43200,
+    "daily": 86400,
+}
 
 # Lock for KVStore writes to scheduled_tests (concurrent workers)
 _kv_lock = threading.Lock()
+
+# Flag: run sweep on first invocation after Splunk restart
+_startup_sweep_done = False
 
 
 # ── Helpers ─────────────────────────────────────────────────────────
@@ -101,6 +115,55 @@ def _get_max_workers(session_key):
         return max(1, min(10, val))
     except Exception:
         return 5
+
+
+# ── Missed-run sweep ──────────────────────────────────────────────
+
+def _sweep_missed_runs(kv, all_tests, now_ts):
+    # type: (KVStoreClient, List[Dict[str, Any]], float) -> int
+    """Enqueue tests that should have run but didn't (missed cron window).
+
+    Runs once at startup and hourly at :00. Catches gaps from Splunk
+    restarts, crashes, or any period where scheduled_runner wasn't ticking.
+    """
+    enqueued = 0
+
+    for rec in all_tests:
+        if not is_enabled(rec):
+            continue
+        if rec.get("queueStatus", "idle") != "idle":
+            continue
+
+        sched_id = rec.get("id", "")
+        interval_key = rec.get("intervalKey", "")
+        if not interval_key or interval_key not in INTERVAL_SECONDS:
+            continue  # legacy record without intervalKey — skip
+
+        expected_secs = INTERVAL_SECONDS[interval_key]
+        last_run = rec.get("lastRunAt", "")
+
+        if not last_run:
+            # Never run before — enqueue it
+            logger.warning("Missed run detected for test '%s' — never ran, "
+                           "expected interval %s.", sched_id, interval_key)
+        else:
+            elapsed = now_ts - _parse_iso(last_run)
+            threshold = expected_secs * MISSED_RUN_MULTIPLIER
+            if elapsed <= threshold:
+                continue  # within expected window, no miss
+            logger.warning("Missed run detected for test '%s' — last ran "
+                           "%.0fs ago, expected interval %s (%ds).",
+                           sched_id, elapsed, interval_key, expected_secs)
+
+        _update_record(kv, sched_id, {
+            "queueStatus": "queued",
+            "queuedAt": _now_iso(),
+        })
+        enqueued += 1
+
+    if enqueued > 0:
+        logger.info("Missed-run sweep enqueued %d test(s).", enqueued)
+    return enqueued
 
 
 # ── Phase 1: Enqueue ───────────────────────────────────────────────
@@ -317,6 +380,8 @@ def _process_queue(kv, session_key, all_tests, max_workers):
 def run(session_key):
     # type: (str) -> None
     """Main entry point called every 60 seconds by inputs.conf."""
+    global _startup_sweep_done
+
     try:
         kv = KVStoreClient(session_key)
         all_tests = kv.get_all(COLLECTION_SCHEDULED_TESTS)
@@ -326,6 +391,14 @@ def run(session_key):
 
     if not all_tests:
         return
+
+    now_ts = time.time()
+    now_min = time.gmtime(now_ts).tm_min
+
+    # Missed-run sweep: on first tick (startup catch-up) and hourly at :00
+    if not _startup_sweep_done or now_min == 0:
+        _startup_sweep_done = True
+        _sweep_missed_runs(kv, all_tests, now_ts)
 
     # Phase 1: enqueue due tests (fast — just KVStore writes)
     _enqueue_due_tests(kv, all_tests)
