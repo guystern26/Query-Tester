@@ -82,3 +82,6 @@ MAX_DEFINITION_SIZE_BYTES = 25 * 1024 * 1024  # 25 MB — inside KVStore doc lim
 # Run history retention (enforced by nightly saved search, not at write time)
 MAX_RUN_HISTORY_PER_TEST = 20     # keep last N runs per scheduled test
 MAX_RUN_HISTORY_TOTAL = 100000    # advisory cap on total run history records
+
+# Scheduling concurrency
+MAX_PARALLEL_TESTS = 5           # max concurrent scheduled test runs (1-10)

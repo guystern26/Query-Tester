@@ -69,15 +69,36 @@ def run(payload_path, session_key):
         logger.info("Alert action triggered for test_id: %s", test_id)
 
         kv = KVStoreClient(session_key)
+
         try:
             scheduled = kv.get_by_id(COLLECTION_SCHEDULED_TESTS, test_id)
-        except ValueError:
+        except (ValueError, Exception):
             logger.error("Scheduled test not found: %s", test_id)
             return
 
         if not scheduled.get("enabled", True):
             logger.info("Scheduled test %s is disabled, skipping.", test_id)
             return
+
+        # Skip if scheduled_runner already claimed this test (queued/running)
+        queue_status = scheduled.get("queueStatus", "idle")
+        if queue_status in ("queued", "running"):
+            logger.info("Skipping alert action for %s — scheduled_runner has it (%s).",
+                        test_id, queue_status)
+            return
+
+        # O(1) dedup: skip if ran recently (covers the case where
+        # scheduled_runner already finished before this alert fired)
+        last_run = scheduled.get("lastRunAt", "")
+        if last_run:
+            try:
+                ran_ts = time.mktime(time.strptime(last_run, "%Y-%m-%dT%H:%M:%SZ"))
+                if (time.time() - ran_ts) < 120:
+                    logger.info("Skipping alert action for %s — ran %ds ago (dedup).",
+                                test_id, int(time.time() - ran_ts))
+                    return
+            except (ValueError, OverflowError):
+                pass
 
         # SPL drift check
         spl_drift = False

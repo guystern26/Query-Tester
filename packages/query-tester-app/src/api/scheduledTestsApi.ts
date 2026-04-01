@@ -129,4 +129,9 @@ export const scheduledTestsApi = {
             + '&scheduled_test_id=' + encodeURIComponent(scheduledTestId);
         return request<TestRunRecord[]>(url, 'GET');
     },
+
+    async suggestMinute(intervalKey: string): Promise<{ minute: number; cron: string }> {
+        const url = buildUrl('data/scheduled_tests') + '&action=suggest_minute&interval_key=' + encodeURIComponent(intervalKey);
+        return request<{ minute: number; cron: string }>(url, 'GET');
+    },
 };

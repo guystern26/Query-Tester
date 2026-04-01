@@ -323,7 +323,7 @@ Following the same strict boundary rules as existing modules:
 
 ### KVStore collections (`stage/default/collections.conf`)
 - `saved_tests` — full TestDefinition + metadata. Fields include `version` (number) for optimistic locking, `createdBy` for ownership.
-- `scheduled_tests` — scheduled test config + cron + recipients. Fields include `version` (number), `createdBy` for ownership.
+- `scheduled_tests` — scheduled test config + cron + recipients. Fields include `version` (number), `createdBy` for ownership, `queueStatus`/`queuedAt` for the job queue, `intervalKey` for interval spreading.
 - `test_run_history` — per-run records with status, drift detection, scenario results. Fields include `testId`, `ranBy`, `triggerType` ("scheduled" or "manual") for audit trail.
 
 ### Custom alert action
@@ -532,15 +532,64 @@ Single-page app with hash-based routing inside the `QueryTesterApp` Splunk page:
 
 ---
 
-## Scheduled Runner Details (`scheduled_runner.py`)
+## Scheduled Runner — KVStore-Backed Job Queue (`scheduled_runner.py`)
 
-Scripted input that runs every 60 seconds via `inputs.conf`. NOT the same as `alert_run_test.py` (alert action).
+Scripted input that runs every 60 seconds via `inputs.conf`. NOT the same as `alert_run_test.py` (alert action). Designed to scale to hundreds of concurrent scheduled tests.
 
-**Key behaviors:**
+### Two-Phase Architecture
+- **Phase 1 — Enqueue:** `_enqueue_due_tests()` checks cron matches for all enabled tests, marks due ones as `queueStatus: "queued"` with a `queuedAt` timestamp. Fast — just KVStore reads/writes.
+- **Phase 2 — Process:** `_process_queue()` picks up to `max_parallel_tests` queued tests (sorted oldest-first), runs them in a `ThreadPoolExecutor`. Overflow stays queued in KVStore for the next 60s cycle.
+
+### Queue States (on `scheduled_tests` records)
+- `idle` — not running, waiting for next cron match
+- `queued` — due to run, waiting for a worker slot
+- `running` — currently executing in a thread
+
+### Concurrency Safety
+- `_update_record()` uses a `threading.Lock` for read-modify-write on scheduled test records. Prevents two threads from clobbering each other's updates.
+- Each worker gets its own `KVStoreClient` instance (separate HTTP connections).
+- Single-test optimization: skips `ThreadPoolExecutor` overhead when batch size is 1.
+
+### Per-Test Timeout
+`TEST_TIMEOUT_SECONDS = 300` (5 min). Each future is awaited with `future.result(timeout=300)`. If a test hangs (e.g. stuck Splunk search), the worker slot is freed after 5 minutes and the test is reset to `idle` for retry. The underlying thread may continue briefly but stale detection (10 min) catches any stragglers.
+
+### Crash Recovery
+- **Stale detection:** Tests stuck in `running` for >10 minutes (crashed/timed-out worker) are reset to `idle` on the next cycle.
+- **O(1) dedup:** `_ran_recently()` checks `lastRunAt` on the record itself (not a history scan). Prevents re-running a test that completed <2 minutes ago.
+
+### Key Behaviors
 - Re-reads fresh KVStore record before upsert after test completion — avoids clobbering user changes (e.g. user disabled the test while it was running).
 - Passes `session_key` to `send_failure_emails()` so email config reads from runtime config (not static config.py).
 - Checks `alertOnFailure` with explicit string comparison: `alert_flag in (True, "1", "true", "True")` — KVStore stores booleans as strings.
 - SPL drift detection: compares current SPL against last passed run's snapshot.
+
+### Configurable Parallelism
+`max_parallel_tests` (default 5, max 10) is set on the admin Setup page and stored in KVStore `query_tester_config`. Controls how many tests run concurrently per cycle. Keep below Splunk's concurrent search slot limit to leave room for normal user activity.
+
+---
+
+## Fixed Interval Scheduling & Thundering Herd Prevention
+
+### Frontend: IntervalPicker (replaces CronPicker)
+Users pick from 6 fixed intervals (hourly, 2h, 4h, 6h, 12h, daily) via `IntervalPicker.tsx`. No custom cron input. The `intervalKey` is stored on the scheduled test record.
+
+### Backend: `suggest_minute` endpoint
+`scheduled_tests_handler.py` handles `GET /data/scheduled_tests?action=suggest_minute&interval_key=daily`. It scans existing scheduled tests with the same interval pattern, finds unused minutes (0-59), and returns a random unused one. If all 60 are taken, picks the least-used. This spreads test execution across different minutes to avoid thundering herd.
+
+### Constants
+`SCHEDULE_INTERVALS` in `core/constants/scheduledTests.ts` — 6 intervals, each with a `buildCron(minute)` function. `INTERVAL_PATTERNS` in `scheduled_tests_handler.py` maps `intervalKey` → cron pattern (without minute).
+
+---
+
+## Execution Path
+
+### Primary — Scripted Input (`scheduled_runner.py`)
+Sole execution path. Runs every 60s via inputs.conf, checks cron matches, uses the KVStore-backed job queue. Has crash recovery (stale detection), per-test timeouts, and O(1) dedup.
+
+### Backup — Alert Action (`alert_run_test.py`) — Disabled by Default
+`scheduled_search_manager.py` creates backing saved searches for UI visibility (users can see scheduled tests in Splunk's saved search list), but the alert action trigger (`action.query_tester_run_test`) is **not wired**. This avoids race conditions between two execution paths firing on the same cron.
+
+An admin can manually enable the alert action on a specific saved search if they want backup execution. `alert_run_test.py` still has full dedup logic (`queueStatus` check + `lastRunAt` check) so it won't double-execute even if enabled.
 
 ---
 

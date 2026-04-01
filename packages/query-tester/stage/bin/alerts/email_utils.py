@@ -50,11 +50,16 @@ def get_email_config(session_key=None):
             port = int(cfg.get("smtp_port", SMTP_PORT))
             auth = cfg.get("email_auth_method", "none")
             tls = infer_tls_mode(cfg.get("tls_mode", ""), port, auth)
-            web_url = cfg.get("splunk_web_url", SPLUNK_WEB_URL)
-            splunk_host = cfg.get("splunk_host", "localhost")
-            if "localhost" in web_url and splunk_host != "localhost":
+            # Build web URL from splunk_host + scheme (Setup page fields).
+            # splunk_web_url is rarely set directly; fall back to host/scheme.
+            web_url = cfg.get("splunk_web_url", "")
+            if not web_url or "localhost" in web_url:
+                host = cfg.get("splunk_host", "")
                 scheme = cfg.get("splunk_scheme", "https")
-                web_url = "{0}://{1}:8000".format(scheme, splunk_host)
+                if host and host != "localhost":
+                    web_url = "{0}://{1}".format(scheme, host)
+                else:
+                    web_url = SPLUNK_WEB_URL
             return {
                 "smtp_server": cfg.get("smtp_server", SMTP_SERVER),
                 "smtp_port": port,

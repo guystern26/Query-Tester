@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import json
 import os
+import random
 import sys
 import threading
 import uuid
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 _bin_dir = os.path.dirname(os.path.abspath(__file__))
 if _bin_dir not in sys.path:
@@ -30,6 +31,15 @@ logger = get_logger(__name__)
 
 COLLECTION_SCHEDULED_TESTS = "scheduled_tests"
 BOOL_FIELDS = ("enabled", "alertOnFailure")
+
+INTERVAL_PATTERNS = {
+    "hourly": "* * * *",
+    "2h": "*/2 * * *",
+    "4h": "*/4 * * *",
+    "6h": "*/6 * * *",
+    "12h": "*/12 * * *",
+    "daily": "6 * * *",
+}
 
 
 def _normalize_bools(record):
@@ -69,6 +79,49 @@ def _validate_cron(cron):
         )
 
 
+def _suggest_minute(kv, interval_key):
+    # type: (KVStoreClient, str) -> Dict[str, Any]
+    """Pick a spread-out minute for the given interval to avoid thundering herd."""
+    pattern = INTERVAL_PATTERNS.get(interval_key)
+    if not pattern:
+        return {"error": "Unknown interval_key: {0}".format(interval_key)}
+
+    try:
+        records = kv.get_all(COLLECTION_SCHEDULED_TESTS)
+    except Exception:
+        records = []
+
+    # Collect used minutes for records matching this interval pattern
+    used_minutes = []  # type: List[int]
+    for rec in records:
+        cron = rec.get("cronSchedule", "")
+        parts = cron.strip().split()
+        if len(parts) == 5:
+            rec_pattern = " ".join(parts[1:])
+            if rec_pattern == pattern:
+                try:
+                    used_minutes.append(int(parts[0]))
+                except (ValueError, TypeError):
+                    pass
+
+    # Pick unused minute, or least-used if all taken
+    all_minutes = list(range(60))
+    unused = [m for m in all_minutes if m not in used_minutes]
+    if unused:
+        minute = random.choice(unused)
+    else:
+        # All 60 taken — pick the least-used
+        counts = {}  # type: Dict[int, int]
+        for m in used_minutes:
+            counts[m] = counts.get(m, 0) + 1
+        min_count = min(counts.values()) if counts else 0
+        least_used = [m for m, c in counts.items() if c == min_count]
+        minute = random.choice(least_used) if least_used else random.randint(0, 59)
+
+    cron = "{0} {1}".format(minute, pattern)
+    return {"minute": minute, "cron": cron}
+
+
 def _build_record(payload, username="unknown"):
     # type: (Dict[str, Any], str) -> Dict[str, Any]
     record_id = payload.get("id") or str(uuid.uuid4())
@@ -79,6 +132,7 @@ def _build_record(payload, username="unknown"):
         "app": payload.get("app", ""),
         "savedSearchOrigin": payload.get("savedSearchOrigin"),
         "cronSchedule": payload.get("cronSchedule", "0 6 * * *"),
+        "intervalKey": payload.get("intervalKey", ""),
         "enabled": payload.get("enabled", True),
         "createdAt": payload.get("createdAt") or now_iso(),
         "createdBy": username,
@@ -86,6 +140,8 @@ def _build_record(payload, username="unknown"):
         "lastRunStatus": None,
         "alertOnFailure": payload.get("alertOnFailure", False),
         "emailRecipients": payload.get("emailRecipients", []),
+        "queueStatus": "idle",
+        "queuedAt": "",
     }
 
 
@@ -108,6 +164,19 @@ class ScheduledTestsHandler(PersistentServerConnectionApplication):
         # type: (Dict[str, Any]) -> Dict[str, Any]
         session_key = get_session_key(request)
         kv = KVStoreClient(session_key)
+
+        # Check for action parameter in query string
+        query = request.get("query", {})
+        if isinstance(query, list):
+            query = dict(q if isinstance(q, (list, tuple)) and len(q) == 2 else ("", "") for q in query)
+        action = query.get("action", "") if isinstance(query, dict) else ""
+        if action == "suggest_minute":
+            interval_key = query.get("interval_key", "") if isinstance(query, dict) else ""
+            result = _suggest_minute(kv, str(interval_key))
+            if "error" in result:
+                return json_response(result, 400)
+            return json_response(result)
+
         records = kv.get_all(COLLECTION_SCHEDULED_TESTS)
         for r in records:
             _normalize_bools(r)

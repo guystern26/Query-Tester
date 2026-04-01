@@ -1,12 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTestStore } from 'core/store/testStore';
 import { Modal } from '../../common';
-import { DEFAULT_ALERT_EMAIL } from 'core/constants/scheduledTests';
-import { CronPicker, isValidCron } from './CronPicker';
+import { DEFAULT_ALERT_EMAIL, SCHEDULE_INTERVALS } from 'core/constants/scheduledTests';
+import { isValidCron } from './cronUtils';
+import { IntervalPicker } from './IntervalPicker';
 import { RecipientsList, hasInvalidRecipients } from './RecipientsList';
 import type { ScheduledTest, SavedTestMeta } from 'core/types';
 
 const selectCls = 'w-full px-3 py-2 text-sm bg-navy-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-accent-600 cursor-pointer';
+
+function reverseMapInterval(cron: string): string {
+    const parts = cron.trim().split(/\s+/);
+    if (parts.length !== 5) return '';
+    const pattern = parts.slice(1).join(' ');
+    for (const interval of SCHEDULE_INTERVALS) {
+        const testCron = interval.buildCron(0);
+        const testPattern = testCron.split(/\s+/).slice(1).join(' ');
+        if (testPattern === pattern) return interval.key;
+    }
+    return '';
+}
 
 export interface ScheduleModalProps {
     open: boolean;
@@ -26,6 +39,7 @@ export function ScheduleModal({ open, onClose, editingTest, preselectedTestId }:
     const [testId, setTestId] = useState('');
     const [testName, setTestName] = useState('');
     const [cron, setCron] = useState('0 6 * * *');
+    const [intervalKey, setIntervalKey] = useState('daily');
     const [enabled, setEnabled] = useState(true);
     const [alertOn, setAlertOn] = useState(false);
     const [recipients, setRecipients] = useState<string[]>([DEFAULT_ALERT_EMAIL]);
@@ -41,6 +55,8 @@ export function ScheduleModal({ open, onClose, editingTest, preselectedTestId }:
             const saved = savedTests.find((t) => t.id === editingTest.testId);
             setTestName(saved ? saved.name : editingTest.testName);
             setCron(editingTest.cronSchedule);
+            const mapped = reverseMapInterval(editingTest.cronSchedule);
+            setIntervalKey(mapped || editingTest.intervalKey || '');
             setEnabled(editingTest.enabled);
             setAlertOn(editingTest.alertOnFailure);
             setRecipients(editingTest.emailRecipients.length > 0 ? editingTest.emailRecipients : [DEFAULT_ALERT_EMAIL]);
@@ -49,11 +65,17 @@ export function ScheduleModal({ open, onClose, editingTest, preselectedTestId }:
             const pre = savedTests.find((t) => t.id === preselectedTestId);
             setTestName(pre ? pre.name : '');
             setCron('0 6 * * *');
+            setIntervalKey('daily');
             setEnabled(true);
             setAlertOn(false);
             setRecipients([DEFAULT_ALERT_EMAIL]);
         }
     }, [open, editingTest, preselectedTestId]);
+
+    const handleIntervalChange = useCallback((key: string, cronStr: string) => {
+        setIntervalKey(key);
+        setCron(cronStr);
+    }, []);
 
     const selectedTest: SavedTestMeta | undefined = savedTests.find((t) => t.id === testId);
     const canSave = testId && testName.trim() && isValidCron(cron) && !hasInvalidRecipients(recipients) && !isLoadingScheduled;
@@ -75,6 +97,7 @@ export function ScheduleModal({ open, onClose, editingTest, preselectedTestId }:
             onClose();
             updateScheduledTest(editingTest.id, {
                 cronSchedule: cron,
+                intervalKey,
                 enabled,
                 alertOnFailure: alertOn,
                 emailRecipients: finalRecipients,
@@ -88,6 +111,7 @@ export function ScheduleModal({ open, onClose, editingTest, preselectedTestId }:
                 app: selectedTest.app,
                 savedSearchOrigin: null,
                 cronSchedule: cron,
+                intervalKey,
                 enabled,
                 alertOnFailure: alertOn,
                 emailRecipients: finalRecipients,
@@ -134,8 +158,8 @@ export function ScheduleModal({ open, onClose, editingTest, preselectedTestId }:
                     </div>
                 )}
 
-                {/* Cron picker */}
-                <CronPicker value={cron} onChange={setCron} />
+                {/* Interval picker */}
+                <IntervalPicker value={intervalKey} onChange={handleIntervalChange} />
 
                 {/* Enabled toggle */}
                 <label className="flex items-center justify-between">

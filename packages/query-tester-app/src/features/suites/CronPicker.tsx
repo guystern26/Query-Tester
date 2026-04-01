@@ -1,5 +1,12 @@
 import React from 'react';
-import { CRON_PRESETS } from 'core/constants/scheduledTests';
+
+const CRON_PRESETS: ReadonlyArray<{ label: string; value: string }> = [
+    { label: 'Daily 6 AM', value: '0 6 * * *' },
+    { label: 'Daily Midnight', value: '0 0 * * *' },
+    { label: 'Hourly', value: '0 * * * *' },
+    { label: 'Every 6 hours', value: '0 */6 * * *' },
+    { label: 'Custom', value: '' },
+];
 
 const DESCRIPTIONS: Record<string, string> = {
     '0 6 * * *': 'Runs daily at 06:00',

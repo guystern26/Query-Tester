@@ -60,6 +60,7 @@ export function mapConfigResponse(raw: Record<string, unknown>): AppConfig {
         llmEndpoint: String(raw.llm_endpoint || ''),
         llmModel: String(raw.llm_model || ''),
         llmMaxTokens: String(raw.llm_max_tokens || ''),
+        maxParallelTests: String(raw.max_parallel_tests || ''),
         logLevel: (raw.log_level || 'INFO') as AppConfig['logLevel'],
         logFile: String(raw.log_file || ''),
         _detected: detected.map(snakeToCamel),

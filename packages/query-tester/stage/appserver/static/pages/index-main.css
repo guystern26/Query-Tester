@@ -630,9 +630,6 @@ video {
 .left-3\.5 {
   left: 0.875rem;
 }
-.left-4 {
-  left: 1rem;
-}
 .left-5 {
   left: 1.25rem;
 }
@@ -927,9 +924,6 @@ video {
 }
 .max-h-\[30vh\] {
   max-height: 30vh;
-}
-.max-h-\[45vh\] {
-  max-height: 45vh;
 }
 .max-h-\[60vh\] {
   max-height: 60vh;

@@ -7,6 +7,7 @@ import { TempIndexSection } from './TempIndexSection';
 import { EmailSection } from './EmailSection';
 import { LlmSection } from './LlmSection';
 import { WebUrlSection } from './WebUrlSection';
+import { SchedulingSection } from './SchedulingSection';
 import { LoggingSection } from './LoggingSection';
 import { CommandPolicySection } from './CommandPolicySection';
 import { BugReportButton } from '../../components/test-navigation/BugReportButton';
@@ -56,6 +57,7 @@ export function SetupPage({ onNavigateBack }: SetupPageProps) {
                             <EmailSection />
                             <LlmSection />
                             <WebUrlSection />
+                            <SchedulingSection />
                             <LoggingSection />
                             <CommandPolicySection />
                         </>

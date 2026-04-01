@@ -53,6 +53,7 @@ _FIELD_MAP = [
     ("llm_endpoint", "LLM_ENDPOINT", str),
     ("llm_model", "LLM_MODEL", str),
     ("llm_max_tokens", "LLM_MAX_TOKENS", int),
+    ("max_parallel_tests", "MAX_PARALLEL_TESTS", int),
     ("log_level", "LOG_LEVEL", str),
 ]
 

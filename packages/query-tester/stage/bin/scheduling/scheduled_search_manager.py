@@ -3,9 +3,8 @@
 scheduled_search_manager.py — Create/update/delete backing saved searches
 for scheduled tests.
 
-Note: Saved searches are created for UI visibility only. The actual test
-execution is handled by scheduled_runner.py (scripted input), because
-Splunk Free license does not support alert actions.
+Saved searches serve dual purpose: UI visibility in Splunk and backup alert
+action execution (Path A). Primary execution is via scheduled_runner.py (Path B).
 """
 from __future__ import annotations
 
@@ -66,7 +65,13 @@ def saved_search_name(record):
 
 def _search_kwargs(record):
     # type: (Dict[str, Any]) -> Dict[str, str]
-    """Saved search kwargs — scheduling only, no alert actions."""
+    """Saved search kwargs — UI visibility only, alert action disabled.
+
+    Primary execution is via scheduled_runner.py (Path B).
+    Alert action (Path A) is disabled by default to avoid race conditions.
+    Admin can manually enable action.query_tester_run_test on a saved search
+    if they want backup execution for a specific test.
+    """
     cron = record.get("cronSchedule", "0 6 * * *")
     disabled = "0" if _is_enabled(record) else "1"
     return {
