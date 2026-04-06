@@ -19,7 +19,9 @@ __pycache__
 **/metadata/local.meta
 .agents/
 .windsurf/
-.claude/skills/
+.claude/skills/*
+!.claude/skills/splunk-platform/
+!.claude/skills/splunk-query-tester-audit/
 skills-lock.json
 packages/query-tester/build/
 ide.html
