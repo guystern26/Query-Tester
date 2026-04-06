@@ -1,0 +1,453 @@
+# Splunk Query Tester - Cursor Rules
+# ============================================================
+# FRONTEND RULES (existing)
+# ============================================================
+
+## HARD CONSTRAINTS (never violate)
+- React 16.13.1. NOT React 17 or 18.
+- Use ReactDOM.render(), NEVER createRoot().
+- Zustand v4.5.x with default import: import create from 'zustand'
+- NEVER use: useId, useDeferredValue, useTransition, startTransition, Suspense for data
+- NEVER use MUI (@mui/*). Use @splunk/react-ui + @splunk/themes + styled-components v5.
+- NEVER use Tailwind CSS in components. Splunk bundling strips it. Use CSS Modules or styled-components.
+- Node.js 18.12. Vite 4.5.x. Closed network - no CDN imports at runtime.
+- IDs: crypto.randomUUID()
+- Entry point: ReactDOM.render() wrapped in SplunkThemeProvider.
+
+## Architecture
+- State: Single Zustand store (testStore.ts) with Immer middleware.
+- Only separate hook: useSavedSearches (async data fetching).
+- Data hierarchy: Test -> Scenario[] -> TestInput[] -> InputEvent[] -> FieldValue[]
+- rowIdentifier at INPUT level (not event level).
+- testType: standard | query_only. ValidationType: standard | ijump_alert.
+- Each scenario runs independently (no cartesian product).
+- TestInput uses inputMode (not inputType), jsonContent as string.
+- fileRef stores metadata only (not File object).
+- TestDefinition has app field. QueryConfig has spl + savedSearchOrigin (no mode toggle).
+
+## UI Components
+- Use @splunk/react-ui for Button, Card, ControlGroup, Select, TextArea, Message, Modal, Switch, Tabs.
+- Wrap app in SplunkThemeProvider family=enterprise colorScheme=dark density=comfortable.
+- Dark mode. CSS custom properties for colors.
+- Progressive horizontal flow: App -> Query -> Data -> Validation -> Results.
+- Placeholders on ALL inputs. NO pre-filled default values in UI.
+- Payload builder applies fallbacks at submission time only.
+
+## File Organization
+- core/types/index.ts - all interfaces and enums
+- core/constants/defaults.ts - factory functions (createDefaultTest etc)
+- core/constants/limits.ts - MAX_TESTS=20, MAX_SCENARIOS=10, MAX_INPUTS=10, MAX_EVENTS=50, MAX_FIELDS=30
+- core/store/testStore.ts - single Zustand v4 store with Immer
+- core/store/selectors.ts - memoized selectors
+- features/{scenarios,query,validation,results,eventGenerator}/ - feature components
+- common/ - shared wrapper components
+- api/ - splunkApi.ts, testApi.ts
+- hooks/useSavedSearches.ts
+
+## Key Patterns
+- addEvent inherits field names from previous event with empty values
+- addFieldToAllEvents adds field to every event in an input simultaneously
+- JSON editor: debounced store update (300ms) with local state for instant feedback
+- Run button: AbortController for cancel, 120s timeout
+- Multivalue results: split on newline, render each value on own line
+- Pre-flight validation: 8 checks before API call
+- Confirmation dialogs: delete test, delete non-empty scenario, clear validation
+
+# ============================================================
+# BACKEND RULES
+# ============================================================
+
+# .cursorrules — Splunk Query Tester Backend
+# Read BACKEND.md and attach spec-00-conventions.md to every prompt.
+
+---
+
+## ABSOLUTE CONSTRAINTS — never violate under any circumstance
+
+### Python 3.7 only
+```python
+# CORRECT
+from typing import Optional, List, Dict, Tuple, Any, Callable
+def run(self, spl: str) -> List[dict]: ...
+field: Optional[str] = None
+
+# WRONG — Python 3.9+ syntax, breaks on Splunk
+def run(self, spl: str) -> list[dict]: ...     # built-in generic
+field: str | None = None                        # union syntax
+x := compute()                                  # walrus operator
+match status: ...                               # match statement
+```
+
+### No print() — ever
+`print()` writes to stdout. Splunk's REST handler reads stdout as part of the HTTP response body.
+One `print()` anywhere in the call stack corrupts the JSON response silently.
+```python
+# CORRECT
+logger = get_logger(__name__)
+logger.info('Indexed %d events for run_id=%s', len(events), run_id)
+logger.error('Failed: %s', exc, exc_info=True)
+
+# WRONG — corrupts REST response
+print(f'Indexed {len(events)} events')
+```
+
+### LF line endings only
+CRLF causes a 500 "can't start the script" error on Linux Splunk. Every file must have LF endings.
+
+### No external packages
+Only stdlib + `splunklib`. No `requests`, `flask`, `pydantic`, or anything requiring `pip install`.
+
+### from __future__ import annotations — every file
+Must be the first non-comment line after the module docstring. Required for Python 3.7 forward references.
+
+---
+
+## File header — every Python file, exactly this structure
+
+```python
+# -*- coding: utf-8 -*-
+"""
+module_name.py
+One-line description of what this module does.
+"""
+from __future__ import annotations
+
+import os
+import re
+import json
+import logging
+from dataclasses import dataclass, field
+from typing import Any, Callable, Dict, List, Optional, Tuple
+from uuid import uuid4
+
+from logger import get_logger
+
+logger = get_logger(__name__)
+```
+
+Shebang `#!/usr/bin/env python3` on `query_tester.py` only.
+
+---
+
+## SOLID — enforced patterns
+
+### Single Responsibility: one file, one job
+If `query_injector.py` imports `QueryExecutor`, that is a bug — stop immediately.
+
+| File | Only does | Never does |
+|---|---|---|
+| `query_tester.py` | Splunk handler wiring | Business logic |
+| `test_runner.py` | Loops scenarios, delegates | Executes SPL or validates |
+| `payload_parser.py` | JSON dict → dataclasses | Network calls |
+| `spl_analyzer.py` | Reads SPL text | Modifies SPL |
+| `query_injector.py` | Rewrites SPL strings | Runs queries |
+| `data_indexer.py` | Indexes events, cleanup | Validates results |
+| `lookup_manager.py` | CSV file I/O | Runs SPL |
+| `query_executor.py` | Runs SPL, returns rows | Validates, injects |
+| `result_validator.py` | Compares rows to conditions | Runs queries |
+| `event_generator.py` | Expands GeneratorConfig | File I/O, Splunk calls |
+
+### Open/Closed: registries, not if/elif chains
+```python
+# CORRECT — add new type by adding one line to the dict
+GENERATOR_REGISTRY: Dict[str, Callable] = {
+    'numbered':      _gen_numbered,
+    'pick_list':     _gen_pick_list,
+    'random_number': _gen_random_number,
+    'unique_id':     _gen_unique_id,
+    'email':         _gen_email,
+    'ip_address':    _gen_ip_address,
+    'general_field': _gen_pick_list,
+}
+def _apply_rule(rule: GeneratorRule, index: int) -> Any:
+    fn = GENERATOR_REGISTRY.get(rule.generation_type)
+    if fn is None:
+        logger.warning('Unknown generation_type "%s"', rule.generation_type)
+        return ''
+    return fn(rule, index)
+
+# WRONG — must edit the function to add a new type
+def _apply_rule(rule, index):
+    if rule.generation_type == 'numbered': ...
+    elif rule.generation_type == 'pick_list': ...
+```
+
+Apply this pattern to:
+- `event_generator.py` → `GENERATOR_REGISTRY`
+- `result_validator.py` → `CONDITION_HANDLERS`
+- `query_injector.py` → `STRATEGY_HANDLERS`
+
+### Interface Segregation: pass only what's needed
+```python
+# CORRECT — takes only the two values it needs
+def _replace_outer_index(spl: str, run_id: str) -> str: ...
+
+# WRONG — takes full payload when it only needs two strings
+def _replace_outer_index(payload: TestPayload) -> str: ...
+```
+
+### Dependency Inversion: inject session_key, don't hardcode
+```python
+# CORRECT
+class TestRunner:
+    def __init__(self, session_key: str) -> None:
+        self._executor = QueryExecutor(session_key)
+        self._indexer  = DataIndexer(session_key)
+
+# WRONG
+_service = splunklib.client.connect(...)   # global, hidden dependency
+```
+
+---
+
+## The run loop — implement exactly this
+
+```python
+def run_test(raw_payload: dict) -> Tuple[dict, int]:
+    payload  = PayloadParser.parse(raw_payload)        # parse once
+    spl      = self._resolve_spl(payload)              # resolve SPL once
+    analysis = self._analyzer.analyze(spl)             # analyze once
+
+    scenario_results = []
+
+    for scenario in payload.scenarios:
+        run_id   = uuid4().hex[:8]                     # unique per scenario
+        strategy = self._injector.detect_strategy(spl)
+
+        try:
+            all_events = []
+            for inp in scenario.inputs:
+                all_events.extend(self._generator.build_events(inp))
+
+            if payload.test_type != 'query_only' and strategy not in ('inputlookup', 'tstats'):
+                self._indexer.index_events(all_events, run_id)
+
+            if strategy == 'lookup':
+                self._lookup.create_temp_lookup(run_id, all_events)
+
+            injected_spl = self._injector.inject(spl, run_id, strategy, scenario.inputs)
+            results      = self._executor.run(injected_spl)      # ONE query per scenario
+
+            validations, passed = self._validator.validate(payload.validation, scenario, results)
+
+            scenario_results.append(ScenarioResult(...))
+
+        except Exception as exc:
+            logger.error('Scenario "%s" failed: %s', scenario.name, exc, exc_info=True)
+            scenario_results.append(ScenarioResult(passed=False, error=str(exc), ...))
+
+        finally:
+            self._cleanup(run_id, strategy)            # ALWAYS runs
+
+    return self._build_response(payload, analysis, scenario_results), 200
+```
+
+**Critical rules:**
+- One query per scenario — not one per input
+- All scenario inputs indexed together under the same `run_id` before the query runs
+- `finally` cleanup runs even when exception is thrown
+- All validation conditions evaluated — no short-circuit on first failure
+
+---
+
+## SPL injection — all edge cases
+
+### Strategy detection order (matters — check in this order)
+1. `| inputlookup` → return SPL unchanged, skip indexing
+2. `| tstats` → return SPL unchanged, add warning
+3. `| lookup <word>` → lookup strategy
+4. `index=` in outer query → standard strategy
+5. nothing found → no_index strategy (prepend)
+
+### Only replace OUTER index= — never inside subsearch brackets
+```python
+bracket_pos = spl.find('[')
+outer = spl[:bracket_pos] if bracket_pos != -1 else spl
+inner = spl[bracket_pos:] if bracket_pos != -1 else ''
+result = _replace_index(outer, run_id) + inner
+```
+
+### Replace the full rowIdentifier string first
+`input.row_identifier` may be `"index=main sourcetype=firewall"` — replace the entire string, not just `index=`.
+Try exact string match first. Fall back to regex `index=\w+` only if exact match fails.
+
+### `| search index=x` mid-pipeline — replace only pre-pipe
+```python
+first_pipe = spl.find('|')
+if first_pipe > 0 and re.search(r'\bindex\s*=', spl[:first_pipe], re.IGNORECASE):
+    pre  = INDEX_PATTERN.sub(replacement, spl[:first_pipe], count=1)
+    return pre + spl[first_pipe:]
+return INDEX_PATTERN.sub(replacement, spl, count=1)
+```
+
+### `| tstats` — do not inject
+Return SPL unchanged. Add warning: `"tstats queries cannot be injected with test data. Use testType='query_only'."`
+
+### no_index — prepend
+`index=temp_query_tester run_id=<run_id> ` prepended to start of SPL.
+
+---
+
+## makeresults data indexing — no single quotes ever
+
+Single quotes in Splunk SPL eval break silently. Always embed event data as JSON:
+
+```python
+# CORRECT
+json_str = json.dumps(events, ensure_ascii=False)
+json_str = json_str.replace('\\', '\\\\').replace('"', '\\"')
+spl = f'| makeresults count=1 | eval _raw="{json_str}" | spath | mvexpand _raw | collect index=temp_query_tester sourcetype=query_tester_input'
+
+# WRONG — breaks if any value contains a single quote or apostrophe
+spl = f"| eval host='{value}'"
+```
+
+Batch in groups of 1000 events per `collect` call.
+
+---
+
+## Validation — run ALL conditions, no short-circuit
+
+```python
+# CORRECT — every condition evaluated and recorded
+all_passed = True
+for condition in validation.field_conditions:
+    detail = _check_field_condition(condition, results)
+    details.append(detail)
+    if not detail.passed:
+        all_passed = False   # record but keep looping
+
+# WRONG — stops at first failure
+for condition in validation.field_conditions:
+    if not check(condition, results):
+        return [], False     # never do this
+```
+
+Pass condition: ANY row in results satisfies the condition — not every row.
+
+Use `CONDITION_HANDLERS` dict:
+```python
+CONDITION_HANDLERS: Dict[str, Callable[[str, str], bool]] = {
+    'equals':       lambda a, e: a.strip().lower() == e.strip().lower(),
+    'contains':     lambda a, e: e.lower() in a.lower(),
+    'regex':        lambda a, e: bool(re.search(e, a)),
+    'not_empty':    lambda a, _: a is not None and a.strip() != '',
+    'greater_than': lambda a, e: _safe_float(a) > _safe_float(e),
+    'less_than':    lambda a, e: _safe_float(a) < _safe_float(e),
+}
+```
+
+---
+
+## Payload parsing — camelCase to snake_case mapping
+
+Frontend sends camelCase. Parse to snake_case dataclasses. Key renames:
+
+```
+testName          -> test_name
+testType          -> test_type
+rowIdentifier     -> row_identifier
+generatorConfig   -> generator_config
+eventCount        -> event_count
+fieldName         -> field_name
+generationType    -> generation_type
+validationType    -> validation_type
+fieldConditions   -> field_conditions
+fieldLogic        -> field_logic
+validationScope   -> validation_scope
+resultCount       -> result_count
+operator          -> condition      <- RENAMED (frontend "operator" = backend "condition")
+scenarioScope     -> scenario_scope
+```
+
+Normalization — handle before building dataclasses:
+- `scenarios` absent or null → empty list (query_only)
+- `generatorConfig` null → disabled generator
+- `validation.fieldConditions` null → no field conditions
+- `validation.resultCount` null → skip count check
+- `input.events` is `[]` or `[{}]` → skip indexing
+
+---
+
+## Response keys — exact camelCase, never renamed
+
+Frontend TypeScript reads these exact keys. Do not use `dataclasses.asdict()` — it produces snake_case.
+Write explicit `_to_dict()` helpers.
+
+```
+status, message, timestamp, testName, testType,
+totalScenarios, passedScenarios, warnings,
+splAnalysis.unauthorizedCommands, splAnalysis.unusualCommands,
+splAnalysis.uniqLimitations, splAnalysis.commandsUsed,
+scenarioResults[].scenarioName, .passed, .executionTimeMs,
+.resultCount, .injectedSpl, .error,
+.validations[].field, .condition, .expected, .actual, .passed, .message
+```
+
+Status logic: `success` = all passed, `partial` = some passed, `error` = none passed.
+
+---
+
+## Dataclass conventions
+
+```python
+@dataclass
+class ScenarioResult:
+    """Result of running one scenario."""
+    scenario_name: str                                   # required fields first
+    passed: bool
+    execution_time_ms: int
+    result_count: int
+    injected_spl: str
+    validations: List[ValidationDetail] = field(default_factory=list)
+    error: Optional[str] = None                          # optional fields with defaults last
+```
+
+- One dataclass per concept — no plain dicts between modules
+- `List[X]` fields use `field(default_factory=list)`, not `= None`
+- `Optional[X]` fields default to `None`
+
+---
+
+## Error handling patterns
+
+```python
+# Per-scenario errors do not stop the loop
+for scenario in payload.scenarios:
+    try:
+        result = self._run_scenario(spl, scenario)
+    except Exception as exc:
+        logger.error('Scenario "%s" failed: %s', scenario.name, exc, exc_info=True)
+        result = ScenarioResult(scenario_name=scenario.name, passed=False, error=str(exc), ...)
+    scenario_results.append(result)
+
+# Cleanup always runs
+try:
+    self._execute(run_id, ...)
+finally:
+    self._cleanup(run_id, strategy)
+
+# Error messages must be actionable — not generic
+raise ValueError(
+    f'Saved search "{name}" not found in app "{app}". '
+    f'Verify the app selector matches the search context.'
+)
+# NOT: raise ValueError('Not found')
+```
+
+Unknown enum values from frontend → log warning + return safe default. Never raise on unknown frontend values.
+
+---
+
+## Splunk REST response format
+
+When reading Splunk API JSON responses (e.g. fetching saved searches):
+```python
+# CORRECT — content is nested under entry[0]
+data    = response.json()
+content = data['entry'][0]['content']
+
+# WRONG
+spl = response.json()['search']   # doesn't exist at root level
+```
+
