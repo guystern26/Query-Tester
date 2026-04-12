@@ -4,6 +4,7 @@
 
 import type { EntityId, TestDefinition, TestResponse } from '../../types';
 import { runTest, cancelTestOnBackend } from '../../../api/testApi';
+import { getSavedSearchSpl } from '../../../api/splunkApi';
 import { buildPayload } from '../../../utils/payloadBuilder';
 import { EMPTY_SPL_ANALYSIS } from '../../../features/results/resultHelpers';
 
@@ -59,6 +60,22 @@ export function runSlice(set: SetState, get: GetState) {
         }
       }
 
+      // Re-fetch saved search SPL if test originated from one (in case it changed in Splunk)
+      const origin = test.query?.savedSearchOrigin;
+      if (origin && test.app) {
+        try {
+          const freshSpl = await getSavedSearchSpl(test.app, origin);
+          if (freshSpl && freshSpl.trim() !== (test.query?.spl ?? '').trim()) {
+            set((draft) => {
+              const t = draft.tests.find((x) => x.id === test.id);
+              if (t && t.query) t.query.spl = freshSpl;
+            });
+          }
+        } catch { /* saved search may have been deleted — run with stored SPL */ }
+      }
+
+      // Re-read test after possible SPL update
+      const freshTest = get().tests.find((t) => t.id === activeTestId) || test;
       abortController = new AbortController();
 
       set((draft) => {
@@ -67,7 +84,7 @@ export function runSlice(set: SetState, get: GetState) {
       });
 
       try {
-        const response = await runTest(buildPayload(test), abortController.signal);
+        const response = await runTest(buildPayload(freshTest), abortController.signal);
         set((draft) => {
           draft.testResponse = response;
           draft.isRunning = false;

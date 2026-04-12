@@ -22,7 +22,7 @@ export function Modal({ open, title, children, onClose, confirmLabel, onConfirm,
     : 'bg-btnprimary hover:bg-btnprimary-hover text-white border border-transparent';
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center" onClick={onClose} role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-[210] bg-black/60 flex items-center justify-center" onClick={onClose} role="dialog" aria-modal="true">
       <div className="bg-navy-900 rounded-xl border border-slate-700 p-0 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="px-6 py-4 border-b border-slate-700 font-semibold text-slate-100">{title}</div>
         <div className="px-6 py-4 text-slate-300">{children}</div>

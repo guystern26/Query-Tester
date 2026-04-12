@@ -67,6 +67,10 @@ export function testLibrarySlice(set: SetState, get: GetState) {
             set((d) => { d.isLoadingLibrary = true; d.libraryError = null; });
             try {
                 const tests = await savedTestsApi.listTests();
+                for (const t of tests) {
+                    const origin = (t as { definition?: { query?: { savedSearchOrigin?: string } } }).definition?.query?.savedSearchOrigin;
+                    if (origin) t.savedSearchOrigin = origin;
+                }
                 set((d) => { d.savedTests = tests; d.isLoadingLibrary = false; });
             } catch (e) {
                 set((d) => { d.isLoadingLibrary = false; d.libraryError = errMsg(e); });

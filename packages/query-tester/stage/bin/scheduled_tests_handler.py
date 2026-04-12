@@ -8,7 +8,7 @@ import random
 import sys
 import threading
 import uuid
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 _bin_dir = os.path.dirname(os.path.abspath(__file__))
 if _bin_dir not in sys.path:
@@ -33,12 +33,16 @@ COLLECTION_SCHEDULED_TESTS = "scheduled_tests"
 BOOL_FIELDS = ("enabled", "alertOnFailure")
 
 INTERVAL_PATTERNS = {
+    "daily": "6 * * *",
+    "2d": "6 */2 * *",
+    "3d": "6 */3 * *",
+    "weekly": "22 * * 5",
+    # Legacy keys (kept for backward compat with existing schedules)
     "hourly": "* * * *",
     "2h": "*/2 * * *",
     "4h": "*/4 * * *",
     "6h": "*/6 * * *",
     "12h": "*/12 * * *",
-    "daily": "6 * * *",
 }
 
 
@@ -81,7 +85,10 @@ def _validate_cron(cron):
 
 def _suggest_minute(kv, interval_key):
     # type: (KVStoreClient, str) -> Dict[str, Any]
-    """Pick a spread-out minute for the given interval to avoid thundering herd."""
+    """Pick a spread-out time slot for the given interval to avoid thundering herd."""
+    if interval_key == "weekly":
+        return _suggest_weekly_slot(kv)
+
     pattern = INTERVAL_PATTERNS.get(interval_key)
     if not pattern:
         return {"error": "Unknown interval_key: {0}".format(interval_key)}
@@ -110,7 +117,6 @@ def _suggest_minute(kv, interval_key):
     if unused:
         minute = random.choice(unused)
     else:
-        # All 60 taken — pick the least-used
         counts = {}  # type: Dict[int, int]
         for m in used_minutes:
             counts[m] = counts.get(m, 0) + 1
@@ -119,6 +125,54 @@ def _suggest_minute(kv, interval_key):
         minute = random.choice(least_used) if least_used else random.randint(0, 59)
 
     cron = "{0} {1}".format(minute, pattern)
+    return {"minute": minute, "cron": cron}
+
+
+# Weekly window: Friday 18:00 through Sunday 08:00
+# Slots are (day_of_week, hour) pairs — cron day: 5=Fri, 6=Sat, 0=Sun
+_WEEKLY_SLOTS = (
+    [(5, h) for h in range(18, 24)] +   # Friday 18:00-23:00
+    [(6, h) for h in range(0, 24)] +     # Saturday 00:00-23:00
+    [(0, h) for h in range(0, 8)]        # Sunday 00:00-07:00
+)
+
+
+def _suggest_weekly_slot(kv):
+    # type: (KVStoreClient) -> Dict[str, Any]
+    """Pick a spread-out (day, hour, minute) within the Fri-Sun weekend window."""
+    try:
+        records = kv.get_all(COLLECTION_SCHEDULED_TESTS)
+    except Exception:
+        records = []
+
+    # Collect used (day, hour) for weekly records
+    used_slots = []  # type: List[Tuple[int, int]]
+    for rec in records:
+        if rec.get("intervalKey") != "weekly":
+            continue
+        cron = rec.get("cronSchedule", "")
+        parts = cron.strip().split()
+        if len(parts) == 5:
+            try:
+                used_slots.append((int(parts[4]), int(parts[1])))
+            except (ValueError, TypeError):
+                pass
+
+    # Pick unused (day, hour) slot
+    unused = [s for s in _WEEKLY_SLOTS if s not in used_slots]
+    if unused:
+        day, hour = random.choice(unused)
+    else:
+        # All slots taken — pick least-used
+        counts = {}  # type: Dict[Tuple[int, int], int]
+        for s in used_slots:
+            counts[s] = counts.get(s, 0) + 1
+        min_count = min(counts.values()) if counts else 0
+        least = [s for s, c in counts.items() if c == min_count]
+        day, hour = random.choice(least) if least else random.choice(_WEEKLY_SLOTS)
+
+    minute = random.randint(0, 59)
+    cron = "{0} {1} * * {2}".format(minute, hour, day)
     return {"minute": minute, "cron": cron}
 
 

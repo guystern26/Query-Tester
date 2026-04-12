@@ -57,7 +57,7 @@ export function QuerySection({ isIde }: QuerySectionProps) {
   const [splWarnings, setSplWarnings] = useState<SplWarning[]>([]);
   const [editorFocused, setEditorFocused] = useState(false);
   const [showNotes, setShowNotes] = useState(true);
-  const [showFields, setShowFields] = useState(true);
+  const [selectedFields, setSelectedFields] = useState<Set<string>>(new Set());
   const editorRef = useRef<HTMLDivElement>(null);
 
   // LLM analysis state
@@ -72,30 +72,30 @@ export function QuerySection({ isIde }: QuerySectionProps) {
   useEffect(() => { setStoreAnalysisLoading(isAnalyzing); }, [isAnalyzing, setStoreAnalysisLoading]);
   useEffect(() => {
     if (!hasAnalysis && !analysisError) { setStoreAnalysisNotes([]); return; }
-    const toNote = (w: SplWarning, i: number, prefix: string) => ({
-      id: prefix + i, message: w.message, category: 'general',
+    const toNote = (w: SplWarning, i: number, p: string) => ({ id: p + i, message: w.message, category: 'general',
       severity: (w.severity === 'error' ? 'error' : w.severity === 'warning' ? 'warning' : 'info') as 'error' | 'warning' | 'info',
-      line: null as number | null, suggestion: null as string | null, source: 'llm' as const,
-    });
-    const unmatched = unmatchedNotes.map((n, i) => ({
-      id: 'u-' + i, message: n.message, category: n.category || 'general',
-      severity: 'info' as const, line: null, suggestion: null, source: 'llm' as const,
-    }));
+      line: null as number | null, suggestion: null as string | null, source: 'llm' as const });
+    const unmatched = unmatchedNotes.map((n, i) => ({ id: 'u-' + i, message: n.message, category: n.category || 'general',
+      severity: 'info' as const, line: null, suggestion: null, source: 'llm' as const }));
     setStoreAnalysisNotes([...analysisNotes.map((w, i) => toNote(w, i, 'm-')), ...unmatched]);
   }, [hasAnalysis, analysisError, unmatchedNotes, analysisNotes, setStoreAnalysisNotes]);
 
-  // Merge warnings; hide all while focused; respect toggle filters
+  // Merge warnings; hide all while focused; filter fields by click-selection
+  const activeFields = useMemo(() => selectedFields.size === 0 ? [] : fieldHighlights.filter((w) => selectedFields.has(w.token)), [fieldHighlights, selectedFields]);
   const mergedWarnings = useMemo<SplWarning[]>(() => {
     if (editorFocused) return [];
-    return [...splWarnings, ...(showNotes ? analysisNotes : []), ...(showFields ? fieldHighlights : [])];
-  }, [editorFocused, splWarnings, analysisNotes, fieldHighlights, showNotes, showFields]);
+    return [...splWarnings, ...(showNotes ? analysisNotes : []), ...activeFields];
+  }, [editorFocused, splWarnings, analysisNotes, activeFields, showNotes]);
 
   // Mark analysis stale when SPL changes — stale markers point to wrong positions
   const prevSplRef = useRef(localSpl);
   useEffect(() => {
-    if (prevSplRef.current !== localSpl) { prevSplRef.current = localSpl; markStale(); }
+    if (prevSplRef.current !== localSpl) { prevSplRef.current = localSpl; markStale(); setSelectedFields(new Set()); }
   }, [localSpl, markStale]);
 
+  const handleToggleField = useCallback((name: string) => {
+    setSelectedFields((prev) => { const n = new Set(prev); if (n.has(name)) n.delete(name); else n.add(name); return n; });
+  }, []);
   const handleEditorFocus = useCallback(() => { setEditorFocused(true); }, []);
   const handleEditorBlur = useCallback(() => {
     debouncedUpdateSpl.flush(); setEditorFocused(false);
@@ -110,13 +110,11 @@ export function QuerySection({ isIde }: QuerySectionProps) {
   useAceMarkers(editorRef, mergedWarnings);
 
   useEffect(() => { if (app !== prevApp.current && prevApp.current !== '') setAppChanged(true); prevApp.current = app; }, [app]);
-  const options = savedSearches.map((s) => ({ value: s.name, label: s.name }));
+  const ssOptions = savedSearches.map((s) => ({ value: s.name, label: s.name }));
 
   const handleSavedSearch = async (value: string) => {
     if (!test || !app || !value) return;
-    try {
-      await fetchSavedSearchSpl(test.id, app, value);
-    } catch { /* leave SPL unchanged */ }
+    try { await fetchSavedSearchSpl(test.id, app, value); } catch { /* leave SPL unchanged */ }
   };
 
   const handleSplChange = (_e: React.SyntheticEvent, { value }: { value: string }) => {
@@ -137,11 +135,8 @@ export function QuerySection({ isIde }: QuerySectionProps) {
         <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-amber-900/30 border border-amber-700/50 text-amber-200 text-[13px]">
           <span className="flex-1">{splDriftWarning}</span>
           <button className="px-2.5 py-1 text-xs font-semibold rounded bg-amber-700/40 hover:bg-amber-700/60 text-amber-100 transition cursor-pointer whitespace-nowrap" onClick={() => reloadDriftedSpl()}>Reload SPL</button>
-          <button className="text-amber-400 hover:text-amber-200 transition cursor-pointer" onClick={() => clearSplDriftWarning()}>
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
-        </div>
-      )}
+          <button className="text-amber-400 hover:text-amber-200 transition cursor-pointer" onClick={() => clearSplDriftWarning()}><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
+        </div>)}
 
       {appChanged && (
         <Message type="warning" dismissible onDismiss={() => setAppChanged(false)}>
@@ -151,7 +146,7 @@ export function QuerySection({ isIde }: QuerySectionProps) {
 
       <div>
         <label className="block mb-1 text-slate-400 text-[13px]">Load from saved search</label>
-        <SearchableSelect value={origin} options={options} onChange={handleSavedSearch} disabled={loading} placeholder="Search saved searches..." />
+        <SearchableSelect value={origin} options={ssOptions} onChange={handleSavedSearch} disabled={loading} placeholder="Search saved searches..." />
         {error && <div className="mt-1 text-[13px] text-red-400">{error}</div>}
       </div>
 
@@ -172,6 +167,7 @@ export function QuerySection({ isIde }: QuerySectionProps) {
                   setLocalSpl(formatted);
                   if (test) updateSpl(test.id, formatted);
                 }
+                setSelectedFields(new Set());
                 const skills = chatSkills.filter((s) => s.enabled).map((s) => ({ name: s.name, prompt: s.prompt }));
                 runAnalysis(formatted, skills.length > 0 ? skills : undefined);
               }}>
@@ -181,10 +177,7 @@ export function QuerySection({ isIde }: QuerySectionProps) {
             {hasAnalysis && !analysisStale && (
               <div className="flex flex-col items-center gap-1">
                 <span className="text-[11px] text-slate-500">Show:</span>
-                <div className="flex gap-1.5">
-                  <TogglePill label="Notes" active={showNotes} onClick={() => setShowNotes((v) => !v)} />
-                  <TogglePill label="Fields" active={showFields} onClick={() => setShowFields((v) => !v)} />
-                </div>
+                <TogglePill label="Notes" active={showNotes} onClick={() => setShowNotes((v) => !v)} />
               </div>
             )}
           </div>
@@ -194,6 +187,8 @@ export function QuerySection({ isIde }: QuerySectionProps) {
       <AnalysisResultBar
         explanation={explanation}
         trackedFields={trackedFields}
+        selectedFields={selectedFields}
+        onToggleField={handleToggleField}
         analysisSummary={analysisSummary}
         unmatchedNotes={unmatchedNotes}
         analysisError={analysisError}

@@ -77,6 +77,11 @@ def analyze(spl, blocked_commands=None):
             'Use testType="query_only" to run this query without injection.'
         )
 
+    # Warn about cache macros — testing=false ones get lookup-swapped at injection time
+    cache_warnings = check_cache_macros(spl_clean)
+    for w in cache_warnings:
+        _warn(w, "info")
+
     return SplAnalysis(
         unauthorized_commands=unauthorized,
         unusual_commands=unusual,
@@ -179,3 +184,61 @@ def _has_subsearch(spl: str) -> bool:
 
 def _has_tstats(spl: str) -> bool:
     return bool(re.search(r"\|\s*tstats\b", spl, re.IGNORECASE))
+
+
+# ── Cache macro validation ───────────────────────────────────────────────────
+
+# Matches `cache(arg1, arg2, ..., testing_value, vanish_time)`
+# The testing param is the 5th argument (index 4, zero-based).
+_CACHE_MACRO_RE = re.compile(r"`cache\(([^)]*)\)`")
+_TRUE_VALUES = {"true", "True", "1"}
+
+
+def parse_cache_macros(spl):
+    # type: (str) -> List[Dict[str, Any]]
+    """Parse all `cache(...)` macro calls. Returns list of dicts with parsed args."""
+    results = []  # type: List[Dict[str, Any]]
+    for match in _CACHE_MACRO_RE.finditer(spl):
+        args_raw = match.group(1)
+        args = [a.strip().strip('"').strip("'") for a in args_raw.split(",")]
+        entry = {
+            "full_match": match.group(0),
+            "start": match.start(),
+            "end": match.end(),
+            "args": args,
+            "lookup_name": args[0] if len(args) > 0 else "",
+            "testing": args[4].strip().strip('"').strip("'") if len(args) > 4 else "",
+            "is_testing": False,
+        }
+        if len(args) > 4:
+            entry["is_testing"] = entry["testing"] in _TRUE_VALUES
+        results.append(entry)
+    return results
+
+
+def check_cache_macros(spl):
+    # type: (str) -> List[str]
+    """Return informational warnings about cache macros in the SPL."""
+    warnings = []  # type: List[str]
+    for info in parse_cache_macros(spl):
+        if len(info["args"]) < 6:
+            warnings.append(
+                "cache macro requires 6 arguments "
+                "(lookup_name, id_fields, prop_fields, stacking_fields, testing, vanish_time). "
+                "Found {0}.".format(len(info["args"]))
+            )
+        elif not info["is_testing"]:
+            warnings.append(
+                'cache macro lookup "{0}" will be replaced with a temporary lookup '
+                "to protect production data. The temp lookup persists for the "
+                "duration of your test session, so repeated runs will accumulate "
+                "data in it.".format(info["lookup_name"])
+            )
+        else:
+            warnings.append(
+                'cache macro "{0}" is running with testing=true — safe to run. '
+                "You can also run it with testing=false: Query Tester will "
+                "automatically swap the lookup with a temporary copy so no "
+                "production data is modified.".format(info["lookup_name"])
+            )
+    return warnings

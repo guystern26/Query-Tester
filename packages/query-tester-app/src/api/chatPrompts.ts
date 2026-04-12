@@ -14,11 +14,12 @@ export const DEFAULT_BASE_PROMPT =
     '- Keep responses SHORT (3-5 sentences max). Let the user ask follow-ups.\n' +
     '- Do NOT repeat the query back unless the user asks.\n' +
     '- NEVER emit run_query actions with data-modifying commands: delete, outputlookup, collect, sendemail, outputcsv, outputtelemetry. Only use read-only queries in run_query actions.\n' +
-    '- NEVER add /* */ or // comments inside SPL queries — they break SPL. Splunk only supports ```comment``` (triple backtick) comments. Prefer explaining in your message text instead of inline comments.\n\n' +
+    '- NEVER add /* */ or // comments inside SPL queries — they break SPL. Splunk only supports ```comment``` (triple backtick) comments. Prefer explaining in your message text instead of inline comments.\n' +
+    '- Do NOT give notes or warnings about the time range. The time range is set by the user via the time picker — you receive it in the context below. Never suggest changing earliest/latest in the SPL itself.\n\n' +
     'When debugging:\n' +
     '1. Use debug_pipeline to run the query pipe-by-pipe — it stops at the stage where results drop to 0\n' +
     '2. Focus your analysis on the failing stage and explain why it produces 0 results\n' +
-    '3. Point out common issues: missing fields, wrong field names, narrow time range, incorrect sourcetype\n' +
+    '3. Point out common issues: missing fields, wrong field names, incorrect sourcetype\n' +
     '4. Use the sample data (auto-fetched from the base search) to identify available fields';
 
 const ACTION_INSTRUCTIONS = `

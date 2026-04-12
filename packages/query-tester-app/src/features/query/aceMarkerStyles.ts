@@ -46,24 +46,24 @@ const MARKER_CSS = `
     }
     .spl-lint-info {
       position: absolute;
-      background: rgba(96,165,250,0.15);
-      border-bottom: 2px dotted rgba(96,165,250,0.6);
+      background: rgba(74,222,128,0.12);
+      border-bottom: 2px dotted rgba(74,222,128,0.5);
       border-radius: 2px;
       z-index: 4;
     }
     .spl-lint-blocked {
       border-bottom-style: dashed !important;
     }
-    .spl-field-0 { position:absolute; border-bottom:2px solid #60a5fa; z-index:3; }
-    .spl-field-1 { position:absolute; border-bottom:2px solid #4ade80; z-index:3; }
-    .spl-field-2 { position:absolute; border-bottom:2px solid #fbbf24; z-index:3; }
-    .spl-field-3 { position:absolute; border-bottom:2px solid #f472b6; z-index:3; }
-    .spl-field-4 { position:absolute; border-bottom:2px solid #c084fc; z-index:3; }
-    .spl-field-5 { position:absolute; border-bottom:2px solid #fb923c; z-index:3; }
-    .spl-field-6 { position:absolute; border-bottom:2px solid #2dd4bf; z-index:3; }
-    .spl-field-7 { position:absolute; border-bottom:2px solid #a78bfa; z-index:3; }
-    .spl-field-8 { position:absolute; border-bottom:2px solid #6ee7b7; z-index:3; }
-    .spl-field-9 { position:absolute; border-bottom:2px solid #fda4af; z-index:3; }
+    .spl-field-0 { position:absolute; background:rgba(96,165,250,0.22); border-radius:2px; z-index:3; }
+    .spl-field-1 { position:absolute; background:rgba(74,222,128,0.22); border-radius:2px; z-index:3; }
+    .spl-field-2 { position:absolute; background:rgba(251,191,36,0.22); border-radius:2px; z-index:3; }
+    .spl-field-3 { position:absolute; background:rgba(244,114,182,0.22); border-radius:2px; z-index:3; }
+    .spl-field-4 { position:absolute; background:rgba(192,132,252,0.22); border-radius:2px; z-index:3; }
+    .spl-field-5 { position:absolute; background:rgba(251,146,60,0.22); border-radius:2px; z-index:3; }
+    .spl-field-6 { position:absolute; background:rgba(45,212,191,0.22); border-radius:2px; z-index:3; }
+    .spl-field-7 { position:absolute; background:rgba(167,139,250,0.22); border-radius:2px; z-index:3; }
+    .spl-field-8 { position:absolute; background:rgba(110,231,183,0.22); border-radius:2px; z-index:3; }
+    .spl-field-9 { position:absolute; background:rgba(253,164,175,0.22); border-radius:2px; z-index:3; }
     .spl-lint-tooltip {
       position: absolute;
       z-index: 1000;
@@ -87,9 +87,9 @@ const MARKER_CSS = `
       color: #fca5a5;
     }
     .spl-lint-tooltip.info {
-      background: #172554;
-      border: 1px solid #1e40af;
-      color: #93c5fd;
+      background: #14261a;
+      border: 1px solid #166534;
+      color: #86efac;
     }
     .spl-lint-tooltip.field {
       background: #1e293b;

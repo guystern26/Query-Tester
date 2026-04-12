@@ -78,6 +78,27 @@ def create_temp_lookup(
     return filename
 
 
+def copy_lookup_to_temp(source_name: str, temp_name: str, app: str) -> bool:
+    """
+    Copy an existing lookup CSV to a temp name in the same app.
+    Returns True if the copy succeeded, False if the source doesn't exist.
+    Used by scheduled runs to snapshot a real lookup for cache macro testing.
+    """
+    import shutil
+    lookup_dir = _lookup_dir(app)
+    src = source_name if source_name.endswith(".csv") else source_name + ".csv"
+    dst = temp_name if temp_name.endswith(".csv") else temp_name + ".csv"
+    src_path = os.path.join(lookup_dir, src)
+    dst_path = os.path.join(lookup_dir, dst)
+    if not os.path.isfile(src_path):
+        logger.warning("Cannot copy lookup — source not found: %s", src_path)
+        return False
+    os.makedirs(lookup_dir, exist_ok=True)
+    shutil.copy2(src_path, dst_path)
+    logger.info("Copied lookup %s -> %s in app=%s", src, dst, app)
+    return True
+
+
 def delete_temp_lookup(run_id: str, app: str) -> None:
     """
     Delete the temp CSV. Silently ignores if file does not exist.

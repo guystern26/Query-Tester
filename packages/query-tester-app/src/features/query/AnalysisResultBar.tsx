@@ -24,6 +24,8 @@ function getNoteColor(category: string): typeof DEFAULT_NOTE_COLOR {
 interface AnalysisResultBarProps {
     explanation: string;
     trackedFields: TrackedField[];
+    selectedFields: Set<string>;
+    onToggleField: (name: string) => void;
     analysisSummary: string;
     unmatchedNotes: AnalyzeQueryNote[];
     analysisError: string;
@@ -33,6 +35,8 @@ interface AnalysisResultBarProps {
 export function AnalysisResultBar({
     explanation,
     trackedFields,
+    selectedFields,
+    onToggleField,
     analysisSummary,
     unmatchedNotes,
     analysisError,
@@ -62,14 +66,17 @@ export function AnalysisResultBar({
                     <span className="text-slate-400 text-[12px] mr-1">Fields:</span>
                     {trackedFields.map((f) => {
                         const color = getFieldColor(f.colorIndex);
+                        const active = selectedFields.has(f.name);
                         return (
-                            <span
+                            <button
+                                type="button"
                                 key={f.name + '-' + f.colorIndex}
-                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[12px] text-slate-300 bg-slate-800/50"
+                                onClick={() => onToggleField(f.name)}
+                                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[12px] transition cursor-pointer border ${active ? 'text-slate-200 bg-slate-700/60 border-slate-500/60' : 'text-slate-500 bg-slate-800/30 border-transparent hover:text-slate-400 hover:bg-slate-800/50'}`}
                             >
                                 <span className={'w-2 h-2 rounded-full ' + color.dot} aria-hidden="true" />
                                 {f.name}
-                            </span>
+                            </button>
                         );
                     })}
                 </div>

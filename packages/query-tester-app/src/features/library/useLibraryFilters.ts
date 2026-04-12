@@ -10,6 +10,7 @@ export function useLibraryFilters(
     const [typeFilter, setTypeFilter] = useState('');
     const [creatorFilter, setCreatorFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
+    const [savedSearchFilter, setSavedSearchFilter] = useState('');
 
     const apps = useMemo(() => {
         const set = new Set(savedTests.map((t) => t.app).filter(Boolean));
@@ -21,6 +22,11 @@ export function useLibraryFilters(
         return Array.from(set).sort();
     }, [savedTests]);
 
+    const savedSearches = useMemo(() => {
+        const set = new Set(savedTests.map((t) => t.savedSearchOrigin).filter(Boolean) as string[]);
+        return Array.from(set).sort();
+    }, [savedTests]);
+
     const filtered = useMemo(() => {
         let list = savedTests;
         if (search) {
@@ -28,10 +34,9 @@ export function useLibraryFilters(
             list = list.filter((t) => t.name.toLowerCase().includes(q));
         }
         if (appFilter) list = list.filter((t) => t.app === appFilter);
-        if (typeFilter) {
-            list = list.filter((t) => t.validationType === typeFilter);
-        }
+        if (typeFilter) list = list.filter((t) => t.validationType === typeFilter);
         if (creatorFilter) list = list.filter((t) => t.createdBy === creatorFilter);
+        if (savedSearchFilter) list = list.filter((t) => t.savedSearchOrigin === savedSearchFilter);
         if (statusFilter) {
             list = list.filter((t) => {
                 const sched = scheduleByTestId[t.id];
@@ -41,13 +46,14 @@ export function useLibraryFilters(
             });
         }
         return list;
-    }, [savedTests, search, appFilter, typeFilter, creatorFilter, statusFilter, scheduleByTestId]);
+    }, [savedTests, search, appFilter, typeFilter, creatorFilter, savedSearchFilter, statusFilter, scheduleByTestId]);
 
     return {
         search, setSearch,
         appFilter, setAppFilter, apps,
         typeFilter, setTypeFilter,
         creatorFilter, setCreatorFilter, creators,
+        savedSearchFilter, setSavedSearchFilter, savedSearches,
         statusFilter, setStatusFilter,
         filtered,
     };

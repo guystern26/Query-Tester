@@ -158,6 +158,7 @@ export function LibraryPage({ onNavigateBuilder }: LibraryPageProps): React.Reac
                         appFilter={filters.appFilter} onAppFilterChange={filters.setAppFilter} apps={filters.apps}
                         typeFilter={filters.typeFilter} onTypeFilterChange={filters.setTypeFilter}
                         creatorFilter={filters.creatorFilter} onCreatorFilterChange={filters.setCreatorFilter} creators={filters.creators}
+                        savedSearchFilter={filters.savedSearchFilter} onSavedSearchFilterChange={filters.setSavedSearchFilter} savedSearches={filters.savedSearches}
                         statusFilter={filters.statusFilter} onStatusFilterChange={filters.setStatusFilter}
                     />
 

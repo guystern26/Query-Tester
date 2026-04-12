@@ -51,12 +51,16 @@ MISSED_RUN_MULTIPLIER = 1.5   # consider missed if lastRunAt > interval * 1.5
 
 # Interval key → expected seconds between runs
 INTERVAL_SECONDS = {
+    "daily": 86400,
+    "2d": 172800,
+    "3d": 259200,
+    "weekly": 604800,
+    # Legacy keys (backward compat)
     "hourly": 3600,
     "2h": 7200,
     "4h": 14400,
     "6h": 21600,
     "12h": 43200,
-    "daily": 86400,
 }
 
 # Lock for KVStore writes to scheduled_tests (concurrent workers)

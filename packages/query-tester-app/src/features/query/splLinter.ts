@@ -94,7 +94,25 @@ export function lintSpl(spl: string, policy?: CommandPolicyEntry[]): SplWarning[
         }
     }
 
-    // 2. Trailing pipes
+    // 2. Cache macro detection: `cache(...)`
+    const cacheRe = /`cache\(([^)]*)\)`/g;
+    let cacheMatch: RegExpExecArray | null;
+    while ((cacheMatch = cacheRe.exec(spl)) !== null) {
+        const args = cacheMatch[1].split(',').map((a) => a.trim().replace(/^["']|["']$/g, ''));
+        const testingVal = args.length > 4 ? args[4].replace(/^["']|["']$/g, '') : '';
+        const isTesting = testingVal === 'true' || testingVal === 'True' || testingVal === '1';
+        const lookupName = args[0] || 'unknown';
+        warnings.push({
+            start: cacheMatch.index, end: cacheMatch.index + cacheMatch[0].length,
+            token: 'cache', isBlocked: false, colorIndex: undefined,
+            severity: isTesting ? 'info' : 'warning',
+            message: isTesting
+                ? 'cache macro "' + lookupName + '" — testing=true, safe to run. You can also use testing=false: the lookup will be swapped with a temp copy automatically.'
+                : 'cache macro "' + lookupName + '" — the lookup will be replaced with a temp copy to protect production data. The temp lookup persists for your test session.',
+        });
+    }
+
+    // 3. Trailing pipes
     const trailingMatch = /\|\s*$/.exec(masked);
     if (trailingMatch) {
         warnings.push({
@@ -104,7 +122,7 @@ export function lintSpl(spl: string, policy?: CommandPolicyEntry[]): SplWarning[
         });
     }
 
-    // 3. Empty pipes
+    // 4. Empty pipes
     const emptyPipeRe = /\|\s*(?=\|)/g;
     while ((match = emptyPipeRe.exec(masked)) !== null) {
         warnings.push({

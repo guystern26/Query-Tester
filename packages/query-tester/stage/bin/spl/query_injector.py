@@ -81,9 +81,15 @@ def detect_strategy(spl: str) -> str:
 
 def inject(
     spl: str, run_id: str, strategy: str, inputs: List[ParsedInput],
+    test_id: Optional[str] = None,
 ) -> str:
     """Apply the selected injection strategy, then replace any remaining
     inputlookup commands (e.g. inside subsearches) as a post-step.
+    Swaps lookup names in non-testing cache macros with temp lookups.
+
+    *test_id* — when provided (manual runs), the cache temp lookup uses a
+    stable name so it persists across reruns within the session. When absent
+    (scheduled runs), a per-run name is used.
     """
     handler = STRATEGY_HANDLERS.get(strategy)
     if handler is None:
@@ -92,6 +98,7 @@ def inject(
     result = handler(spl, run_id, inputs)
     if strategy != "tstats":
         result = _replace_all_inputlookups(result, run_id)
+    result = _swap_cache_lookups(result, run_id, test_id)
     return result
 
 
@@ -198,3 +205,54 @@ STRATEGY_HANDLERS: Dict[str, Callable[[str, str, List[ParsedInput]], str]] = {
     "tstats": _inject_noop,
     "no_index": _inject_no_index,
 }
+
+
+# ── Cache macro lookup swap ──────────────────────────────────────────────────
+
+def _swap_cache_lookups(spl, run_id, test_id=None):
+    # type: (str, str, Optional[str]) -> str
+    """Swap the lookup_name in non-testing cache macros with a temp lookup.
+
+    `cache(lookup_name, id, prop, stack, testing, vanish)` — when testing is
+    not true, replace lookup_name with a temp name so the macro writes to a
+    disposable lookup instead of the real one.
+    Testing=true macros are left untouched (safe by design).
+
+    Naming:
+    - Manual runs (test_id provided): ``temp_cache_{test_id[:8]}_{lookup}``
+      — stable name so the temp lookup persists across reruns in the session.
+    - Scheduled runs (no test_id): ``temp_cache_{run_id}_{lookup}``
+      — unique per run. The caller should copy the real lookup into this
+      temp before execution so the test validates against real data.
+    """
+    from spl.spl_analyzer import parse_cache_macros
+
+    parsed = parse_cache_macros(spl)
+    if not parsed:
+        return spl
+
+    key = test_id[:8] if test_id else run_id
+
+    # Process in reverse order so string offsets stay valid
+    result = spl
+    for info in reversed(parsed):
+        if info["is_testing"]:
+            continue  # testing=true — safe, leave as-is
+        if len(info["args"]) < 6:
+            continue  # malformed — skip
+
+        original_lookup = info["args"][0]
+        temp_lookup = "temp_cache_{0}_{1}".format(key, original_lookup)
+
+        # Rebuild the macro call with the temp lookup name
+        new_args = list(info["args"])
+        new_args[0] = temp_lookup
+        new_macro = "`cache({0})`".format(",".join(new_args))
+
+        result = result[:info["start"]] + new_macro + result[info["end"]:]
+        logger.info(
+            "Swapped cache lookup '%s' -> '%s' (key=%s)",
+            original_lookup, temp_lookup, key,
+        )
+
+    return result

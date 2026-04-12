@@ -28,6 +28,7 @@ export function TopBar({ mode = 'builder', onNavigateLibrary, onNavigateSetup, o
   const saveCurrentTest = useTestStore((s) => s.saveCurrentTest);
   const updateSavedTest = useTestStore((s) => s.updateSavedTest);
   const resetToNewTest = useTestStore((s) => s.resetToNewTest);
+  const setResultsBarExpanded = useTestStore((s) => s.setResultsBarExpanded);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [saveModalOpen, setSaveModalOpen] = useState(false);
@@ -106,7 +107,7 @@ export function TopBar({ mode = 'builder', onNavigateLibrary, onNavigateSetup, o
               />
               <div className="w-px h-5 bg-slate-700 mx-1" />
               <div className="relative flex items-center" data-tutorial="save-test-btn">
-                <Button variant="primary" size="sm" onClick={() => setSaveModalOpen(true)}>
+                <Button variant="primary" size="sm" onClick={() => { setResultsBarExpanded(false); setSaveModalOpen(true); }}>
                   Save Test
                 </Button>
                 {hasUnsavedChanges && savedTestId && (

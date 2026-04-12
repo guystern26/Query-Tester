@@ -70,6 +70,9 @@ function TestsTableRowInner({
             <td className="px-4 py-3">
                 <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-navy-700 text-slate-300 border border-slate-700">{test.app || '\u2014'}</span>
             </td>
+            <td className="px-4 py-3 max-w-[160px]">
+                <span className="text-xs text-slate-400 truncate block">{test.savedSearchOrigin || '\u2014'}</span>
+            </td>
             <td className="px-4 py-3">
                 <span className={'px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider border ' + badge.cls}>{badge.label}</span>
             </td>

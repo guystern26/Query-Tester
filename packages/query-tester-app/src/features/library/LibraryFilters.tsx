@@ -20,6 +20,9 @@ export interface LibraryFiltersProps {
     creatorFilter: string;
     onCreatorFilterChange: (v: string) => void;
     creators: string[];
+    savedSearchFilter: string;
+    onSavedSearchFilterChange: (v: string) => void;
+    savedSearches: string[];
     statusFilter: string;
     onStatusFilterChange: (v: string) => void;
 }
@@ -43,6 +46,7 @@ export function LibraryFilters({
     appFilter, onAppFilterChange, apps,
     typeFilter, onTypeFilterChange,
     creatorFilter, onCreatorFilterChange, creators,
+    savedSearchFilter, onSavedSearchFilterChange, savedSearches,
     statusFilter, onStatusFilterChange,
 }: LibraryFiltersProps) {
     return (
@@ -93,6 +97,17 @@ export function LibraryFilters({
                 <option value="">All creators</option>
                 {creators.map((c) => (
                     <option key={c} value={c}>{c}</option>
+                ))}
+            </select>
+
+            <select
+                value={savedSearchFilter}
+                onChange={(e) => onSavedSearchFilterChange(e.target.value)}
+                className={selectStyle}
+            >
+                <option value="">All saved searches</option>
+                {savedSearches.map((s) => (
+                    <option key={s} value={s}>{s}</option>
                 ))}
             </select>
 

@@ -8,12 +8,10 @@ export const SCHEDULE_INTERVALS: ReadonlyArray<{
     description: string;
     buildCron: (minute: number) => string;
 }> = [
-    { label: 'Every hour',     key: 'hourly', description: 'Runs once every hour',    buildCron: (m) => `${m} * * * *` },
-    { label: 'Every 2 hours',  key: '2h',     description: 'Runs once every 2 hours', buildCron: (m) => `${m} */2 * * *` },
-    { label: 'Every 4 hours',  key: '4h',     description: 'Runs once every 4 hours', buildCron: (m) => `${m} */4 * * *` },
-    { label: 'Every 6 hours',  key: '6h',     description: 'Runs once every 6 hours', buildCron: (m) => `${m} */6 * * *` },
-    { label: 'Every 12 hours', key: '12h',    description: 'Runs twice a day',        buildCron: (m) => `${m} */12 * * *` },
-    { label: 'Daily',          key: 'daily',  description: 'Runs once a day',         buildCron: (m) => `${m} 6 * * *` },
+    { label: 'Daily',          key: 'daily',   description: 'Runs once a day',          buildCron: (m) => `${m} 6 * * *` },
+    { label: 'Every 2 days',   key: '2d',      description: 'Runs once every 2 days',   buildCron: (m) => `${m} 6 */2 * *` },
+    { label: 'Every 3 days',   key: '3d',      description: 'Runs once every 3 days',   buildCron: (m) => `${m} 6 */3 * *` },
+    { label: 'Weekly',         key: 'weekly',  description: 'Runs once on the weekend (Fri evening – Sun morning)', buildCron: (m) => `${m} 22 * * 5` },
 ];
 
 export const MAX_SCHEDULED_TESTS = 50;

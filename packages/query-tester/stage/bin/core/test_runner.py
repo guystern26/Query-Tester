@@ -5,6 +5,7 @@ Coordinate end-to-end execution of Splunk Query Tester scenarios.
 """
 from __future__ import annotations
 
+import os
 import time
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import uuid4
@@ -50,9 +51,14 @@ class TestRunner:
         """
         Parse payload, run each scenario, and return response dict with HTTP status.
         """
+        self._test_id = raw_payload.get("testId") or None  # type: Optional[str]
+        self._cache_temp_lookups = []  # type: List[str]
         try:
             payload = parse(raw_payload)
             spl = self._resolve_spl(payload)
+
+            # Pre-copy real lookups for non-testing cache macros (scheduled runs)
+            self._prepare_cache_lookups(spl, payload.app)
 
             blocked_set = get_blocked_commands_set(self._session_key)
             analysis = analyze_spl(spl, blocked_commands=blocked_set)
@@ -85,7 +91,7 @@ class TestRunner:
             strategy = detect_strategy(spl)
             for scenario in payload.scenarios:
                 run_id = uuid4().hex[:8]
-                injected_spl = inject(spl, run_id, strategy, scenario.inputs)
+                injected_spl = inject(spl, run_id, strategy, scenario.inputs, test_id=self._test_id)
                 orphan_warning = check_orphaned_filters(spl, injected_spl)
                 if orphan_warning:
                     analysis.warnings.append(
@@ -106,6 +112,9 @@ class TestRunner:
                 scenario_results.append(result)
 
         response = build_response(payload, analysis, scenario_results)
+        # Clean up scheduled-run cache temp lookups (manual-run ones persist)
+        if not self._test_id:
+            self._cleanup_cache_lookups(payload.app)
         return response, 200
 
     def _run_scenario(
@@ -197,3 +206,55 @@ class TestRunner:
             delete_temp_lookup(run_id, app)
         except Exception as exc:
             logger.warning("Lookup cleanup failed for run_id=%s: %s", run_id, str(exc))
+
+    def _prepare_cache_lookups(self, spl: str, app: str) -> None:
+        """Copy real lookups to temp names for non-testing cache macros.
+
+        - Manual runs (test_id set): uses stable name ``temp_cache_{id[:8]}_{lookup}``.
+          Copies only if the temp file does not yet exist (first run seeds it,
+          subsequent runs accumulate data in it).
+        - Scheduled runs (no test_id): always copies to a fresh per-run temp.
+        """
+        try:
+            from spl.spl_analyzer import parse_cache_macros
+            from data.lookup_manager import copy_lookup_to_temp, _lookup_dir
+
+            key = self._test_id[:8] if self._test_id else None
+            for info in parse_cache_macros(spl):
+                if info["is_testing"] or len(info["args"]) < 6:
+                    continue
+                original = info["lookup_name"]
+                if not original:
+                    continue  # empty lookup name — skip
+                if key:
+                    # Manual run — stable name, copy only if temp doesn't exist yet
+                    temp = "temp_cache_{0}_{1}".format(key, original)
+                    temp_file = temp if temp.endswith(".csv") else temp + ".csv"
+                    temp_path = os.path.join(_lookup_dir(app), temp_file)
+                    if os.path.isfile(temp_path):
+                        logger.info("Cache temp lookup already exists, reusing: %s", temp)
+                        continue
+                else:
+                    # Scheduled run — fresh per-run name
+                    from uuid import uuid4
+                    temp = "temp_cache_{0}_{1}".format(uuid4().hex[:8], original)
+
+                if copy_lookup_to_temp(original, temp, app):
+                    self._cache_temp_lookups.append(temp)
+        except Exception as exc:
+            logger.warning("Cache lookup pre-copy failed: %s", exc)
+
+    def _cleanup_cache_lookups(self, app: str) -> None:
+        """Remove temp cache lookup CSVs created for scheduled runs."""
+        import os as _os
+        for name in self._cache_temp_lookups:
+            fname = name if name.endswith(".csv") else name + ".csv"
+            path = _os.path.join(
+                _os.environ.get("SPLUNK_HOME", "/opt/splunk"),
+                "etc", "apps", app, "lookups", fname,
+            )
+            try:
+                _os.remove(path)
+                logger.info("Cleaned up cache temp lookup: %s", fname)
+            except Exception:
+                pass
