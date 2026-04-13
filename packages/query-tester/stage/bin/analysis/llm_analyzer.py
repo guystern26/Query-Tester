@@ -18,7 +18,13 @@ logger = get_logger(__name__)
 ANALYSIS_SYSTEM_PROMPT = (
     "You are a Splunk SPL analyzer. Analyze this query for: field name typos "
     "compared to common Splunk field names, unused available fields, optimization "
-    "opportunities, and best practice violations. "
+    "opportunities, and best practice violations.\n"
+    "Common Splunk fields: _time, _raw, source, sourcetype, host, index, _indextime, "
+    "linecount, splunk_server. CIM fields: action, app, dest, dest_ip, dest_port, "
+    "dvc, src, src_ip, src_port, status, user, vendor_product.\n"
+    "Key notes: stats removes raw events (use eventstats to keep them), "
+    "transaction needs maxspan to avoid runaway grouping, "
+    "values() produces multi-valued fields (use mvjoin to flatten).\n"
     "The user describes their intent: {user_context}. "
     "Return ONLY a JSON array of objects with: "
     'severity (error/warning/info), '

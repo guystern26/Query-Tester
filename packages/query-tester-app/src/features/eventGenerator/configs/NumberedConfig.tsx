@@ -21,7 +21,7 @@ function getCfg(rule: FieldGenerationRule): NumberedGeneratorConfig {
 }
 
 const inputCls =
-  'px-2 py-1.5 text-xs bg-navy-950 border border-slate-800 rounded text-slate-300 placeholder-slate-600 focus:outline-none focus:border-accent-600 transition';
+  'px-2 py-1.5 text-xs bg-navy-950 border border-slate-800 rounded text-slate-300 placeholder-slate-600 focus:outline-none focus:border-blue-300 transition';
 const labelCls = 'text-[10px] text-slate-500 uppercase shrink-0';
 
 function NumberedConfigInner({ testId, scenarioId, inputId, rule }: NumberedConfigProps) {

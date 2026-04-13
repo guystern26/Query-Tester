@@ -13,8 +13,9 @@ import type {
 } from '../types/config';
 import type { IdeSliceState } from './slices/ideSlice';
 import type { ChatSliceState } from './slices/chatSlice';
+import type { PanelSliceState, PanelViewMode, PanelId } from './slices/panelSlice';
 
-export interface TestStoreState extends IdeSliceState, ChatSliceState {
+export interface TestStoreState extends IdeSliceState, ChatSliceState, PanelSliceState {
     tests: TestDefinition[];
     activeTestId: EntityId | null;
     isRunning: boolean;
@@ -165,11 +166,18 @@ export interface TestStoreState extends IdeSliceState, ChatSliceState {
     setupRequired: boolean;
     setFieldExtraction: (testId: EntityId, sources: ExtractedDataSource[]) => void;
     selectDataSource: (testId: EntityId, scenarioId: EntityId, inputId: EntityId, source: ExtractedDataSource) => void;
+    applyFieldSampleValues: (testId: EntityId, scenarioId: EntityId, inputId: EntityId, sampleRow: Record<string, string>) => void;
     applySuggestedValidationFields: (testId: EntityId, fields: string[]) => void;
     fetchSavedSearchSpl: (testId: EntityId, app: string, savedSearchName: string) => Promise<void>;
     fetchQueryDataSavedSearchSpl: (testId: EntityId, scenarioId: EntityId, inputId: EntityId, app: string, savedSearchName: string) => Promise<void>;
     fetchExtractDataSources: (testId: EntityId, scenarioId: EntityId, spl: string) => Promise<ExtractedDataSource[]>;
     fetchSuggestValidationFields: (testId: EntityId, spl: string) => Promise<{ fields: string[]; newCount: number }>;
+    fetchSampleValues: (testId: EntityId, scenarioId: EntityId, inputId: EntityId, rowIdentifier: string, fields: string[], app: string, timeRange?: TimeRange) => Promise<void>;
+
+    // --- Panel View ---
+    setPanelViewMode: (mode: PanelViewMode) => void;
+    setActivePanelIndex: (index: number) => void;
+    togglePanelCollapsed: (panel: PanelId) => void;
 
     // --- Query Data ---
     updateQueryDataSpl: (testId: EntityId, scenarioId: EntityId, inputId: EntityId, spl: string) => void;

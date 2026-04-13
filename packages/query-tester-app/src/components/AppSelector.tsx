@@ -13,8 +13,8 @@ export interface AppSelectorProps {
   autoFocus?: boolean;
 }
 
-const compactCls = 'w-44 px-2.5 py-1 text-sm bg-navy-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-500/30 transition-all duration-200 cursor-pointer';
-const fullCls = 'w-full px-3.5 py-2.5 text-base bg-navy-950 border border-slate-700 rounded-xl text-slate-200 focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-500/30 transition-all duration-200 cursor-pointer';
+const compactCls = 'w-44 px-2.5 py-1 text-sm bg-navy-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-300/20 transition-all duration-200 cursor-pointer';
+const fullCls = 'w-full px-3.5 py-2.5 text-base bg-navy-950 border border-slate-700 rounded-xl text-slate-200 focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-300/20 transition-all duration-200 cursor-pointer';
 
 const DEV_MOCK_APPS = [
   'search',

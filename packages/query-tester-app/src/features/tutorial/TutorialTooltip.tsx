@@ -127,7 +127,7 @@ export function TutorialTooltip({
             <div className="bg-navy-800 border border-slate-700 rounded-xl shadow-2xl overflow-hidden">
                 {/* Header with step badge */}
                 <div className="flex items-center gap-2 px-4 pt-3 pb-1">
-                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-btnprimary/20 text-btnprimary text-[11px] font-bold">
+                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-navy-700 text-blue-300 text-[11px] font-bold">
                         {stepIndex + 1}
                     </span>
                     <span className="text-[11px] text-slate-500 font-medium tracking-wide uppercase">
@@ -167,7 +167,7 @@ export function TutorialTooltip({
                         <button
                             type="button"
                             onClick={onNext}
-                            className="px-3.5 py-1.5 text-[12px] font-medium rounded-lg bg-btnprimary text-white hover:bg-btnprimary-hover cursor-pointer transition-colors"
+                            className="px-3.5 py-1.5 text-[12px] font-medium rounded-lg bg-blue-300 text-slate-900 hover:bg-blue-200 cursor-pointer transition-colors"
                         >
                             {isLast ? 'Finish' : 'Next'}
                         </button>

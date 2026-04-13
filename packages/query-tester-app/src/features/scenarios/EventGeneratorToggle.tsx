@@ -77,7 +77,7 @@ export function EventGeneratorToggle({ testId, scenarioId, input, generatorAvail
                 if (!Number.isNaN(n) && n >= 0) updateGeneratorEventCount(testId, scenarioId, input.id, Math.min(n, 10000));
               }}
               placeholder="# events"
-              className="w-[80px] px-2 py-0.5 text-[11px] bg-navy-950 border border-slate-700 rounded-md text-slate-200 placeholder-slate-500 focus:outline-none focus:border-accent-600 transition text-center"
+              className="w-[80px] px-2 py-0.5 text-[11px] bg-navy-950 border border-slate-700 rounded-md text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-300 transition text-center"
             />
           </div>
         )}

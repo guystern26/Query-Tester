@@ -131,7 +131,7 @@ export function WizardStepEmail({ onNext, onSkip }: WizardStepEmailProps) {
                     type="button"
                     onClick={handleNext}
                     disabled={isSaving}
-                    className="px-6 py-2.5 text-sm font-semibold rounded-lg bg-btnprimary hover:bg-btnprimary-hover text-white disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                    className="px-6 py-2.5 text-sm font-semibold rounded-lg bg-blue-300 hover:bg-blue-200 text-slate-900 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                 >
                     {isSaving ? 'Saving...' : 'Next'}
                 </button>

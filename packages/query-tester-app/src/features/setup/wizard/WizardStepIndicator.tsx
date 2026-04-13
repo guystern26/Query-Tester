@@ -24,7 +24,7 @@ export function WizardStepIndicator({ steps, currentStep }: WizardStepIndicatorP
                             <div className={
                                 'w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ' +
                                 (isComplete
-                                    ? 'bg-blue-400 text-white'
+                                    ? 'bg-blue-300 text-slate-900'
                                     : isCurrent
                                         ? 'bg-blue-400/20 text-blue-400 ring-2 ring-blue-400'
                                         : 'bg-slate-800 text-slate-500')

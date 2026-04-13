@@ -59,7 +59,7 @@ export function AnalysisPanel({ notes, isLoading, onApplySuggestion }: AnalysisP
                     </span>
                 )}
                 {infoNotes.length > 0 && (
-                    <span className="px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 font-medium">
+                    <span className="px-1.5 py-0.5 rounded bg-navy-700 text-blue-300 font-medium">
                         {infoNotes.length} info
                     </span>
                 )}
@@ -119,7 +119,7 @@ function NoteCard({ note, onApply }: { note: AnalysisNote; onApply?: (n: Analysi
                     <button
                         type="button"
                         onClick={handleApply}
-                        className="text-[11px] px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition cursor-pointer shrink-0"
+                        className="text-[11px] px-2 py-0.5 rounded bg-navy-700 text-blue-300 hover:bg-blue-500/30 transition cursor-pointer shrink-0"
                     >
                         {copied ? 'Copied!' : (note.line !== null && note.line !== undefined ? 'Apply' : 'Copy')}
                     </button>

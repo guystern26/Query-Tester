@@ -12,8 +12,8 @@ import { ChatSettingsModal } from './ChatSettingsModal';
 
 type Tab = 'analysis' | 'chat';
 
-const TAB_BASE = 'px-3 py-1 text-[12px] font-medium transition cursor-pointer';
-const TAB_ACTIVE = TAB_BASE + ' text-slate-200 border-b-2 border-blue-400';
+const TAB_BASE = 'px-3 py-1 text-[12px] font-medium transition-colors duration-300 cursor-pointer';
+const TAB_ACTIVE = TAB_BASE + ' text-slate-200 border-b-2 border-blue-300';
 const TAB_INACTIVE = TAB_BASE + ' text-slate-500 hover:text-slate-300 border-b-2 border-transparent';
 
 export function IntelligencePanel(): React.ReactElement {

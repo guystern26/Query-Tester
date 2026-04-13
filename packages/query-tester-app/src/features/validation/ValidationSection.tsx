@@ -34,13 +34,13 @@ export function ValidationSection() {
 
       <div className="flex bg-navy-950 rounded-lg p-1 border border-slate-700 w-fit">
         <button
-          className={`${segBase} rounded-md ${type === 'standard' ? 'bg-accent-900 text-accent-300' : 'text-slate-400 hover:text-slate-200'}`}
+          className={`${segBase} rounded-md ${type === 'standard' ? 'bg-navy-700 text-white border-2 border-slate-600' : 'text-slate-400 hover:text-slate-200'}`}
           onClick={() => setValidationType(test.id, 'standard')}
         >
           Standard
         </button>
         <button
-          className={`${segBase} rounded-md ${type === 'ijump_alert' ? 'bg-accent-900 text-accent-300' : 'text-slate-400 hover:text-slate-200'}`}
+          className={`${segBase} rounded-md ${type === 'ijump_alert' ? 'bg-navy-700 text-white border-2 border-slate-600' : 'text-slate-400 hover:text-slate-200'}`}
           onClick={() => setValidationType(test.id, 'ijump_alert')}
         >
           iJump Alert

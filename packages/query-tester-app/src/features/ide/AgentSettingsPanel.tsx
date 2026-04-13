@@ -49,7 +49,7 @@ export function AgentSettingsPanel({ onDirtyChange }: AgentSettingsPanelProps): 
                             className={activeRole === role ? TAB_ACTIVE : TAB_INACTIVE}>
                             {ROLE_LABELS[role]}
                             {count > 0 && (
-                                <span className="ml-1 px-1 py-0.5 text-[9px] rounded-full bg-blue-500/20 text-blue-400">
+                                <span className="ml-1 px-1 py-0.5 text-[9px] rounded-full bg-navy-700 text-blue-300">
                                     {count}
                                 </span>
                             )}
@@ -128,14 +128,14 @@ function SystemPromptEditor({ skill, role, onSave, onCreate, onDirtyChange }: Sy
             <textarea
                 value={draft} onChange={handleChange} rows={8} spellCheck={false}
                 placeholder={'Enter the ' + ROLE_LABELS[role] + ' agent system prompt...'}
-                className="w-full px-2.5 py-2 text-[12px] leading-relaxed bg-navy-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 resize-y font-mono"
+                className="w-full px-2.5 py-2 text-[12px] leading-relaxed bg-navy-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-300/20 resize-y font-mono"
             />
             {saveError && (
                 <span className="text-[11px] text-red-400">{saveError}</span>
             )}
             {dirty && (
                 <button type="button" onClick={handleSave}
-                    className="self-end px-3 py-1 text-[11px] font-medium rounded bg-blue-500 text-white hover:bg-blue-400 transition cursor-pointer">
+                    className="self-end px-3 py-1 text-[11px] font-medium rounded bg-blue-300 text-slate-900 hover:bg-blue-200 transition cursor-pointer">
                     Save
                 </button>
             )}

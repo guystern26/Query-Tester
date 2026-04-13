@@ -4,7 +4,7 @@ import { DEFAULT_ALERT_EMAIL } from 'core/constants/scheduledTests';
 const inputCls = [
     'flex-1 px-3 py-1.5 text-sm bg-navy-950 border border-slate-700 rounded-lg',
     'text-slate-200 placeholder-slate-500',
-    'focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-500/30',
+    'focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-300/20',
 ].join(' ');
 
 function isValidEmail(email: string): boolean {
@@ -82,7 +82,7 @@ export function RecipientsList({ recipients, onChange }: RecipientsListProps) {
             <button
                 type="button"
                 onClick={handleAdd}
-                className="text-xs text-accent-300 hover:text-accent-200 cursor-pointer self-start mt-0.5"
+                className="text-xs text-blue-300 hover:text-accent-200 cursor-pointer self-start mt-0.5"
             >
                 + Add recipient
             </button>

@@ -15,7 +15,7 @@ const TYPE_LABELS: Record<SaveType, string> = {
 };
 
 const SEVERITY_OPTIONS = ['info', 'low', 'medium', 'high', 'critical'];
-const INPUT_CLS = 'px-3 py-2 text-sm bg-navy-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20';
+const INPUT_CLS = 'px-3 py-2 text-sm bg-navy-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-300/20';
 const SM_SELECT_CLS = 'px-2 py-1 text-xs bg-navy-950 border border-slate-700 rounded text-slate-200';
 
 interface SaveAsModalProps {
@@ -140,7 +140,7 @@ export function SaveAsModal({ saveType, spl, app, onClose }: SaveAsModalProps): 
                         {error && <div className="px-3 py-2 rounded-md bg-red-500/10 border border-red-500/30 text-xs text-red-400">{error}</div>}
                         <div className="flex justify-end gap-2 pt-1">
                             <button type="button" onClick={onClose} className="px-4 py-2 text-xs font-medium rounded-lg bg-navy-800 text-slate-400 hover:text-slate-200 border border-slate-700 cursor-pointer transition-colors">Cancel</button>
-                            <button type="button" onClick={handleSave} disabled={saving} className="px-4 py-2 text-xs font-semibold rounded-lg bg-blue-500 text-white hover:bg-blue-600 cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed">{saving ? 'Saving...' : 'Save'}</button>
+                            <button type="button" onClick={handleSave} disabled={saving} className="px-4 py-2 text-xs font-semibold rounded-lg bg-blue-300 text-slate-900 hover:bg-blue-200 cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed">{saving ? 'Saving...' : 'Save'}</button>
                         </div>
                     </>
                 )}

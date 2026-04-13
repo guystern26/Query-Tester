@@ -1,6 +1,6 @@
 import React from 'react';
 
-const INPUT_CLS = 'w-full px-3 py-2 text-sm bg-navy-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-500/30';
+const INPUT_CLS = 'w-full px-3 py-2 text-sm bg-navy-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-300/20';
 
 interface AutoDetectBadgeProps {
     isDetected: boolean;
@@ -90,7 +90,7 @@ export function SetupToggle({ label, checked, onChange, isDetected = false }: Se
                     onChange={(e) => onChange(e.target.checked)}
                     className="sr-only"
                 />
-                <span className={'relative w-10 h-[22px] rounded-full transition-colors duration-200 ' + (checked ? 'bg-accent-600' : 'bg-slate-600')}>
+                <span className={'relative w-10 h-[22px] rounded-full transition-colors duration-200 ' + (checked ? 'bg-blue-300' : 'bg-slate-600')}>
                     <span className={'absolute top-[2px] w-[18px] h-[18px] rounded-full bg-slate-100 shadow transition-[left] duration-200 ' + (checked ? 'left-5' : 'left-[2px]')} />
                 </span>
                 <span className="text-sm text-slate-200">{checked ? 'Enabled' : 'Disabled'}</span>

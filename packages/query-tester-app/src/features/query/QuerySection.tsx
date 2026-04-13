@@ -87,10 +87,12 @@ export function QuerySection({ isIde }: QuerySectionProps) {
     return [...splWarnings, ...(showNotes ? analysisNotes : []), ...activeFields];
   }, [editorFocused, splWarnings, analysisNotes, activeFields, showNotes]);
 
-  // Mark analysis stale when SPL changes — stale markers point to wrong positions
+  // Mark analysis stale when SPL changes — ignore whitespace-only diffs (formatting)
+  const normSpl = (s: string) => s.replace(/\s+/g, ' ').trim();
   const prevSplRef = useRef(localSpl);
   useEffect(() => {
-    if (prevSplRef.current !== localSpl) { prevSplRef.current = localSpl; markStale(); setSelectedFields(new Set()); }
+    if (normSpl(prevSplRef.current) !== normSpl(localSpl)) { markStale(); setSelectedFields(new Set()); }
+    prevSplRef.current = localSpl;
   }, [localSpl, markStale]);
 
   const handleToggleField = useCallback((name: string) => {
@@ -144,8 +146,7 @@ export function QuerySection({ isIde }: QuerySectionProps) {
         </Message>
       )}
 
-      <div>
-        <label className="block mb-1 text-slate-400 text-[13px]">Load from saved search</label>
+      <div><label className="block mb-1 text-slate-400 text-[13px]">Load from saved search</label>
         <SearchableSelect value={origin} options={ssOptions} onChange={handleSavedSearch} disabled={loading} placeholder="Search saved searches..." />
         {error && <div className="mt-1 text-[13px] text-red-400">{error}</div>}
       </div>
@@ -160,7 +161,7 @@ export function QuerySection({ isIde }: QuerySectionProps) {
           <div className="flex flex-col gap-2 flex-shrink-0 pt-0.5">
             <TimeRangePicker value={test.query?.timeRange} onChange={(tr) => setTimeRange(test.id, tr)} />
             <button
-              className={`px-4 py-2 rounded-lg text-[13px] font-semibold transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap tracking-wide border ${analysisStale ? 'bg-amber-500/15 border-amber-500/40 text-amber-300 shadow-[0_0_8px_rgba(245,158,11,0.25)] animate-pulse' : 'bg-blue-500/20 text-blue-300 border-blue-500/30 hover:bg-blue-500/35 hover:text-blue-200'}`}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-semibold transition-colors duration-200 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap tracking-wide border ${analysisStale ? 'bg-amber-500/15 border-amber-500/40 text-amber-300 shadow-[0_0_8px_rgba(245,158,11,0.25)] animate-pulse' : 'border-slate-600 text-blue-300 hover:border-slate-500 hover:text-blue-200'}`}
               disabled={isAnalyzing || !localSpl.trim()} onClick={() => {
                 const formatted = formatSpl(localSpl);
                 if (formatted !== localSpl) {
@@ -171,14 +172,16 @@ export function QuerySection({ isIde }: QuerySectionProps) {
                 const skills = chatSkills.filter((s) => s.enabled).map((s) => ({ name: s.name, prompt: s.prompt }));
                 runAnalysis(formatted, skills.length > 0 ? skills : undefined);
               }}>
+              {isAnalyzing ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin"><path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round" /></svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2.09 6.26L20 10l-5.91 1.74L12 18l-2.09-6.26L4 10l5.91-1.74L12 2z" /></svg>
+              )}
               {isAnalyzing ? 'Analyzing...' : analysisStale ? 'Re-analyze Query' : 'Analyze Query'}
             </button>
             {analysisStale && <span className="text-[11px] text-amber-400/80 text-center leading-tight">Query changed — re-analyze for updated results.</span>}
             {hasAnalysis && !analysisStale && (
-              <div className="flex flex-col items-center gap-1">
-                <span className="text-[11px] text-slate-500">Show:</span>
-                <TogglePill label="Notes" active={showNotes} onClick={() => setShowNotes((v) => !v)} />
-              </div>
+              <TogglePill label={showNotes ? 'Hide Notes' : 'Reveal Notes'} active={showNotes} onClick={() => setShowNotes((v) => !v)} />
             )}
           </div>
         )}

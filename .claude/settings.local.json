@@ -208,7 +208,18 @@
       "Bash(git log:*)",
       "Bash(git rev-list:*)",
       "Bash(git checkout:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git reflog:*)",
+      "Bash(git count-objects:*)",
+      "Bash(mkdir -p .claude/skills/splunk-platform/references .claude/skills/splunk-platform/evals && cp .agents/skills/splunk-platform/SKILL.md .claude/skills/splunk-platform/ && cp .agents/skills/splunk-platform/README.md .claude/skills/splunk-platform/ && cp .agents/skills/splunk-platform/references/*.md .claude/skills/splunk-platform/references/ && cp .agents/skills/splunk-platform/evals/*.json .claude/skills/splunk-platform/evals/ && echo \"done\")",
+      "Bash(rm .claude/skills/splunk-platform && mkdir -p .claude/skills/splunk-platform/references .claude/skills/splunk-platform/evals && cp .agents/skills/splunk-platform/SKILL.md .agents/skills/splunk-platform/README.md .claude/skills/splunk-platform/ && cp .agents/skills/splunk-platform/references/*.md .claude/skills/splunk-platform/references/ && cp .agents/skills/splunk-platform/evals/*.json .claude/skills/splunk-platform/evals/ && echo \"done\")",
+      "Read(//tmp/**)",
+      "Bash(rsync -av --delete --exclude='.git' --exclude='local' --exclude='local.meta' --exclude='__pycache__' --exclude='.pytest_cache' --exclude='tests' c:/Users/guyst/splunk-ui-toolkit-apps/packages/query-tester/stage/ .)",
+      "Bash(find /c/Users/guyst/splunk-ui-toolkit-apps/packages/query-tester/stage/bin -name *ai* -o -name *result*)",
+      "Bash(grep -E \"\\\\.\\(py\\)$\")",
+      "Bash(find /c/Users/guyst/splunk-ui-toolkit-apps/packages/query-tester/stage/bin -name *skill* -o -name *agent*)",
+      "Bash(xargs sed:*)"
     ]
   }
 }

@@ -6,7 +6,7 @@ export const vInputCls =
   'bg-transparent border-0 text-xs text-slate-300 placeholder-slate-600 focus:outline-none';
 
 export const vSelectCls =
-  'bg-navy-950 border border-slate-800 rounded text-xs text-slate-300 px-1.5 py-1 cursor-pointer focus:outline-none focus:border-accent-600';
+  'bg-navy-950 border border-slate-800 rounded text-xs text-slate-300 px-1.5 py-1 cursor-pointer focus:outline-none focus:border-blue-300';
 
 export const vWeightCls =
   'w-10 text-center bg-transparent border-0 text-xs text-slate-300 focus:outline-none';
@@ -74,7 +74,7 @@ export function VAddBtn({ onClick, disabled, label }: { onClick: () => void; dis
       className={`flex items-center justify-center gap-1.5 w-full text-xs font-medium mt-1.5 py-1.5 rounded-lg border border-dashed transition-all duration-200 cursor-pointer ${
         disabled
           ? 'opacity-40 cursor-not-allowed border-slate-700 text-slate-500 bg-transparent'
-          : 'border-accent-600/60 text-accent-300 bg-accent-900 hover:bg-accent-700/25 hover:border-accent-500'
+          : 'border-slate-600 text-white bg-navy-700 hover:bg-navy-600 hover:border-blue-300'
       }`}
     >
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">

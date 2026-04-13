@@ -19,7 +19,7 @@ export function PipelineConnector({ leftComplete }: PipelineConnectorProps) {
       {/* animated particle */}
       {leftComplete && (
         <div className="absolute inset-x-0 top-4 bottom-4 mx-auto w-[3px] overflow-hidden pointer-events-none">
-          <div className="absolute w-[3px] h-3 bg-accent-400 rounded-full animate-flowDown opacity-70" />
+          <div className="absolute w-[3px] h-3 bg-blue-300 rounded-full animate-flowDown opacity-70" />
         </div>
       )}
     </div>

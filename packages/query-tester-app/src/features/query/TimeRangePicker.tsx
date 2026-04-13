@@ -76,7 +76,7 @@ function FallbackTimePicker({ value, onChange }: TimeRangePickerProps) {
     <select
       value={value.earliest}
       onChange={handleChange}
-      className="px-2.5 py-1.5 text-sm bg-navy-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-500/30 cursor-pointer transition-all duration-200"
+      className="px-2.5 py-1.5 text-sm bg-navy-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-300/20 cursor-pointer transition-all duration-200"
     >
       {FALLBACK_PRESETS.map((p) => (
         <option key={p.earliest} value={p.earliest}>{p.label}</option>

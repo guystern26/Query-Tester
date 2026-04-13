@@ -5,9 +5,9 @@ import { getDefaultFetchInit } from '@splunk/splunk-utils/fetch';
 
 const REST_OPTS = { app: 'QueryTester', owner: 'admin' } as const;
 
-const segBtn = 'px-3 py-1.5 text-xs font-medium rounded transition cursor-pointer';
-const segActive = 'bg-accent-600/20 text-accent-300 border border-accent-600/40';
-const segInactive = 'bg-navy-950 text-slate-400 border border-slate-700 hover:text-slate-200';
+const segBtn = 'px-3 py-1.5 text-xs font-medium rounded transition-colors duration-300 cursor-pointer';
+const segActive = 'bg-navy-700 text-white border-2 border-slate-600';
+const segInactive = 'bg-navy-950 text-slate-600 border border-slate-700 hover:text-slate-400';
 
 export interface IntervalPickerProps {
     value: string;

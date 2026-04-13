@@ -5,8 +5,8 @@ import { MAX_FIELD_GROUPS } from 'core/constants/limits';
 import { isIJumpLockedField } from './utils/ijumpHelpers';
 import { OP_GROUPS, VALUELESS_OPS } from './utils/operatorConstants';
 
-const inputCls = 'px-2 py-1.5 text-[13px] bg-navy-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-500/30 transition';
-const selectCls = 'px-2 py-1.5 text-[13px] bg-navy-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-accent-600 cursor-pointer';
+const inputCls = 'px-2 py-1.5 text-[13px] bg-navy-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-300/20 transition';
+const selectCls = 'px-2 py-1.5 text-[13px] bg-navy-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-blue-300 cursor-pointer';
 
 interface IjumpCustomConditionsProps {
   testId: string;
@@ -66,7 +66,7 @@ export function IjumpCustomConditions({ testId, groups }: IjumpCustomConditionsP
       </div>
 
       <button
-        className="w-full py-2 mt-2 border border-dashed border-slate-700 rounded-lg text-sm text-slate-400 hover:text-accent-300 hover:border-accent-600 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+        className="w-full py-2 mt-2 border border-dashed border-slate-700 rounded-lg text-sm text-slate-400 hover:text-blue-300 hover:border-blue-300 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
         onClick={() => addFieldGroup(testId)}
         disabled={atLimit}
       >

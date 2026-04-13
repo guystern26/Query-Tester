@@ -112,7 +112,7 @@ export function WizardStepHec({ onNext }: WizardStepHecProps) {
                         value={hecToken}
                         onChange={(e) => setSecret('hecToken', e.target.value)}
                         placeholder="Enter HEC token"
-                        className="w-full px-3 py-2 text-sm bg-navy-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-500/30"
+                        className="w-full px-3 py-2 text-sm bg-navy-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-300/20"
                     />
                 </div>
             </div>
@@ -146,7 +146,7 @@ export function WizardStepHec({ onNext }: WizardStepHecProps) {
                     type="button"
                     onClick={handleNext}
                     disabled={!hasToken || isSaving}
-                    className="px-6 py-2.5 text-sm font-semibold rounded-lg bg-btnprimary hover:bg-btnprimary-hover text-white disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                    className="px-6 py-2.5 text-sm font-semibold rounded-lg bg-blue-300 hover:bg-blue-200 text-slate-900 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                 >
                     {isSaving ? 'Saving...' : 'Next'}
                 </button>

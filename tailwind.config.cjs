@@ -14,8 +14,8 @@ module.exports = {
         },
         // Primary button color — solid blue-400
         btnprimary: {
-          DEFAULT: '#60A5FA',
-          hover: '#4A90E2',
+          DEFAULT: '#93C5FD',
+          hover: '#BFDBFE',
         },
         // Accent scale — original theme
         accent: {

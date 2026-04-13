@@ -3,8 +3,8 @@ import { useTestStore } from 'core/store/testStore';
 import type { EntityId, ResultCountRule, ResultCountOperator } from 'core/types';
 import { Switch } from '../../common';
 
-const selectCls = 'px-2.5 py-1.5 text-[13px] bg-navy-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-accent-600 cursor-pointer';
-const inputCls = 'px-2.5 py-1.5 text-[13px] bg-navy-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-500/30 transition';
+const selectCls = 'px-2.5 py-1.5 text-[13px] bg-navy-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-blue-300 cursor-pointer';
+const inputCls = 'px-2.5 py-1.5 text-[13px] bg-navy-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-300/20 transition';
 
 const RESULT_OPS: Array<{ value: ResultCountOperator; label: string }> = [
   { value: 'equals', label: 'Equals' },
@@ -21,7 +21,7 @@ export function ResultCountSection({ testId, resultCount }: ResultCountSectionPr
   const updateResultCount = useTestStore((s) => s.updateResultCount);
 
   return (
-    <div data-tutorial="result-count" className={`bg-navy-900 rounded-lg p-3 border ${resultCount.enabled ? 'border-green-500/40' : 'border-slate-800'}`}>
+    <div data-tutorial="result-count" className="pb-2 border-b border-slate-600/30">
       <div className="text-[10px] uppercase tracking-[1.5px] text-slate-500 mb-2 flex items-center gap-1.5">
         Result Count
         {resultCount.enabled && <span className="text-green-400 text-[12px]">{'\u2713'}</span>}

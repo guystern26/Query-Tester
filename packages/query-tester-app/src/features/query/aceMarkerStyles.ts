@@ -74,7 +74,7 @@ const MARKER_CSS = `
       line-height: 1.4;
       pointer-events: none;
       white-space: pre-wrap;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.5), 0 0 1px rgba(0,0,0,0.3);
     }
     .spl-lint-tooltip.warning {
       background: #422006;

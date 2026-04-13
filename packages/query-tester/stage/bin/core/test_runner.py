@@ -16,7 +16,7 @@ from core.payload_parser import parse
 from core.response_builder import build_error_response, build_response
 from data.data_indexer import index_events
 from data.hec_config import resolve_hec_context
-from data.lookup_manager import create_temp_lookup, delete_temp_lookup
+from data.lookup_manager import create_temp_lookup, delete_temp_lookup, create_temp_kvstore_lookup, delete_temp_kvstore_lookup
 from data.sub_query_runner import run_sub_query
 from generators.event_generator import build_events
 from spl.preflight import get_blocked_commands_set
@@ -80,7 +80,14 @@ class TestRunner:
         scenario_results = []  # type: List[ScenarioResult]
 
         if payload.test_type == "query_only":
-            # query_only: run the raw SPL as-is, no injection, no data indexing
+            # query_only: run the raw SPL as-is, no data indexing
+            # Still apply cache macro lookup swap for safety
+            from spl.query_injector import _swap_cache_lookups
+            cache_run_id = uuid4().hex[:8]
+            spl = _swap_cache_lookups(spl, cache_run_id, self._test_id)
+            # Pre-create empty temp lookup CSVs so outputlookup inside
+            # the cache macro has a valid target
+            self._ensure_cache_lookup_files(spl, payload.app)
             try:
                 result = self._run_query_only(payload, spl)
             except Exception as exc:
@@ -92,6 +99,7 @@ class TestRunner:
             for scenario in payload.scenarios:
                 run_id = uuid4().hex[:8]
                 injected_spl = inject(spl, run_id, strategy, scenario.inputs, test_id=self._test_id)
+                self._ensure_cache_lookup_files(injected_spl, payload.app)
                 orphan_warning = check_orphaned_filters(spl, injected_spl)
                 if orphan_warning:
                     analysis.warnings.append(
@@ -207,54 +215,73 @@ class TestRunner:
         except Exception as exc:
             logger.warning("Lookup cleanup failed for run_id=%s: %s", run_id, str(exc))
 
-    def _prepare_cache_lookups(self, spl: str, app: str) -> None:
-        """Copy real lookups to temp names for non-testing cache macros.
+    def _get_lookup_fields(self, lookup_name, app):
+        # type: (str, str) -> str
+        """Run ``| inputlookup <name> | head 1`` to discover the field list."""
+        try:
+            from spl.query_executor import QueryExecutor
+            executor = QueryExecutor(self._session_key)
+            rows = executor.run(
+                spl="| inputlookup {0} | head 1".format(lookup_name),
+                app=app, earliest_time="0", latest_time="now",
+            )
+            if rows:
+                fields = [f for f in rows[0].keys() if not f.startswith("_") or f == "_key"]
+                if "_key" not in fields:
+                    fields.insert(0, "_key")
+                return ", ".join(fields)
+        except Exception as exc:
+            logger.warning("Failed to read fields from lookup '%s': %s", lookup_name, exc)
+        return ""
 
-        - Manual runs (test_id set): uses stable name ``temp_cache_{id[:8]}_{lookup}``.
-          Copies only if the temp file does not yet exist (first run seeds it,
-          subsequent runs accumulate data in it).
-        - Scheduled runs (no test_id): always copies to a fresh per-run temp.
+    def _prepare_cache_lookups(self, spl: str, app: str) -> None:
+        """Pre-step: nothing to do here now.
+
+        KVStore creation is handled by ``_ensure_cache_lookup_files`` which
+        creates the collection + transforms definition on demand.
+        For manual runs the KVStore persists across reruns (stable name).
+        For scheduled runs it's cleaned up after.
+        """
+        pass
+
+    def _ensure_cache_lookup_files(self, spl: str, app: str) -> None:
+        """Create KVStore collection + transforms definition for temp cache lookups.
+
+        Reads the field list from the original lookup via ``| inputlookup | head 1``,
+        then delegates to ``create_temp_kvstore_lookup`` which uses admin credentials.
         """
         try:
             from spl.spl_analyzer import parse_cache_macros
-            from data.lookup_manager import copy_lookup_to_temp, _lookup_dir
 
-            key = self._test_id[:8] if self._test_id else None
-            for info in parse_cache_macros(spl):
-                if info["is_testing"] or len(info["args"]) < 6:
+            macros = [
+                info for info in parse_cache_macros(spl)
+                if not info["is_testing"]
+                and len(info["args"]) >= 6
+                and info["lookup_name"]
+                and info["lookup_name"].startswith("temp_cache_")
+            ]
+            if not macros:
+                return
+
+            for info in macros:
+                lookup_name = info["lookup_name"]
+                # Extract original lookup name: temp_cache_{key}_{original}
+                parts = lookup_name.split("_", 3)
+                original_lookup = parts[3] if len(parts) >= 4 else ""
+                if not original_lookup:
                     continue
-                original = info["lookup_name"]
-                if not original:
-                    continue  # empty lookup name — skip
-                if key:
-                    # Manual run — stable name, copy only if temp doesn't exist yet
-                    temp = "temp_cache_{0}_{1}".format(key, original)
-                    temp_file = temp if temp.endswith(".csv") else temp + ".csv"
-                    temp_path = os.path.join(_lookup_dir(app), temp_file)
-                    if os.path.isfile(temp_path):
-                        logger.info("Cache temp lookup already exists, reusing: %s", temp)
-                        continue
-                else:
-                    # Scheduled run — fresh per-run name
-                    from uuid import uuid4
-                    temp = "temp_cache_{0}_{1}".format(uuid4().hex[:8], original)
 
-                if copy_lookup_to_temp(original, temp, app):
-                    self._cache_temp_lookups.append(temp)
+                fields_list = self._get_lookup_fields(original_lookup, app)
+                if not fields_list:
+                    logger.warning("Could not get fields from '%s' — skipping", original_lookup)
+                    continue
+
+                if create_temp_kvstore_lookup(lookup_name, fields_list, app):
+                    self._cache_temp_lookups.append(lookup_name)
         except Exception as exc:
-            logger.warning("Cache lookup pre-copy failed: %s", exc)
+            logger.warning("Failed to create cache KVStore lookups: %s", exc)
 
     def _cleanup_cache_lookups(self, app: str) -> None:
-        """Remove temp cache lookup CSVs created for scheduled runs."""
-        import os as _os
+        """Remove temp KVStore collections + transforms definitions for scheduled runs."""
         for name in self._cache_temp_lookups:
-            fname = name if name.endswith(".csv") else name + ".csv"
-            path = _os.path.join(
-                _os.environ.get("SPLUNK_HOME", "/opt/splunk"),
-                "etc", "apps", app, "lookups", fname,
-            )
-            try:
-                _os.remove(path)
-                logger.info("Cleaned up cache temp lookup: %s", fname)
-            except Exception:
-                pass
+            delete_temp_kvstore_lookup(name, app)

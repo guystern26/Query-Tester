@@ -57,7 +57,7 @@ export function SetupSection({
                         type="button"
                         onClick={handleSave}
                         disabled={isLoading}
-                        className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-btnprimary hover:bg-btnprimary-hover text-white disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                        className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-300 hover:bg-blue-200 text-slate-900 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                     >
                         Save
                     </button>

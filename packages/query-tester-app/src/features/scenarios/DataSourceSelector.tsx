@@ -23,8 +23,10 @@ const ChevronDown = () => (
 export function DataSourceSelector({ testId, scenarioId, inputId, value }: DataSourceSelectorProps) {
   const test = useTestStore(selectActiveTest);
   const selectDataSource = useTestStore((s) => s.selectDataSource);
+  const fetchSampleValues = useTestStore((s) => s.fetchSampleValues);
   const updateRowIdentifier = useTestStore((s) => s.updateRowIdentifier);
   const [open, setOpen] = useState(false);
+  const [loadingValues, setLoadingValues] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   const sources = test?.fieldExtraction?.sources || [];
@@ -56,6 +58,13 @@ export function DataSourceSelector({ testId, scenarioId, inputId, value }: DataS
   const handleSelect = (source: ExtractedDataSource) => {
     selectDataSource(testId, scenarioId, inputId, source);
     setOpen(false);
+    const app = test?.app ?? '';
+    const tr = test?.query?.timeRange;
+    if (app && source.fields.length > 0) {
+      setLoadingValues(true);
+      fetchSampleValues(testId, scenarioId, inputId, source.rowIdentifier, source.fields, app, tr)
+        .finally(() => setLoadingValues(false));
+    }
   };
 
   return (
@@ -66,7 +75,7 @@ export function DataSourceSelector({ testId, scenarioId, inputId, value }: DataS
           value={value}
           onChange={(e) => updateRowIdentifier(testId, scenarioId, inputId, e.target.value)}
           placeholder="e.g., index=main sourcetype=access_combined"
-          className={`flex-1 min-w-0 px-3 py-2 text-sm bg-navy-950 border border-slate-700 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-500/30 transition-all duration-200 ${
+          className={`flex-1 min-w-0 px-3 py-2 text-sm bg-navy-950 border border-slate-700 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-300/20 transition-all duration-200 ${
             hasSources ? 'rounded-l-lg border-r-0' : 'rounded-lg'
           }`}
         />
@@ -92,6 +101,12 @@ export function DataSourceSelector({ testId, scenarioId, inputId, value }: DataS
         A partial match like <code className="text-slate-400">index=main</code> will replace
         every occurrence in the query.
       </p>
+      {loadingValues && (
+        <div className="flex items-center gap-1.5 mt-1.5 text-[11px] text-blue-300">
+          <span className="w-2.5 h-2.5 border-[1.5px] border-blue-300 border-t-transparent rounded-full animate-spin" />
+          Loading default values from Splunk...
+        </div>
+      )}
 
       {open && hasSources && (
         <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-navy-900 border border-slate-700 rounded-lg shadow-lg overflow-hidden">

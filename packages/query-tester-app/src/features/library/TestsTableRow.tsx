@@ -10,8 +10,8 @@ const STATUS_STYLES: Record<string, { dot: string; text: string; label: string }
 };
 
 const TYPE_BADGE: Record<string, { label: string; cls: string }> = {
-    standard: { label: 'Standard', cls: 'bg-blue-400/10 text-blue-400 border-blue-400/20' },
-    query_only: { label: 'Query Only', cls: 'bg-amber-400/10 text-amber-400 border-amber-400/20' },
+    standard: { label: 'Synthetic', cls: 'bg-blue-400/10 text-blue-400 border-blue-400/20' },
+    query_only: { label: 'Real Data', cls: 'bg-amber-400/10 text-amber-400 border-amber-400/20' },
     ijump_alert: { label: 'iJump', cls: 'bg-purple-400/10 text-purple-400 border-purple-400/20' },
 };
 
@@ -60,12 +60,12 @@ function TestsTableRowInner({
     };
 
     return (
-        <tr onClick={handleRowClick} className="border-b border-slate-800 hover:bg-navy-800/50 cursor-pointer transition-colors">
+        <tr onClick={handleRowClick} className="border-b border-slate-800 hover:bg-navy-700/15 cursor-pointer transition-colors duration-200">
             <td className="px-4 py-3">
                 <span className="text-sm font-semibold text-slate-200">{test.name}</span>
             </td>
             <td className="px-4 py-3 max-w-[200px]">
-                <span className="text-xs text-slate-500 truncate block">{test.description || '\u2014'}</span>
+                <span className="text-xs text-slate-400 truncate block">{test.description || '\u2014'}</span>
             </td>
             <td className="px-4 py-3">
                 <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-navy-700 text-slate-300 border border-slate-700">{test.app || '\u2014'}</span>

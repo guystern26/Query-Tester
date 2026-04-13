@@ -87,7 +87,7 @@ export function TopBar({ mode = 'builder', onNavigateLibrary, onNavigateSetup, o
 
   return (
     <>
-      <header className="sticky top-0 z-50 h-14 bg-navy-900 border-b border-slate-800 px-5 flex items-center justify-between shrink-0 shadow-lg shadow-black/20">
+      <header className="sticky top-0 z-50 h-14 bg-navy-800 border-b border-slate-700/30 px-5 flex items-center justify-between shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.3),0_4px_12px_rgba(0,0,0,0.15)]">
         <div className="flex items-center gap-2">
           {mode === 'ide' ? (
             <DestinationActions />
@@ -107,7 +107,7 @@ export function TopBar({ mode = 'builder', onNavigateLibrary, onNavigateSetup, o
               />
               <div className="w-px h-5 bg-slate-700 mx-1" />
               <div className="relative flex items-center" data-tutorial="save-test-btn">
-                <Button variant="primary" size="sm" onClick={() => { setResultsBarExpanded(false); setSaveModalOpen(true); }}>
+                <Button variant="primary" size="sm" className="bg-green-500 hover:bg-green-400 text-white" onClick={() => { setResultsBarExpanded(false); setSaveModalOpen(true); }}>
                   Save Test
                 </Button>
                 {hasUnsavedChanges && savedTestId && (
@@ -129,7 +129,7 @@ export function TopBar({ mode = 'builder', onNavigateLibrary, onNavigateSetup, o
               <button className="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-400 hover:text-slate-200 hover:bg-navy-800 transition cursor-pointer" onClick={onNavigateLibrary}>
                 Library
               </button>
-              <button className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-accent-600/20 text-accent-300 cursor-pointer">
+              <button className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-navy-700 text-white border-2 border-slate-600 cursor-pointer">
                 Builder
               </button>
               {isAdmin && onNavigateSetup && (
@@ -174,7 +174,7 @@ export function TopBar({ mode = 'builder', onNavigateLibrary, onNavigateSetup, o
       {/* Clear confirmation */}
       {clearConfirmOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50">
-          <div className="bg-navy-900 border border-slate-700 rounded-xl p-6 max-w-sm shadow-2xl shadow-black/40 text-center">
+          <div className="bg-navy-900 border border-slate-700 rounded-lg p-6 max-w-sm shadow-xl shadow-black/30 text-center">
             <h3 className="text-base font-bold text-slate-100 mb-2">Clear builder?</h3>
             <p className="text-sm text-slate-400 mb-5">The current test will be reset. Unsaved changes will be lost.</p>
             <div className="flex items-center justify-center gap-3">

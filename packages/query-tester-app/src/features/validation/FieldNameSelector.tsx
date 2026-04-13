@@ -60,7 +60,7 @@ export function FieldNameSelector({ testId, groupId, value, className = '' }: Fi
           onChange={(e) => updateFieldGroupField(testId, groupId, e.target.value)}
           onFocus={() => { if (hasSuggestions) setOpen(true); }}
           placeholder="Field name (e.g., status, reason)"
-          className={`flex-1 min-w-0 px-2.5 py-1.5 text-[13px] bg-navy-950 border border-slate-700 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-500/30 transition font-semibold ${
+          className={`flex-1 min-w-0 px-2.5 py-1.5 text-[13px] bg-navy-950 border border-slate-700 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-300/20 transition font-semibold ${
             hasSuggestions ? 'rounded-l-lg border-r-0' : 'rounded-lg'
           }`}
         />

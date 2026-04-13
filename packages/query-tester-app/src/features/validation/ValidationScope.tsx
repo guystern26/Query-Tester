@@ -2,8 +2,8 @@ import React from 'react';
 import { useTestStore } from 'core/store/testStore';
 import type { EntityId, ValidationScope as VSType } from 'core/types';
 
-const selectCls = 'px-2.5 py-1.5 text-[13px] bg-navy-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-accent-600 cursor-pointer';
-const inputCls = 'px-2.5 py-1.5 text-[13px] bg-navy-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-500/30 transition';
+const selectCls = 'px-2.5 py-1.5 text-[13px] bg-navy-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-blue-300 cursor-pointer';
+const inputCls = 'px-2.5 py-1.5 text-[13px] bg-navy-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-300/20 transition';
 
 const SCOPE_OPTIONS: { value: VSType; label: string }[] = [
   { value: 'all_events', label: 'ALL events must match' },
@@ -35,7 +35,7 @@ export function ValidationScopeSelector({ testId, scope, scopeN }: ValidationSco
   };
 
   return (
-    <div className="bg-navy-900 rounded-lg p-3 border border-slate-800" data-tutorial="validation-scope">
+    <div className="pb-2" data-tutorial="validation-scope">
       <div className="text-[10px] uppercase tracking-[1.5px] text-slate-500 mb-2">Validation Scope</div>
       <div className="flex items-center gap-2">
         <select className={`${selectCls} flex-1`} value={scope} onChange={handleScopeChange}>

@@ -79,14 +79,14 @@ export function SuggestFieldsButton() {
         type="button"
         disabled={phase === 'loading'}
         onClick={handleClick}
-        className={`flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium rounded-lg transition-all duration-200 cursor-pointer border ${
+        className={`flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium rounded-lg transition-colors duration-200 cursor-pointer border ${
           phase === 'done'
             ? 'bg-green-600/20 border-green-500/30 text-green-400'
             : isStale
               ? 'bg-amber-500/15 border-amber-500/40 text-amber-300 shadow-[0_0_8px_rgba(245,158,11,0.25)] animate-pulse'
               : phase === 'loading'
-                ? 'bg-navy-800 border-slate-700 text-slate-400 cursor-wait'
-                : 'bg-navy-800 border-slate-700 text-slate-300 hover:border-blue-500/50 hover:text-blue-400'
+                ? 'border-slate-700 text-slate-400 cursor-wait'
+                : 'border-slate-600 text-blue-300 hover:border-slate-500 hover:text-blue-200'
         } disabled:cursor-wait`}
       >
         {phase === 'loading' ? <SpinnerIcon /> : phase === 'done' ? null : <SparkleIcon />}

@@ -13,7 +13,7 @@ interface DangerousCommandModalProps {
 export function DangerousCommandModal({ commands, onConfirm, onCancel }: DangerousCommandModalProps): React.ReactElement {
     return (
         <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/60 animate-fadeIn">
-            <div className="bg-navy-900 border border-slate-700 rounded-xl shadow-2xl max-w-md w-full mx-4 p-6 flex flex-col gap-4">
+            <div className="bg-navy-900 border border-slate-700 rounded-lg shadow-xl max-w-md w-full mx-4 p-6 flex flex-col gap-4">
                 <div className="flex items-start gap-3">
                     <div className="w-10 h-10 rounded-full bg-amber-500/15 flex items-center justify-center shrink-0">
                         <svg className="w-5 h-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -46,7 +46,7 @@ export function DangerousCommandModal({ commands, onConfirm, onCancel }: Dangero
                         Cancel
                     </button>
                     <button type="button" onClick={onConfirm}
-                        className="px-4 py-2 text-[13px] font-semibold rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 cursor-pointer transition-colors">
+                        className="px-4 py-2 text-[13px] font-semibold rounded-lg bg-amber-600 hover:bg-amber-500 text-white border border-transparent cursor-pointer transition-colors">
                         Run Anyway
                     </button>
                 </div>

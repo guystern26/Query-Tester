@@ -141,14 +141,23 @@ import { create } from 'zustand';
 - `singleQuote: true`, `printWidth: 100`
 - JSX runtime: `classic` (React 16 requirement — Vite config sets `jsxRuntime: 'classic'`)
 
-### Custom Colors — NO CYAN
-Backgrounds: navy-950/900/800/700 (#0a1628, #162033, #202b43, #2a3a5c)
-Accent text: steel-400 (#9BB1BB)
-Primary buttons: #60A5FA (blue-400) with text-white. Hover: #93C5FD. Active: #3B82F6.
-Text: slate-200 (primary), slate-400 (secondary)
-Borders: slate-700
+### Custom Colors — Locked Palette
+| Element | Color | Tailwind |
+|---------|-------|----------|
+| App background | `rgb(22,32,51)` | `navy-900` / `#162033` |
+| Card/panel bg | `rgb(32,43,67)` | `navy-800` / `#202b43` |
+| Nested cards (inputs, field groups) | `#162033` | `navy-900` |
+| Elevated/selected | `#2a3a5c` | `navy-700` |
+| Primary buttons | `#93C5FD` | `bg-blue-300 text-slate-900` |
+| Selected toggles | navy-700 | `bg-navy-700 text-white border-2 border-slate-600` |
+| Primary text | `#e2e8f0` | `text-slate-200` |
+| Secondary text | `#94a3b8` | `text-slate-400` |
+| Muted text | `#64748b` | `text-slate-500` |
+| Borders | `#334155` | `border-slate-700` |
+| Focus ring | `#93C5FD` | `focus:border-blue-300 focus:ring-blue-300/20` |
 
-There is NO cyan, sky, or indigo as accent anywhere in this project.
+Save Test button is green (`bg-green-500`). No cyan, sky, or indigo anywhere.
+AI buttons (Analyze Query, Extract Fields, Suggest Fields) use `border-slate-600 text-blue-300`.
 
 ### styled-components v5
 Used for common/ wrappers only. New components use Tailwind classes.
@@ -578,7 +587,7 @@ Logic: for each idle+enabled test with a known `intervalKey`, check if `lastRunA
 ## Fixed Interval Scheduling & Thundering Herd Prevention
 
 ### Frontend: IntervalPicker (replaces CronPicker)
-Users pick from 6 fixed intervals (hourly, 2h, 4h, 6h, 12h, daily) via `IntervalPicker.tsx`. No custom cron input. The `intervalKey` is stored on the scheduled test record.
+Users pick from 4 fixed intervals (daily, 2d, 3d, weekly) via `IntervalPicker.tsx`. No custom cron input. The `intervalKey` is stored on the scheduled test record. Weekly tests spread across the Fri 18:00–Sun 08:00 window via `_suggest_weekly_slot()` to avoid thundering herd.
 
 ### Backend: `suggest_minute` endpoint
 `scheduled_tests_handler.py` handles `GET /data/scheduled_tests?action=suggest_minute&interval_key=daily`. It scans existing scheduled tests with the same interval pattern, finds unused minutes (0-59), and returns a random unused one. If all 60 are taken, picks the least-used. This spreads test execution across different minutes to avoid thundering herd.
@@ -608,6 +617,54 @@ An admin can manually enable the alert action on a specific saved search if they
 - Port 25 or no auth → no TLS
 
 **Config layering:** `_get_email_config(session_key)` reads from runtime_config (KVStore → config.py fallback). Falls back to static config.py if runtime_config is unavailable.
+
+---
+
+## Collapsible Builder Panels
+
+The 3-panel builder (Query 27%, Data 40%, Validation 33%) supports two view modes:
+- **All mode** (default): all panels visible side by side, each independently collapsible via header chevron
+- **Focus mode**: accordion — only 1 panel open at a time, keyboard arrows to navigate
+
+State managed by `panelSlice.ts`: `panelViewMode`, `activePanelIndex`, `collapsedPanels`. View mode persisted to localStorage.
+Toggle in setup bar: "All" / "Focus" pills next to the Type selector.
+Collapsed panels show label text horizontally, `flex: 1` to share space equally.
+
+---
+
+## Cache Macro Safety (`spl_analyzer.py`, `query_injector.py`)
+
+The `cache(lookup, id_fields, prop_fields, stacking, testing, vanish)` macro is handled specially:
+- **`testing=true`**: safe, runs as-is. Info marker in editor (green).
+- **`testing=false`**: lookup name swapped with `temp_cache_{key}_{original}`. Warning marker (yellow).
+- **Manual runs**: stable temp name (`temp_cache_{testId[:8]}_{lookup}`) persists across reruns.
+- **Scheduled runs**: per-run temp name, cleaned up after.
+- Temp lookups are **KVStore collections** with transforms.conf definitions (not CSV).
+- Fields list discovered from `| inputlookup {original} | head 1`.
+- Uses admin credentials from `config.py` for KVStore/transforms creation.
+- 92 unit tests in `tests/test_cache_macro.py`.
+
+---
+
+## KVStore Temp Lookups (`lookup_manager.py`)
+
+All temp lookups (both `| lookup` injection and cache macro) use KVStore:
+- `create_temp_lookup(run_id, events, app)` → creates collection + transforms + inserts rows
+- `delete_temp_lookup(run_id, app)` → deletes collection + transforms
+- Uses admin credentials from `config.py` (not session_key) for conf-write operations.
+- Lookup names: `temp_lookup_{run_id}` (no `.csv` extension).
+
+---
+
+## Smart Field Default Values
+
+When user selects a data source from the Extract Fields dropdown:
+1. Fields appear instantly with empty values (synchronous)
+2. Background: runs `{rowIdentifier} | head 1` with escalating time ranges (user's → 24h → 7d → 30d)
+3. Matches field names from the result row against extracted fields
+4. For unmatched fields: asks LLM for realistic example values
+5. Only fills empty values — never overwrites user-entered data
+6. Loading indicator shown: "Loading default values from Splunk..."
 
 ---
 

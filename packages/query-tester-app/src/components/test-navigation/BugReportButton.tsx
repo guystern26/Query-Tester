@@ -85,9 +85,25 @@ export function BugReportButton() {
 
     return (
         <>
-            <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
-                Bug report
-            </Button>
+            <button
+                type="button"
+                onClick={() => setOpen(true)}
+                title="Bug Report"
+                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-navy-800 cursor-pointer transition-colors"
+            >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M8 2l1.88 1.88M14.12 3.88L16 2" />
+                    <path d="M9 7.13v-1a3 3 0 0 1 6 0v1" />
+                    <path d="M12 20c-3.3 0-6-2.7-6-6v-3a6 6 0 0 1 12 0v3c0 3.3-2.7 6-6 6z" />
+                    <path d="M12 20v-9" />
+                    <path d="M6.53 9C4.6 8.8 3 7.1 3 5" />
+                    <path d="M6 13H2" />
+                    <path d="M3 21c0-2.1 1.7-3.9 3.8-4" />
+                    <path d="M20.97 5c0 2.1-1.6 3.8-3.5 4" />
+                    <path d="M22 13h-4" />
+                    <path d="M17.2 17c2.1.1 3.8 1.9 3.8 4" />
+                </svg>
+            </button>
             <Modal
                 open={open}
                 title="Bug report / Feature request"

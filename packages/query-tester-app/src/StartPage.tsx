@@ -8,6 +8,7 @@ import { useIdeKeyboardShortcuts } from './hooks/useIdeKeyboardShortcuts';
 import { TopBar } from './components/test-navigation/TopBar';
 import { AppSelector } from './components/AppSelector';
 import { TestTypeSelector } from './features/scenarios/TestTypeSelector';
+import { ViewModeToggle } from './features/layout/ViewModeToggle';
 import { QuerySection } from './features/query/QuerySection';
 import { ResultsBar } from './features/results/ResultsBar';
 import { IdeResultsBar } from './features/results/IdeResultsBar';
@@ -139,24 +140,22 @@ export function StartPage({ mode = 'builder', onNavigateLibrary, loadTestId }: S
                             <div className="flex items-center gap-2">
                                 <span className="text-[11px] text-slate-500 uppercase tracking-wider">Name</span>
                                 <input type="text" value={localName} onChange={handleNameChange} maxLength={120} placeholder="Test name..."
-                                    className="min-w-[140px] max-w-[220px] px-2.5 py-1 text-sm bg-navy-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-500/30 transition-all duration-200" />
+                                    className="min-w-[140px] max-w-[220px] px-2.5 py-1 text-sm bg-navy-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-300/20 transition-all duration-200" />
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="text-[11px] text-slate-500 uppercase tracking-wider">App</span>
                                 <AppSelector value={app} onChange={handleAppChange} compact />
                             </div>
                             {!isIde && <TestTypeSelector compact />}
+                            {!isIde && <ViewModeToggle />}
                         </div>
                     </div>
-                    {!isIde && (
-                        <StepPipeline steps={pipeline.steps} activeIndex={pipeline.activeIndex}
-                            allComplete={pipeline.allComplete} isRunning={pipeline.isRunning} onStepClick={handleStepClick} />
-                    )}
+                    {/* Step pipeline hidden — panel titles serve the same purpose */}
                 </>
             ) : isLoadingTest ? (
                 <div className="flex-1 flex items-center justify-center px-5 pt-4 animate-fadeIn">
                     <div className="flex flex-col items-center gap-4">
-                        <svg className="w-8 h-8 text-accent-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <svg className="w-8 h-8 text-blue-300 animate-spin" fill="none" viewBox="0 0 24 24">
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z" />
                         </svg>
@@ -174,7 +173,7 @@ export function StartPage({ mode = 'builder', onNavigateLibrary, loadTestId }: S
                         <p className="text-sm text-red-400">{loadError}</p>
                         {onNavigateLibrary && (
                             <button type="button" onClick={onNavigateLibrary}
-                                className="px-4 py-2 text-sm font-medium rounded-lg bg-btnprimary text-white hover:bg-btnprimary-hover cursor-pointer transition-colors">
+                                className="px-4 py-2 text-sm font-medium rounded-lg bg-blue-300 text-slate-900 hover:bg-blue-200 cursor-pointer transition-colors">
                                 Go to Library
                             </button>
                         )}
@@ -217,7 +216,7 @@ export function StartPage({ mode = 'builder', onNavigateLibrary, loadTestId }: S
                             <button type="button" onClick={handleTourSkip} className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-slate-200 cursor-pointer">
                                 Skip
                             </button>
-                            <button type="button" onClick={handleTourAccept} className="px-5 py-2 text-sm font-semibold rounded-lg bg-btnprimary hover:bg-btnprimary-hover text-white cursor-pointer">
+                            <button type="button" onClick={handleTourAccept} className="px-5 py-2 text-sm font-semibold rounded-lg bg-blue-300 hover:bg-blue-200 text-slate-900 cursor-pointer">
                                 Let's go
                             </button>
                         </div>

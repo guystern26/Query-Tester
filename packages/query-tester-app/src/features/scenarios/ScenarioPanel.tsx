@@ -81,7 +81,7 @@ export function ScenarioPanel() {
                             onChange={(e) => updateScenarioName(test.id, sel.id, e.target.value)}
                             maxLength={80}
                             placeholder="Scenario name..."
-                            className="flex-1 min-w-0 bg-transparent border-0 border-b border-slate-700 rounded-none px-0 py-1.5 text-[13px] font-medium text-slate-100 placeholder-slate-500 focus:outline-none focus:border-accent-600 transition-colors duration-200"
+                            className="flex-1 min-w-0 bg-transparent border-0 border-b border-slate-700 rounded-none px-0 py-1.5 text-[13px] font-medium text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-300 transition-colors duration-200"
                         />
                         <input
                             type="text"
@@ -89,7 +89,7 @@ export function ScenarioPanel() {
                             onChange={(e) => updateScenarioDescription(test.id, sel.id, e.target.value)}
                             maxLength={200}
                             placeholder="Description..."
-                            className="flex-[2] min-w-0 bg-transparent border-0 border-b border-slate-700 rounded-none px-0 py-1.5 text-[13px] text-slate-400 placeholder-slate-500 focus:outline-none focus:border-accent-600 focus:text-slate-200 transition-colors duration-200"
+                            className="flex-[2] min-w-0 bg-transparent border-0 border-b border-slate-700 rounded-none px-0 py-1.5 text-[13px] text-slate-400 placeholder-slate-500 focus:outline-none focus:border-blue-300 focus:text-slate-200 transition-colors duration-200"
                         />
                     </div>
 
@@ -106,16 +106,16 @@ export function ScenarioPanel() {
                         </div>
                     ) : (
                         <>
-                            <div className="flex items-center gap-2 mt-2 mb-1">
+                            <div className="flex justify-center mt-3 mb-1">
                                 <button
-                                    className="px-3 py-1.5 rounded-md bg-blue-500/10 text-blue-400 text-[12px] font-medium hover:bg-blue-500/20 transition-all duration-200 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                                    className="px-5 py-1.5 rounded-lg border border-dashed border-slate-600 text-[12px] font-medium text-slate-400 hover:text-blue-300 hover:border-blue-300/40 transition-colors duration-200 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                                     onClick={() => addInput(test.id, sel.id)}
                                     disabled={!canAddInput}
                                 >
                                     + Add Input
                                 </button>
                             </div>
-                            <div className={`flex flex-col gap-3 mt-1 rounded-lg p-2 -mx-2 transition-colors duration-300 ${selColor.tint}`}>
+                            <div className="flex flex-col gap-3 mt-1">
                                 {sel.inputs.map((inp, i) => (
                                     <InputCard
                                         key={inp.id}
@@ -130,7 +130,7 @@ export function ScenarioPanel() {
                                 ))}
                             </div>
                             <button
-                                className="w-full py-2.5 mt-3 border border-dashed border-slate-700 rounded-lg text-sm text-slate-400 hover:text-accent-300 hover:border-accent-600 transition-all duration-200 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                                className="w-full py-2.5 mt-3 border border-dashed border-slate-700 rounded-lg text-sm text-slate-400 hover:text-blue-300 hover:border-blue-300 transition-all duration-200 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                                 onClick={() => addInput(test.id, sel.id)}
                                 disabled={!canAddInput}
                             >

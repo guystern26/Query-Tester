@@ -45,7 +45,7 @@ export function UnsavedChangesModal({ onDiscard, onStay, onSave, isSaving }: Uns
                             type="button"
                             onClick={onSave}
                             disabled={isSaving}
-                            className="px-4 py-2 text-sm font-medium rounded-lg bg-btnprimary text-white hover:bg-btnprimary-hover cursor-pointer transition-colors disabled:opacity-40"
+                            className="px-4 py-2 text-sm font-medium rounded-lg bg-blue-300 text-slate-900 hover:bg-blue-200 cursor-pointer transition-colors disabled:opacity-40"
                         >
                             {isSaving ? 'Saving...' : 'Save & Leave'}
                         </button>

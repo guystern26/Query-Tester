@@ -128,7 +128,7 @@ export function JsonInputView({ testId, scenarioId, inputId }: JsonInputViewProp
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-slate-700 bg-navy-800 text-slate-200 text-[13px] font-semibold hover:border-accent-600 hover:text-accent-300 transition-all duration-200 cursor-pointer"
+          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-slate-700 bg-navy-800 text-slate-200 text-[13px] font-semibold hover:border-blue-300 hover:text-blue-300 transition-all duration-200 cursor-pointer"
         >
           <UploadIcon />
           Upload JSON File

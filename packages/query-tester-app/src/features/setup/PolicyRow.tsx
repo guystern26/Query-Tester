@@ -9,7 +9,7 @@ const SEVERITY_OPTIONS = [
     { value: 'info', label: '\uD83D\uDD35 Info', cls: 'text-blue-400' },
 ];
 
-const INPUT_CLS = 'px-2 py-1 text-xs bg-navy-950 border border-slate-700 rounded text-slate-200 focus:outline-none focus:border-accent-600';
+const INPUT_CLS = 'px-2 py-1 text-xs bg-navy-950 border border-slate-700 rounded text-slate-200 focus:outline-none focus:border-blue-300';
 
 const GRID_CLS = [
     'grid items-center gap-3 py-2 px-3 rounded-lg',

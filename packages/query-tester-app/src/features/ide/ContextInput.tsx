@@ -55,7 +55,7 @@ export function ContextInput(): React.ReactElement {
                     onChange={handleChange}
                     placeholder={PLACEHOLDER}
                     rows={2}
-                    className="w-full px-3 py-2 text-[13px] bg-navy-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 resize-y transition-all duration-200"
+                    className="w-full px-3 py-2 text-[13px] bg-navy-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-300/20 resize-y transition-all duration-200"
                 />
             )}
         </div>

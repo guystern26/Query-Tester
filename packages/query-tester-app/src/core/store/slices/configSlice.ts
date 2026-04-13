@@ -76,7 +76,9 @@ export function configSlice(set: SetState) {
                     draft.isAdmin = status.isAdmin;
                 });
             } catch (e) {
-                set((draft) => { draft.configError = errMsg(e); draft.setupRequired = true; });
+                // In dev mode (no Splunk), don't lock the UI behind setup
+                const isDev = typeof window !== 'undefined' && window.location.port === '3000';
+                set((draft) => { draft.configError = errMsg(e); draft.setupRequired = !isDev; });
             }
         },
 

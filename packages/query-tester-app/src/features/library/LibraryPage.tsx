@@ -129,7 +129,7 @@ export function LibraryPage({ onNavigateBuilder }: LibraryPageProps): React.Reac
                 <nav className="flex items-center gap-1">
                     <BugReportButton />
                     <div className="w-px h-5 bg-slate-700 mx-1" />
-                    <button className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-accent-600/20 text-accent-300 cursor-pointer">Library</button>
+                    <button className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-navy-700 text-white border-2 border-slate-600 cursor-pointer">Library</button>
                     <button className="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-400 hover:text-slate-200 hover:bg-navy-800 transition cursor-pointer" onClick={() => onNavigateBuilder()}>Builder</button>
                     {isAdmin && (
                         <button type="button" onClick={() => { window.location.hash = 'setup'; }} className="ml-1 p-1.5 text-slate-400 hover:text-slate-200 cursor-pointer rounded-lg hover:bg-navy-800">
@@ -150,7 +150,10 @@ export function LibraryPage({ onNavigateBuilder }: LibraryPageProps): React.Reac
                 <div className="max-w-7xl mx-auto flex flex-col gap-5">
                     <div className="flex items-center justify-between">
                         <h1 className="text-xl font-bold text-slate-100 m-0">Test Library</h1>
-                        <button className="px-4 py-2 text-sm font-semibold rounded-lg bg-btnprimary hover:bg-btnprimary-hover text-white shadow-sm transition cursor-pointer" onClick={handleCreateNew}>+ Create New Test</button>
+                        <button className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold rounded-lg bg-blue-300 hover:bg-blue-200 text-slate-900 shadow-[0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.1)] hover:shadow-[0_2px_6px_rgba(147,197,253,0.2)] transition-all duration-200 cursor-pointer" onClick={handleCreateNew}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                            Create New Test
+                        </button>
                     </div>
 
                     <LibraryFilters

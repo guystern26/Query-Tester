@@ -79,7 +79,7 @@ export function GeneratorPanel({ testId, scenarioId, inputId, fieldNames }: Gene
           ))}
 
           <button
-            className="flex items-center justify-center gap-1 w-full h-8 border border-dashed border-slate-700 rounded-lg bg-transparent text-xs text-slate-400 font-medium cursor-pointer transition hover:text-accent-300 hover:border-accent-600 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center justify-center gap-1 w-full h-8 border border-dashed border-slate-700 rounded-lg bg-transparent text-xs text-slate-400 font-medium cursor-pointer transition hover:text-blue-300 hover:border-blue-300 disabled:opacity-40 disabled:cursor-not-allowed"
             onClick={handleAddRule}
             disabled={!canAddRule}
           >

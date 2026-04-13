@@ -54,7 +54,7 @@ export function FieldValueEditor({ testId, scenarioId, inputId, events }: FieldV
       <div className="flex flex-col items-center py-10">
         <p className="text-sm text-slate-500 m-0">Click + Add Event to start defining test data</p>
         <button
-          className="mt-3 inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-accent-300 transition-colors duration-200 cursor-pointer"
+          className="mt-3 inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-blue-300 transition-colors duration-200 cursor-pointer"
           onClick={handleAddEvent}
           disabled={!canAddEvent}
         >
@@ -97,7 +97,7 @@ export function FieldValueEditor({ testId, scenarioId, inputId, events }: FieldV
               ))}
               <th className="border-b border-slate-600/60 px-3 w-full text-left">
                 <button
-                  className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-accent-300 transition-colors duration-200 cursor-pointer whitespace-nowrap disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-blue-300 transition-colors duration-200 cursor-pointer whitespace-nowrap disabled:opacity-30 disabled:cursor-not-allowed"
                   onClick={handleAddEvent}
                   disabled={!canAddEvent}
                   title="Add event column"
@@ -130,7 +130,7 @@ export function FieldValueEditor({ testId, scenarioId, inputId, events }: FieldV
                         <XIcon size={12} />
                       </button>
                       <input
-                        className="w-28 px-2 py-1.5 text-sm font-semibold bg-transparent border-0 border-b-2 border-accent-700/50 text-accent-300 placeholder-slate-600 focus:outline-none focus:border-accent-600 transition-colors duration-200"
+                        className="w-28 px-2 py-1.5 text-sm font-semibold bg-transparent border-0 border-b-2 border-accent-700/50 text-blue-300 placeholder-slate-600 focus:outline-none focus:border-blue-300 transition-colors duration-200"
                         type="text"
                         value={fieldName}
                         onChange={(e) =>
@@ -146,7 +146,7 @@ export function FieldValueEditor({ testId, scenarioId, inputId, events }: FieldV
                     return (
                       <td key={evt.id} className="px-1.5 py-1.5">
                         <input
-                          className="w-36 px-2.5 py-2 text-sm bg-navy-800/30 border border-slate-700/40 rounded-md text-slate-200 placeholder-slate-600 focus:outline-none focus:border-accent-600 focus:bg-navy-800/50 transition-all duration-200"
+                          className="w-36 px-2.5 py-2 text-sm bg-navy-800/30 border border-slate-700/40 rounded-md text-slate-200 placeholder-slate-600 focus:outline-none focus:border-blue-300 focus:bg-navy-800/50 transition-all duration-200"
                           type="text"
                           value={fv?.value ?? ''}
                           onChange={(e) =>
@@ -168,7 +168,7 @@ export function FieldValueEditor({ testId, scenarioId, inputId, events }: FieldV
             <tr>
               <td className="py-2 px-2 sticky left-0 z-10 bg-navy-800">
                 <button
-                  className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-accent-300 transition-colors duration-200 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-blue-300 transition-colors duration-200 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                   onClick={handleAddField}
                   disabled={!canAddField}
                 >

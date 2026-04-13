@@ -7,7 +7,7 @@ import { IntervalPicker } from './IntervalPicker';
 import { RecipientsList, hasInvalidRecipients } from './RecipientsList';
 import type { ScheduledTest, SavedTestMeta } from 'core/types';
 
-const selectCls = 'w-full px-3 py-2 text-sm bg-navy-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-accent-600 cursor-pointer';
+const selectCls = 'w-full px-3 py-2 text-sm bg-navy-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-blue-300 cursor-pointer';
 
 function reverseMapInterval(cron: string): string {
     const parts = cron.trim().split(/\s+/);
@@ -146,7 +146,7 @@ export function ScheduleModal({ open, onClose, editingTest, preselectedTestId }:
                             onChange={(e) => setTestName(e.target.value)}
                             maxLength={120}
                             placeholder="Test name..."
-                            className="w-full px-3 py-2 text-sm bg-navy-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-500/30 transition-all duration-200"
+                            className="w-full px-3 py-2 text-sm bg-navy-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-300/20 transition-all duration-200"
                         />
                     </div>
                 )}

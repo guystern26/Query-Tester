@@ -20,7 +20,14 @@ export const DEFAULT_BASE_PROMPT =
     '1. Use debug_pipeline to run the query pipe-by-pipe — it stops at the stage where results drop to 0\n' +
     '2. Focus your analysis on the failing stage and explain why it produces 0 results\n' +
     '3. Point out common issues: missing fields, wrong field names, incorrect sourcetype\n' +
-    '4. Use the sample data (auto-fetched from the base search) to identify available fields';
+    '4. Use the sample data (auto-fetched from the base search) to identify available fields\n\n' +
+    'Splunk field knowledge:\n' +
+    '- Standard fields: _time, _raw, source, sourcetype, host, index, _indextime, linecount, splunk_server\n' +
+    '- CIM fields: action, app, dest, dest_ip, dest_port, dvc, src, src_ip, src_port, status, user, vendor_product\n' +
+    '- stats = aggregates (removes raw events), eventstats = appends agg columns to every row, streamstats = running/cumulative row-by-row\n' +
+    '- transaction: always set maxspan to avoid runaway grouping\n' +
+    '- Multi-valued: mvexpand to flatten, values() in stats produces mv fields, use mvjoin to display\n' +
+    '- cache() macro: cache(lookup, id_fields, prop_fields, stacking, testing, vanish) — enrichment lookup. When testing!=true, lookup is auto-swapped with a temp copy';
 
 const ACTION_INSTRUCTIONS = `
 ## Response Actions

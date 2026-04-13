@@ -6,8 +6,8 @@ import { ConditionRow } from './ConditionRow';
 import { conditionPreview } from './conditionPreview';
 import { FieldNameSelector } from './FieldNameSelector';
 
-const inputCls = 'px-2.5 py-1.5 text-[13px] bg-navy-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-500/30 transition';
-const selectCls = 'px-2 py-1.5 text-[13px] bg-navy-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-accent-600 cursor-pointer';
+const inputCls = 'px-2.5 py-1.5 text-[13px] bg-navy-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-300/20 transition';
+const selectCls = 'px-2 py-1.5 text-[13px] bg-navy-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-blue-300 cursor-pointer';
 
 const CopyIcon = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -43,7 +43,7 @@ export function FieldGroupCard({ testId, group, index, scenarios, isOnly }: Fiel
   const toggleLogic = () => updateFieldGroupLogic(testId, group.id, logic === 'and' ? 'or' : 'and');
 
   return (
-    <div className="bg-navy-800 rounded-lg border border-slate-700 p-4" data-tutorial="field-logic">
+    <div className="bg-navy-900 rounded-lg border border-slate-700 p-4" data-tutorial="field-logic">
       {/* Top row: number + field name + scope + copy + delete */}
       <div className="flex items-center gap-2 mb-3">
         <span className="w-6 h-6 rounded-full bg-slate-700 text-slate-400 text-[11px] font-bold flex items-center justify-center shrink-0">
@@ -62,7 +62,7 @@ export function FieldGroupCard({ testId, group, index, scenarios, isOnly }: Fiel
           }}>
           {scopeOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
-        <button className="p-1.5 text-slate-500 hover:text-accent-300 rounded transition cursor-pointer" title="Duplicate"
+        <button className="p-1.5 text-slate-500 hover:text-blue-300 rounded transition cursor-pointer" title="Duplicate"
           onClick={() => duplicateFieldGroup(testId, group.id)}>
           <CopyIcon />
         </button>
@@ -88,8 +88,8 @@ export function FieldGroupCard({ testId, group, index, scenarios, isOnly }: Fiel
               <div className="flex items-center gap-2 my-1.5">
                 <div className="flex-1 border-t border-slate-700/50" />
                 <button
-                  className={`text-[10px] font-bold px-3 py-1 rounded-md transition cursor-pointer ${
-                    logic === 'or' ? 'bg-orange-600 text-white' : 'bg-blue-600 text-white'
+                  className={`text-[10px] font-bold px-3 py-1 rounded-md transition-colors duration-300 cursor-pointer ${
+                    logic === 'or' ? 'bg-navy-700 border border-orange-500/40 text-orange-300' : 'bg-navy-700 border border-blue-400/40 text-blue-300'
                   }`}
                   onClick={toggleLogic}
                 >
@@ -104,7 +104,7 @@ export function FieldGroupCard({ testId, group, index, scenarios, isOnly }: Fiel
       </div>
 
       <button
-        className="text-xs text-slate-400 hover:text-accent-300 transition cursor-pointer mt-2 disabled:opacity-30 disabled:cursor-not-allowed"
+        className="text-xs text-slate-400 hover:text-blue-300 transition cursor-pointer mt-2 disabled:opacity-30 disabled:cursor-not-allowed"
         onClick={() => addConditionToGroup(testId, group.id)}
         disabled={atLimit}
       >

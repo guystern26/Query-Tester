@@ -160,7 +160,7 @@ export function IdeChat(): React.ReactElement {
                     type="button"
                     onClick={handleSend}
                     disabled={!input.trim() || loading}
-                    className="self-end px-3 py-1.5 rounded text-[12px] font-medium bg-blue-500 text-white hover:bg-blue-400 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+                    className="self-end px-3 py-1.5 rounded text-[12px] font-medium bg-blue-300 text-slate-900 hover:bg-blue-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-300 cursor-pointer"
                 >
                     Send
                 </button>

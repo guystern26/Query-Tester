@@ -117,16 +117,16 @@ function SkillEditor({ name, prompt, error, onNameChange, onPromptChange, onSave
         <div className="flex flex-col gap-2 p-2.5">
             <input type="text" value={name} onChange={(e) => onNameChange(e.target.value)}
                 placeholder="Skill name..." maxLength={80}
-                className="px-2 py-1 text-[12px] bg-navy-900 border border-slate-700 rounded text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500/50" />
+                className="px-2 py-1 text-[12px] bg-navy-900 border border-slate-700 rounded text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-300" />
             <textarea value={prompt} onChange={(e) => onPromptChange(e.target.value)}
                 placeholder="Skill instructions..." rows={4} spellCheck={false}
-                className="px-2 py-1.5 text-[11px] leading-relaxed bg-navy-900 border border-slate-700 rounded text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500/50 resize-y font-mono" />
+                className="px-2 py-1.5 text-[11px] leading-relaxed bg-navy-900 border border-slate-700 rounded text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-300 resize-y font-mono" />
             {error && <span className="text-[11px] text-red-400">{error}</span>}
             <div className="flex gap-2 justify-end">
                 <button type="button" onClick={onCancel}
                     className="px-2.5 py-0.5 text-[11px] rounded border border-slate-700 text-slate-400 hover:text-slate-200 transition cursor-pointer">Cancel</button>
                 <button type="button" onClick={onSave}
-                    className="px-2.5 py-0.5 text-[11px] font-medium rounded bg-blue-500 text-white hover:bg-blue-400 transition cursor-pointer">Save</button>
+                    className="px-2.5 py-0.5 text-[11px] font-medium rounded bg-blue-300 text-slate-900 hover:bg-blue-200 transition cursor-pointer">Save</button>
             </div>
         </div>
     );

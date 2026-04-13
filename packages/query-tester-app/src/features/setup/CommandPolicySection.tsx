@@ -87,11 +87,11 @@ export function CommandPolicySection() {
                             value={newCommand}
                             onChange={(e) => setNewCommand(e.target.value.toLowerCase().replace(/\s/g, ''))}
                             placeholder="command name"
-                            className="px-2 py-1.5 text-xs font-mono bg-navy-950 border border-slate-700 rounded text-slate-200 focus:outline-none focus:border-accent-600 w-[180px]"
+                            className="px-2 py-1.5 text-xs font-mono bg-navy-950 border border-slate-700 rounded text-slate-200 focus:outline-none focus:border-blue-300 w-[180px]"
                             autoFocus
                             onKeyDown={(e) => { if (e.key === 'Enter') void handleAddCommand(); if (e.key === 'Escape') setAddingCommand(false); }}
                         />
-                        <button type="button" onClick={() => void handleAddCommand()} className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-btnprimary hover:bg-btnprimary-hover text-white cursor-pointer">
+                        <button type="button" onClick={() => void handleAddCommand()} className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-300 hover:bg-blue-200 text-slate-900 cursor-pointer">
                             {isSavingNew ? 'Saving...' : 'Add'}
                         </button>
                         {!isSavingNew && (
@@ -99,7 +99,7 @@ export function CommandPolicySection() {
                         )}
                     </div>
                 ) : (
-                    <button type="button" onClick={() => setAddingCommand(true)} className="mt-2 text-xs text-accent-400 hover:text-accent-300 font-semibold cursor-pointer">
+                    <button type="button" onClick={() => setAddingCommand(true)} className="mt-2 text-xs text-blue-300 hover:text-blue-300 font-semibold cursor-pointer">
                         + Add Command
                     </button>
                 )}

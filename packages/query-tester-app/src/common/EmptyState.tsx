@@ -20,7 +20,7 @@ export function EmptyState({ icon, iconBg, title, subtitle, actionLabel, onActio
         <p className="text-xs text-slate-500 mt-1 m-0">{subtitle}</p>
       </div>
       <button
-        className="px-4 py-2 rounded-lg text-sm font-semibold bg-btnprimary text-white hover:bg-btnprimary-hover transition cursor-pointer"
+        className="px-4 py-2 rounded-lg text-sm font-semibold bg-blue-300 text-slate-900 hover:bg-blue-200 transition cursor-pointer"
         onClick={onAction}
       >
         {actionLabel}

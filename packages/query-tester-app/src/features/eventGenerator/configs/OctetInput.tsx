@@ -11,7 +11,7 @@ export interface OctetInputProps {
 }
 
 const octetInputCls =
-  'w-10 text-center bg-navy-950 border border-slate-700 rounded text-xs text-slate-300 py-1 px-0.5 focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-500/30 transition';
+  'w-10 text-center bg-navy-950 border border-slate-700 rounded text-xs text-slate-300 py-1 px-0.5 focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-300/20 transition';
 
 const lockedCls =
   'w-10 text-center text-xs text-slate-500 py-1 px-0.5 bg-navy-900 border border-slate-800 rounded select-none';

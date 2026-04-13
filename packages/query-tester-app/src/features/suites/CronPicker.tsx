@@ -16,7 +16,7 @@ const DESCRIPTIONS: Record<string, string> = {
 };
 
 const segBtn = 'px-3 py-1.5 text-xs font-medium rounded transition cursor-pointer';
-const segActive = 'bg-accent-600/20 text-accent-300 border border-accent-600/40';
+const segActive = 'bg-navy-700 text-white border-2 border-slate-600 border border-accent-600/40';
 const segInactive = 'bg-navy-950 text-slate-400 border border-slate-700 hover:text-slate-200';
 
 export interface CronPickerProps {
@@ -132,7 +132,7 @@ export function CronPicker({ value, onChange }: CronPickerProps) {
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     placeholder="*/5 * * * *"
-                    className="px-3 py-2 text-sm bg-navy-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-500/30 font-mono"
+                    className="px-3 py-2 text-sm bg-navy-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-300/20 font-mono"
                 />
             )}
             <span className={'text-[11px] ' + (cronError ? 'text-red-400' : 'text-slate-500')}>{description}</span>

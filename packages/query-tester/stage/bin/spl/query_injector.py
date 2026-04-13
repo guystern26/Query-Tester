@@ -98,7 +98,11 @@ def inject(
     result = handler(spl, run_id, inputs)
     if strategy != "tstats":
         result = _replace_all_inputlookups(result, run_id)
+    pre_swap = result
     result = _swap_cache_lookups(result, run_id, test_id)
+    if result != pre_swap:
+        logger.info("Cache swap applied. Before: %.200s", pre_swap)
+        logger.info("Cache swap applied. After:  %.200s", result)
     return result
 
 
@@ -139,8 +143,8 @@ def _inject_inputlookup(spl: str, run_id: str, inputs: List[ParsedInput]) -> str
 
 def _inject_lookup(spl: str, run_id: str, inputs: List[ParsedInput]) -> str:
     injected = _inject_standard(spl, run_id, inputs)
-    temp_file = "temp_lookup_{0}.csv".format(run_id)
-    return LOOKUP_PATTERN.sub(lambda m: m.group(1) + temp_file, injected, count=1)
+    temp_name = "temp_lookup_{0}".format(run_id)
+    return LOOKUP_PATTERN.sub(lambda m: m.group(1) + temp_name, injected, count=1)
 
 
 def _replace_by_row_identifier(
@@ -225,9 +229,14 @@ def _swap_cache_lookups(spl, run_id, test_id=None):
       — unique per run. The caller should copy the real lookup into this
       temp before execution so the test validates against real data.
     """
-    from spl.spl_analyzer import parse_cache_macros
+    try:
+        from spl.spl_analyzer import parse_cache_macros
+    except ImportError as exc:
+        logger.error("Failed to import parse_cache_macros: %s", exc)
+        return spl
 
     parsed = parse_cache_macros(spl)
+    logger.info("Cache macro scan: found %d macro(s) in SPL (len=%d)", len(parsed), len(spl))
     if not parsed:
         return spl
 

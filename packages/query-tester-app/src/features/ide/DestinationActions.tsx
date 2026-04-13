@@ -38,7 +38,7 @@ export function DestinationActions(): React.ReactElement {
                 type="button"
                 onClick={handleContinueToBuilder}
                 disabled={!spl.trim()}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-500/20 border border-blue-500/30 text-blue-300 hover:bg-blue-500/35 hover:text-blue-200 cursor-pointer transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-400 hover:bg-blue-300 text-slate-900 border border-transparent cursor-pointer transition-colors duration-300 disabled:opacity-40 disabled:cursor-not-allowed"
             >
                 Continue to Builder
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -50,7 +50,7 @@ export function DestinationActions(): React.ReactElement {
                 type="button"
                 onClick={handleOpenInApp}
                 disabled={!spl.trim() || !app}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-navy-800 border border-slate-700 text-slate-300 hover:text-slate-100 hover:border-slate-600 cursor-pointer transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-transparent border border-slate-600 text-slate-400 hover:border-slate-500 hover:text-slate-200 cursor-pointer transition-colors duration-300 disabled:opacity-40 disabled:cursor-not-allowed"
             >
                 Open in {app || 'Splunk'} App
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

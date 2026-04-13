@@ -169,6 +169,20 @@ export function inputSlice(set: SetState) {
         ];
       }),
 
+    applyFieldSampleValues: (testId: EntityId, scenarioId: EntityId, inputId: EntityId, sampleRow: Record<string, string>) =>
+      set((draft) => {
+        const t = findTest(draft.tests, testId);
+        const s = t && findScenario(t, scenarioId);
+        const input = s && findInput(s, inputId);
+        if (!input || input.events.length === 0) return;
+        for (const fv of input.events[0].fieldValues) {
+          const val = sampleRow[fv.field];
+          if (val !== undefined && val !== null && fv.value === '') {
+            fv.value = String(val);
+          }
+        }
+      }),
+
     updateQueryDataSpl: (testId: EntityId, scenarioId: EntityId, inputId: EntityId, spl: string) =>
       set((draft) => {
         const t = findTest(draft.tests, testId);

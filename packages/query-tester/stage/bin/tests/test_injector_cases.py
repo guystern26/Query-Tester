@@ -16,7 +16,7 @@ from core.models import ParsedInput
 
 RID = "a1b2c3"
 R = "index=temp_query_tester run_id_a1b2c3=a1b2c3"
-LK = "temp_lookup_a1b2c3.csv"
+LK = "temp_lookup_a1b2c3"
 
 
 def _inputs(*row_identifiers):

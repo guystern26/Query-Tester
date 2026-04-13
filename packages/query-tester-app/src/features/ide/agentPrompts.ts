@@ -83,6 +83,7 @@ export function buildSpecialistPrompt(
         parts.push(formatContextTable(contextData.sampleRows, 5));
     }
 
+    parts.push(SPLUNK_KNOWLEDGE);
     parts.push(SPECIALIST_ACTION_INSTRUCTIONS);
     return parts.join('\n');
 }
@@ -108,6 +109,16 @@ export function buildValidatorPrompt(
     parts.push('\nRespond with ONLY a JSON object: {"valid": true} or {"valid": false, "feedback": "..."}');
     return parts.join('\n');
 }
+
+const SPLUNK_KNOWLEDGE = `
+## Splunk Quick Reference
+- Standard fields: _time, _raw, source, sourcetype, host, index, _indextime, linecount, splunk_server
+- CIM fields: action, app, dest, dest_ip, dest_port, dvc, src, src_ip, src_port, status, user, vendor_product
+- stats = aggregates (removes raw events), eventstats = appends agg columns to every row, streamstats = running/cumulative row-by-row
+- transaction: always set maxspan to avoid runaway grouping
+- Multi-valued: mvexpand to flatten, values() in stats produces mv fields, mvjoin to display
+- cache() macro: cache(lookup, id_fields, prop_fields, stacking, testing, vanish) — enrichment lookup. When testing!=true, lookup is auto-swapped with a temp copy
+`;
 
 const SPECIALIST_ACTION_INSTRUCTIONS = `
 ## Response Actions

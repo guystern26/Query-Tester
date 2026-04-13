@@ -3,7 +3,7 @@ import React from 'react';
 const inputStyle = [
     'px-3 py-2 text-sm bg-navy-950 border border-slate-700 rounded-lg',
     'text-slate-200 placeholder-slate-500',
-    'focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-500/30',
+    'focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-300/20',
     'transition-all duration-200',
 ].join(' ');
 

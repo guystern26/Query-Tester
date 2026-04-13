@@ -91,7 +91,7 @@ export function SuitesPage({ onNavigateLibrary, onNavigateBuilder }: SuitesPageP
                     >
                         Builder
                     </button>
-                    <button className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-accent-600/20 text-accent-300 cursor-pointer">
+                    <button className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-navy-700 text-white border-2 border-slate-600 cursor-pointer">
                         Schedules
                     </button>
                 </nav>
@@ -104,7 +104,7 @@ export function SuitesPage({ onNavigateLibrary, onNavigateBuilder }: SuitesPageP
                     <div className="flex items-center justify-between">
                         <h1 className="text-xl font-bold text-slate-100 m-0">Test Suites</h1>
                         <button
-                            className="px-4 py-2 text-sm font-semibold rounded-lg bg-btnprimary hover:bg-btnprimary-hover text-white shadow-sm transition cursor-pointer"
+                            className="px-4 py-2 text-sm font-semibold rounded-lg bg-blue-300 hover:bg-blue-200 text-slate-900 shadow-sm transition cursor-pointer"
                             onClick={handleScheduleNew}
                         >
                             + Schedule a Test

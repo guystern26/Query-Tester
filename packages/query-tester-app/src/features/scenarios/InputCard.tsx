@@ -87,7 +87,7 @@ function InputCardInner({ testId, scenarioId, input, index, isOpen = true, onTog
     return (
       <>
         <div
-          className={`flex items-center gap-3 px-4 py-2.5 bg-navy-800 rounded-lg border border-slate-700 border-l-2 ${accentBorder || 'border-l-slate-700'} cursor-pointer hover:border-slate-600 transition-all duration-200 select-none`}
+          className={`flex items-center gap-3 px-4 py-2.5 bg-navy-900 rounded-lg border border-slate-700 border-l-2 ${accentBorder || 'border-l-slate-600'} cursor-pointer hover:border-slate-600 transition-all duration-200 select-none`}
           onClick={onToggle}
         >
           <ChevronIcon open={false} />
@@ -130,16 +130,16 @@ function InputCardInner({ testId, scenarioId, input, index, isOpen = true, onTog
 
         <DataSourceSelector testId={testId} scenarioId={scenarioId} inputId={input.id} value={input.rowIdentifier} />
 
-        <div className="flex bg-navy-950/80 rounded-xl p-1 border border-slate-700/60 w-fit mb-4 gap-0.5">
+        <div className="flex gap-0.5 mb-4">
           {INPUT_MODES.map(({ key, label, Icon }) => {
             const active = input.inputMode === key;
             return (
               <button
                 key={key}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold rounded-md transition-colors duration-200 cursor-pointer ${
                   active
-                    ? 'bg-accent-900 text-accent-300 border border-accent-700/50'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-navy-800/60'
+                    ? 'bg-navy-700 text-white border-2 border-slate-600'
+                    : 'text-slate-400 hover:text-slate-200'
                 }`}
                 onClick={() => setMode(key)}
               >
@@ -161,7 +161,7 @@ function InputCardInner({ testId, scenarioId, input, index, isOpen = true, onTog
             <QueryDataView testId={testId} scenarioId={scenarioId} inputId={input.id} />
           )}
           {input.inputMode === 'no_events' && (
-            <div className="flex items-center gap-2 py-4 px-3 rounded-lg bg-navy-800/30 border border-slate-700/40">
+            <div className="flex items-center gap-2 py-4 px-3 rounded-lg bg-navy-800/30 border border-slate-700/30">
               <NoEventsIcon />
               <p className="m-0 text-[13px] text-slate-400">No event data. This input will contribute zero events to the test.</p>
             </div>

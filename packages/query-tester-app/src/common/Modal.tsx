@@ -19,11 +19,11 @@ export function Modal({ open, title, children, onClose, confirmLabel, onConfirm,
 
   const confirmCls = variant === 'danger'
     ? 'bg-red-600 hover:bg-red-500 text-white border border-transparent'
-    : 'bg-btnprimary hover:bg-btnprimary-hover text-white border border-transparent';
+    : 'bg-blue-300 hover:bg-blue-200 text-slate-900 border border-transparent';
 
   return (
-    <div className="fixed inset-0 z-[210] bg-black/60 flex items-center justify-center" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="bg-navy-900 rounded-xl border border-slate-700 p-0 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[210] bg-black/50 backdrop-blur-sm flex items-center justify-center" onClick={onClose} role="dialog" aria-modal="true">
+      <div className="bg-navy-900 rounded-lg border border-slate-700 p-0 w-full max-w-md shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="px-6 py-4 border-b border-slate-700 font-semibold text-slate-100">{title}</div>
         <div className="px-6 py-4 text-slate-300">{children}</div>
         <div className="px-6 py-3 border-t border-slate-700 flex justify-end gap-2">

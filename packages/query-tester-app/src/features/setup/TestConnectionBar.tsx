@@ -28,7 +28,7 @@ export function TestConnectionBar() {
                 type="button"
                 onClick={handleTest}
                 disabled={isTesting}
-                className="px-4 py-2 text-sm font-semibold rounded-lg bg-btnprimary hover:bg-btnprimary-hover text-white disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shrink-0"
+                className="px-4 py-2 text-sm font-semibold rounded-lg bg-blue-300 hover:bg-blue-200 text-slate-900 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shrink-0"
             >
                 {isTesting ? 'Testing...' : 'Test Connection'}
             </button>

@@ -8,8 +8,8 @@ import { AgentSettingsPanel } from './AgentSettingsPanel';
 
 type SettingsTab = 'prompt' | 'agents';
 
-const TAB_BASE = 'px-3 py-1.5 text-[12px] font-medium transition cursor-pointer border-b-2';
-const TAB_ACTIVE = TAB_BASE + ' text-slate-200 border-blue-400';
+const TAB_BASE = 'px-3 py-1.5 text-[12px] font-medium transition-colors duration-300 cursor-pointer border-b-2';
+const TAB_ACTIVE = TAB_BASE + ' text-slate-200 border-blue-300';
 const TAB_INACTIVE = TAB_BASE + ' text-slate-500 hover:text-slate-300 border-transparent';
 
 interface ChatSettingsModalProps {
@@ -58,7 +58,7 @@ export function ChatSettingsModal({ onClose }: ChatSettingsModalProps): React.Re
                         <button type="button" onClick={() => setTab('agents')} className={tab === 'agents' ? TAB_ACTIVE : TAB_INACTIVE}>
                             Agents
                             {enabledCount > 0 && (
-                                <span className="ml-1.5 px-1.5 py-0.5 text-[10px] rounded-full bg-blue-500/20 text-blue-400">
+                                <span className="ml-1.5 px-1.5 py-0.5 text-[10px] rounded-full bg-navy-700 text-blue-300">
                                     {enabledCount}
                                 </span>
                             )}
@@ -82,7 +82,7 @@ export function ChatSettingsModal({ onClose }: ChatSettingsModalProps): React.Re
                             <textarea
                                 value={draft} onChange={(e) => setDraft(e.target.value)}
                                 rows={14} spellCheck={false}
-                                className="w-full px-3 py-2.5 text-[13px] leading-relaxed bg-navy-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 resize-y font-mono"
+                                className="w-full px-3 py-2.5 text-[13px] leading-relaxed bg-navy-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-300/20 resize-y font-mono"
                             />
                             <p className="text-[11px] text-slate-500">
                                 Leave empty or reset to use the default. Saved to your browser.
@@ -112,7 +112,7 @@ export function ChatSettingsModal({ onClose }: ChatSettingsModalProps): React.Re
                         </button>
                         {tab === 'prompt' && (
                             <button type="button" onClick={handleSavePrompt}
-                                className="px-4 py-1.5 text-[12px] font-medium rounded bg-blue-500 text-white hover:bg-blue-400 transition cursor-pointer">
+                                className="px-4 py-1.5 text-[12px] font-medium rounded bg-blue-300 text-slate-900 hover:bg-blue-200 transition-colors duration-300 cursor-pointer">
                                 Save
                             </button>
                         )}

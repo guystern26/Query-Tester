@@ -49,7 +49,7 @@ export function EmailSection() {
         <button
             type="button"
             onClick={handleImport}
-            className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-600 text-slate-300 hover:border-accent-600 hover:text-accent-300 cursor-pointer"
+            className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-600 text-slate-300 hover:border-blue-300 hover:text-blue-300 cursor-pointer"
         >
             Import from Splunk
         </button>
@@ -74,7 +74,7 @@ export function EmailSection() {
                         key={tab.id}
                         type="button"
                         onClick={() => setField('emailAuthMethod', tab.id)}
-                        className={'px-4 py-2 text-xs font-semibold border-b-2 cursor-pointer ' + (authMethod === tab.id ? 'text-accent-400 border-accent-600' : 'text-slate-400 border-transparent hover:text-slate-200 hover:border-slate-600')}
+                        className={'px-4 py-2 text-xs font-semibold border-b-2 cursor-pointer ' + (authMethod === tab.id ? 'text-blue-300 border-accent-600' : 'text-slate-400 border-transparent hover:text-slate-200 hover:border-slate-600')}
                     >
                         {tab.label}
                     </button>

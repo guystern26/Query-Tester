@@ -3,14 +3,14 @@ import { useTestStore } from 'core/store/testStore';
 import { selectActiveTest, inputHasData } from 'core/store/selectors';
 import type { TestType } from 'core/types';
 
-const NOTES: Record<TestType, string> = {
-  standard: 'Your query runs against generated test data. Only unspecified fields use real Splunk data.',
-  query_only: 'Your query runs directly against real Splunk data. No synthetic data injected.',
+const LABELS: Record<TestType, string> = {
+  standard: 'Synthetic Data',
+  query_only: 'Real Data',
 };
 
 const DESCS: Record<TestType, string> = {
-  standard: 'Define synthetic events with custom field values to test your query against controlled data.',
-  query_only: 'Run your query directly against live Splunk data without injecting any synthetic events.',
+  standard: 'Define synthetic events with custom field values to test your query against controlled, mock data.',
+  query_only: 'Run your query directly against live Splunk data — no data simulation or injection.',
 };
 
 interface Props { compact?: boolean; }
@@ -23,32 +23,34 @@ export function TestTypeSelector({ compact = false }: Props) {
 
   const handleSelect = (type: TestType) => {
     if (!activeTest || type === testType) return;
-    if (type === 'query_only' && inputHasData(activeTest.scenarios)) {
-      if (!window.confirm('Switching to Query Only will ignore all test data. Your data is preserved if you switch back.')) return;
+    if (type === 'query_only') {
+      const msg = inputHasData(activeTest.scenarios)
+        ? 'Switching to Real Data mode will ignore all synthetic test data. Your data is preserved if you switch back.\n\nYour query will run directly against live Splunk data.'
+        : 'Your query will run directly against real Splunk data — no synthetic data will be injected.';
+      if (!window.confirm(msg)) return;
     }
     updateTestType(activeTest.id, type);
     clearResults();
   };
 
   if (compact) {
-    const pillBase = 'px-3 py-1 text-xs font-semibold rounded-lg cursor-pointer transition-all duration-200';
-    const pillActive = 'bg-accent-900 text-accent-300 border border-accent-700/50';
-    const pillInactive = 'text-slate-400 hover:text-slate-200 hover:bg-navy-800/60';
+    const pillBase = 'px-3 py-1 text-xs font-semibold rounded-lg cursor-pointer transition-colors duration-300';
+    const pillActive = 'bg-navy-700 text-white border-2 border-slate-600';
+    const pillInactive = 'text-slate-600 border-2 border-transparent hover:text-slate-400';
     return (
-      <div className="flex items-center gap-3 flex-1">
+      <div className="flex items-center gap-3 shrink-0">
         <span className="text-[11px] text-slate-500 uppercase tracking-wider shrink-0">Type</span>
-        <div className="flex bg-navy-950/80 rounded-xl p-0.5 border border-slate-700/60 gap-0.5 shrink-0">
-          <button className={`${pillBase} ${testType === 'standard' ? pillActive : pillInactive}`} onClick={() => handleSelect('standard')}>Standard</button>
-          <button className={`${pillBase} ${testType === 'query_only' ? pillActive : pillInactive}`} onClick={() => handleSelect('query_only')}>Query Only</button>
+        <div className="flex rounded-lg p-0.5 gap-0.5 shrink-0">
+          <button className={`${pillBase} ${testType === 'standard' ? pillActive : pillInactive}`} onClick={() => handleSelect('standard')}>{LABELS.standard}</button>
+          <button className={`${pillBase} ${testType === 'query_only' ? pillActive : pillInactive}`} onClick={() => handleSelect('query_only')}>{LABELS.query_only}</button>
         </div>
-        <span className="text-[11px] text-slate-500 italic leading-tight">{NOTES[testType]}</span>
       </div>
     );
   }
 
-  const cardBase = 'flex-1 p-4 rounded-xl border cursor-pointer transition-all duration-200 text-left';
-  const cardActive = 'border-accent-700/50 bg-accent-900';
-  const cardInactive = 'border-slate-700 bg-navy-950/50 hover:border-slate-500 hover:bg-navy-900/60';
+  const cardBase = 'flex-1 p-4 rounded-lg cursor-pointer transition-colors duration-300 text-left';
+  const cardActive = 'border-2 border-slate-600 bg-navy-700';
+  const cardInactive = 'border border-slate-700 bg-navy-950/50 hover:border-slate-500';
 
   return (
     <div className="flex flex-col gap-3 w-full">
@@ -56,8 +58,8 @@ export function TestTypeSelector({ compact = false }: Props) {
       <div className="flex gap-3">
         {(['standard', 'query_only'] as TestType[]).map((type) => (
           <button key={type} className={`${cardBase} ${testType === type ? cardActive : cardInactive}`} onClick={() => handleSelect(type)}>
-            <span className={`block text-sm font-semibold mb-1 ${testType === type ? 'text-accent-400' : 'text-slate-300'}`}>
-              {type === 'standard' ? 'Standard' : 'Query Only'}
+            <span className={`block text-sm font-semibold mb-1 ${testType === type ? 'text-white' : 'text-slate-600'}`}>
+              {LABELS[type]}
             </span>
             <span className="block text-xs text-slate-400 leading-relaxed">{DESCS[type]}</span>
           </button>

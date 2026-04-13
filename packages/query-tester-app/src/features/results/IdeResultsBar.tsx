@@ -49,7 +49,7 @@ export function IdeResultsBar(): React.ReactElement {
 
     let status: React.ReactNode;
     if (ideRunning) {
-        status = (<><span className="w-3.5 h-3.5 border-2 border-accent-600 border-t-transparent rounded-full animate-spin shrink-0" /><span className="text-accent-400">Running query...</span></>);
+        status = (<><span className="w-3.5 h-3.5 border-2 border-accent-600 border-t-transparent rounded-full animate-spin shrink-0" /><span className="text-blue-300">Running query...</span></>);
     } else if (ideResponse) {
         if (ideResponse.status === 'error') {
             status = (<><span className="w-2 h-2 rounded-full bg-red-500 shrink-0" /><span className="text-red-400">{ideResponse.message || 'Query failed'}</span></>);
@@ -83,9 +83,9 @@ export function IdeResultsBar(): React.ReactElement {
 
     let btnLabel: string;
     let btnCls: string;
-    if (ideRunning) { btnLabel = 'Cancel'; btnCls = 'bg-red-500 hover:bg-red-600'; }
-    else if (ideResponse) { btnLabel = 'Rerun'; btnCls = 'bg-blue-500 hover:bg-blue-600'; }
-    else { btnLabel = 'Run Query'; btnCls = 'bg-green-500 hover:bg-green-600'; }
+    if (ideRunning) { btnLabel = 'Cancel'; btnCls = 'bg-red-500 hover:bg-red-600 text-white'; }
+    else if (ideResponse) { btnLabel = 'Rerun'; btnCls = 'bg-blue-300 hover:bg-blue-200 text-slate-900'; }
+    else { btnLabel = 'Run Query'; btnCls = 'bg-green-500 hover:bg-green-600 text-white'; }
 
     const hasAnalysis = analysisNotes.length > 0 || aiNotes.length > 0;
 
@@ -95,12 +95,12 @@ export function IdeResultsBar(): React.ReactElement {
             <DangerousCommandModal commands={dangerousCommands} onConfirm={handleConfirmDangerous} onCancel={() => setDangerousCommands([])} />
         )}
         <div className="fixed bottom-0 left-0 right-0 z-[200] flex flex-col overflow-hidden transition-all duration-300 ease-out" style={{ height: expanded ? '45vh' : '48px' }}>
-            <div className="h-12 shrink-0 flex items-center justify-between px-5 bg-navy-900 border-t-2 border-slate-700 cursor-pointer select-none" onClick={toggleResultsBar}>
+            <div className="h-12 shrink-0 flex items-center justify-between px-5 bg-navy-900 border-t border-slate-600/30 shadow-[0_-1px_4px_rgba(0,0,0,0.4)] cursor-pointer select-none" onClick={toggleResultsBar}>
                 <div className="flex items-center gap-2 text-[13px]">{status}</div>
                 <div className="flex items-center gap-2">
                     <Chevron up={!expanded} />
                     <button type="button" onClick={(e) => { e.stopPropagation(); handleRun(); }} disabled={!ideRunning && !spl.trim()}
-                        className={`px-4 py-1.5 rounded-md text-[13px] font-semibold text-white cursor-pointer transition-colors duration-200 border-none disabled:opacity-40 disabled:cursor-not-allowed ${btnCls}`}>
+                        className={`px-4 py-1.5 rounded-md text-[13px] font-semibold cursor-pointer transition-colors duration-300 border-none disabled:opacity-40 disabled:cursor-not-allowed ${btnCls}`}>
                         {btnLabel}
                     </button>
                 </div>

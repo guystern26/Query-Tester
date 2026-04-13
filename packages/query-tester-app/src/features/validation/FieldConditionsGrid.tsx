@@ -33,6 +33,16 @@ export function FieldConditionsGrid() {
         <SuggestFieldsButton />
       </div>
 
+      <div className="flex justify-center">
+        <button
+          className="px-5 py-1.5 rounded-lg border border-dashed border-slate-600 text-[12px] font-medium text-slate-400 hover:text-blue-300 hover:border-blue-300/40 transition-colors duration-200 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+          onClick={() => addFieldGroup(test.id)}
+          disabled={atLimit}
+        >
+          + Add Field
+        </button>
+      </div>
+
       {groups.length === 0 && (
         <EmptyState
           icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>}
@@ -50,10 +60,10 @@ export function FieldConditionsGrid() {
             <div className="flex items-center gap-3 my-2">
               <div className="flex-1 border-t border-slate-600/50" />
               <button
-                className={`font-bold px-4 py-1.5 rounded-lg text-sm shadow transition cursor-pointer ${
+                className={`font-bold px-4 py-1.5 rounded-md text-[11px] transition-colors duration-200 cursor-pointer border ${
                   fieldLogic === 'or'
-                    ? 'bg-orange-600 text-white hover:bg-orange-700'
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                    ? 'bg-navy-700 border-orange-500/40 text-orange-300 hover:border-orange-400/60'
+                    : 'bg-navy-700 border-blue-400/40 text-blue-300 hover:border-blue-300/60'
                 }`}
                 onClick={toggleFieldLogic}
               >
@@ -72,15 +82,6 @@ export function FieldConditionsGrid() {
         </div>
       ))}
 
-      {groups.length > 0 && (
-        <button
-          className="w-full py-2.5 border border-dashed border-slate-700 rounded-lg text-sm text-slate-400 hover:text-accent-300 hover:border-accent-600 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-          onClick={() => addFieldGroup(test.id)}
-          disabled={atLimit}
-        >
-          + Add Field
-        </button>
-      )}
 
     </div>
   );

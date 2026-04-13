@@ -26,8 +26,8 @@ const ChevronIcon = ({ open }: { open: boolean }) => (
 
 /* ── shared styles ─────────────────────────────────────────── */
 
-const inputCls = 'px-2 py-1.5 text-[13px] bg-navy-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-accent-600 focus:ring-1 focus:ring-accent-500/30 transition';
-const selectCls = 'px-2 py-1.5 text-[13px] bg-navy-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-accent-600 cursor-pointer';
+const inputCls = 'px-2 py-1.5 text-[13px] bg-navy-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-300/20 transition';
+const selectCls = 'px-2 py-1.5 text-[13px] bg-navy-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-blue-300 cursor-pointer';
 const badgeCls = 'text-xs font-bold px-2 py-0.5 rounded bg-navy-800 text-slate-400 font-mono';
 const disabledCls = 'px-2 py-1.5 text-[13px] bg-navy-950 border border-slate-700 rounded-lg text-slate-500 cursor-not-allowed';
 
@@ -109,7 +109,7 @@ export function ReasonCard({ testId, group }: { testId: string; group: FieldCond
               </div>
             );
           })}
-          <button className="text-xs text-slate-400 hover:text-accent-300 transition cursor-pointer py-1"
+          <button className="text-xs text-slate-400 hover:text-blue-300 transition cursor-pointer py-1"
             onClick={() => addConditionToGroup(testId, group.id, { operator: 'equals' as ConditionOperator, value: '' })}>
             + Add Condition
           </button>

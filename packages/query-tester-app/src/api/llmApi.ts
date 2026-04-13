@@ -28,7 +28,7 @@ function cleanJsonResponse(text: string): string {
     return cleaned.trim();
 }
 
-async function callLLM(systemPrompt: string, userMessage: string): Promise<string> {
+export async function callLLM(systemPrompt: string, userMessage: string): Promise<string> {
     let url: string;
     let init: RequestInit;
 

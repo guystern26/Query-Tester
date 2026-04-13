@@ -23,8 +23,8 @@ function StepNode({ step, onClick }: { step: PipelineStep; onClick: () => void }
     text = 'text-green-400';
   } else if (step.isActive) {
     ring = 'border-accent-600';
-    bg = 'bg-accent-900';
-    text = 'text-accent-400';
+    bg = 'bg-navy-700';
+    text = 'text-blue-300';
     extra = 'animate-pipelinePulse';
   } else {
     ring = 'border-slate-600';
@@ -49,7 +49,7 @@ function StepNode({ step, onClick }: { step: PipelineStep; onClick: () => void }
           step.number
         )}
       </span>
-      <span className={`text-[10px] font-medium tracking-wide ${step.isComplete ? 'text-green-400/80' : step.isActive ? 'text-accent-400/80' : 'text-slate-500'}`}>
+      <span className={`text-[10px] font-medium tracking-wide ${step.isComplete ? 'text-green-400/80' : step.isActive ? 'text-blue-300/80' : 'text-slate-500'}`}>
         {step.label}
       </span>
     </button>
@@ -71,11 +71,11 @@ function Pipe({ leftComplete, rightActive, isRunning }: { leftComplete: boolean;
       />
       {/* traveling ball: show when left is complete but right isn't yet */}
       {leftComplete && rightActive && !isRunning && (
-        <div className="absolute top-1/2 -translate-y-1/2 w-2 h-2 bg-accent-400 rounded-full animate-travelRight opacity-80" />
+        <div className="absolute top-1/2 -translate-y-1/2 w-2 h-2 bg-blue-300 rounded-full animate-travelRight opacity-80" />
       )}
       {/* run sweep ball */}
       {isRunning && (
-        <div className="absolute top-1/2 -translate-y-1/2 w-2 h-2 bg-accent-400 rounded-full animate-runSweep opacity-80" />
+        <div className="absolute top-1/2 -translate-y-1/2 w-2 h-2 bg-blue-300 rounded-full animate-runSweep opacity-80" />
       )}
     </div>
   );

@@ -47,7 +47,7 @@ export function ScenarioTabRow({
                 );
             })}
             <button
-                className="w-6 h-6 rounded-full bg-navy-800 text-slate-400 text-sm ml-2 -mb-px flex items-center justify-center hover:text-accent-300 hover:bg-navy-700 transition-all duration-200 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                className="w-6 h-6 rounded-full bg-navy-800 text-slate-400 text-sm ml-2 -mb-px flex items-center justify-center hover:text-blue-300 hover:bg-navy-700 transition-all duration-200 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                 onClick={onAdd}
                 disabled={!canAdd}
             >
