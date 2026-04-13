@@ -8,7 +8,7 @@ import { useTestStore } from 'core/store/testStore';
 import { UnsavedChangesModal } from './features/layout/UnsavedChangesModal';
 import { SaveTestModal } from './components/test-navigation/SaveTestModal';
 
-type Page = 'library' | 'tester' | 'setup';
+type Page = 'library' | 'tester' | 'setup' | 'ide';
 
 /** Navigate to a hash target, stripping stale ?test_id= from the URL bar. */
 function setHash(target: string): void {
@@ -25,6 +25,7 @@ function getRoute(): { page: Page; testId?: string } {
     // Hash takes priority — once the user navigates away, respect it
     if (hash === 'setup') return { page: 'setup' };
     if (hash === 'library') return { page: 'library' };
+    if (hash === 'ide') return { page: 'ide' };
     if (hash.startsWith('tester')) {
         const params = new URLSearchParams(hash.split('?')[1] || '');
         return { page: 'tester', testId: params.get('test_id') || undefined };
@@ -204,6 +205,8 @@ export function AppShell(): React.ReactElement {
             />
             {route.page === 'setup' ? (
                 <SetupPage onNavigateBack={() => navigateTo('library')} />
+            ) : route.page === 'ide' ? (
+                <StartPage mode="ide" onNavigateLibrary={() => navigateTo('library')} />
             ) : route.page === 'tester' ? (
                 <StartPage onNavigateLibrary={() => navigateTo('library')} loadTestId={route.testId} />
             ) : (
