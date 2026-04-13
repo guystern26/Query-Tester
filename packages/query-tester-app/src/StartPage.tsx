@@ -146,8 +146,8 @@ export function StartPage({ mode = 'builder', onNavigateLibrary, loadTestId }: S
                                 <span className="text-[11px] text-slate-500 uppercase tracking-wider">App</span>
                                 <AppSelector value={app} onChange={handleAppChange} compact />
                             </div>
-                            {!isIde && <TestTypeSelector compact />}
-                            {!isIde && <ViewModeToggle />}
+                            {!isIde && <><div className="w-px h-5 bg-slate-700" /><TestTypeSelector compact /></>}
+                            {!isIde && <><div className="w-px h-5 bg-slate-700" /><ViewModeToggle /></>}
                         </div>
                     </div>
                     {/* Step pipeline hidden — panel titles serve the same purpose */}
