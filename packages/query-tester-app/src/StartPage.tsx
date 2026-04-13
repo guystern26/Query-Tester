@@ -128,7 +128,7 @@ export function StartPage({ mode = 'builder', onNavigateLibrary, loadTestId }: S
             {hasApp ? (
                 <>
                     <div className="shrink-0 px-5 pt-4 animate-fadeIn">
-                        <div className="flex items-center gap-5 px-5 py-2 bg-navy-900 rounded-xl border border-slate-800 shadow-md">
+                        <div className="flex items-center gap-5 px-5 py-2 bg-navy-800 rounded-xl border border-slate-700/20 shadow-lg shadow-black/20">
                             <div className="flex items-center gap-2.5">
                                 <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-[1.5px] shrink-0 border-green-500 bg-green-900/30 text-green-400">
                                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
@@ -184,13 +184,13 @@ export function StartPage({ mode = 'builder', onNavigateLibrary, loadTestId }: S
             )}
 
             {hasApp && isIde ? (
-                <div className="flex gap-4 p-5 flex-1 animate-fadeIn min-h-0">
-                    <div className="flex-1 bg-navy-900 rounded-xl border border-slate-800 p-5 overflow-y-auto flex flex-col gap-4 min-w-0">
-                        <span className="text-sm font-semibold text-slate-200">Query</span>
+                <div className="flex gap-2 px-5 pb-5 pt-3 flex-1 animate-fadeIn min-h-0">
+                    <div className="flex-1 bg-navy-800 rounded-xl border border-slate-700/20 p-5 shadow-lg shadow-black/20 overflow-y-auto flex flex-col gap-4 min-w-0">
+                        <span className="text-[13px] font-bold text-slate-400 uppercase tracking-wide">Query</span>
                         <QuerySection isIde />
                         <ContextInput />
                     </div>
-                    <div className={`shrink-0 bg-navy-900 rounded-xl border border-slate-800 p-5 overflow-y-auto transition-all duration-300 ${chatExpanded ? 'w-[60%]' : 'w-[380px]'}`}>
+                    <div className={`shrink-0 bg-navy-800 rounded-xl border border-slate-700/20 p-5 shadow-lg shadow-black/20 overflow-y-auto transition-all duration-300 ${chatExpanded ? 'w-[60%]' : 'w-[380px]'}`}>
                         <IntelligencePanel />
                     </div>
                 </div>
@@ -203,7 +203,7 @@ export function StartPage({ mode = 'builder', onNavigateLibrary, loadTestId }: S
             {!isIde && <TutorialOverlay tutorial={tutorial} />}
             {showTourPrompt && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50">
-                    <div className="bg-navy-900 border border-slate-700 rounded-xl p-6 max-w-sm shadow-2xl shadow-black/40 text-center">
+                    <div className="bg-navy-800 border border-slate-700/20 rounded-lg p-6 max-w-sm shadow-xl text-center">
                         <div className="mx-auto mb-4 w-12 h-12 rounded-full bg-blue-500/15 flex items-center justify-center">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-blue-400">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M12 18h.01" />
