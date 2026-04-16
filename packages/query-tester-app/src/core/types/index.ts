@@ -68,6 +68,8 @@ export interface TestInput {
   fileRef: { name: string; size: number } | null;
   generatorConfig: GeneratorConfig;
   queryDataConfig: QueryDataConfig;
+  /** Cached sample values from Splunk/LLM, keyed by field name. */
+  sampleValues?: Record<string, string>;
 }
 
 // ─── Scenario (4.3) ────────────────────────────────────────────────────────

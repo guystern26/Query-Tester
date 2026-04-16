@@ -87,12 +87,12 @@ export function QuerySection({ isIde }: QuerySectionProps): React.ReactElement {
 
   // Merge warnings; hide all while focused; filter fields by click-selection
   const activeFields = useMemo(() => selectedFields.size === 0 ? [] : fieldHighlights.filter((w) => selectedFields.has(w.token)), [fieldHighlights, selectedFields]);
-  // Editor shows linter warnings (dangerous commands) + injection markers
-  // Analysis notes from AI are suppressed from editor — they show in results only
+  // Editor shows linter warnings + injection markers + clicked field highlights
+  // AI analysis notes are suppressed from editor — they show in results only
   const editorMarkers = useMemo<SplWarning[]>(() => {
       if (editorFocused) return [];
-      return [...splWarnings, ...injectionMarkers];
-  }, [editorFocused, splWarnings, injectionMarkers]);
+      return [...splWarnings, ...injectionMarkers, ...activeFields];
+  }, [editorFocused, splWarnings, injectionMarkers, activeFields]);
 
   // Mark stale when SPL changes (ignore whitespace-only diffs from formatting)
   const normSpl = (s: string) => s.replace(/\s+/g, ' ').trim();
@@ -158,18 +158,6 @@ export function QuerySection({ isIde }: QuerySectionProps): React.ReactElement {
       <div className="flex gap-3 items-start">
         <div ref={editorRef} className="relative flex-1 min-w-0" onFocus={handleEditorFocus} onBlur={handleEditorBlur}>
           <SearchInput value={localSpl} onChange={handleSplChange} syntax={splSyntax} placeholder="index=main sourcetype=access_combined | stats count by src_ip" minLines={6} maxLines={20} showLineNumbers />
-          {hasIdentifiers && !editorFocused && (
-              <span className="absolute left-3 bottom-2 text-[11px] pointer-events-none flex items-center gap-1.5">
-                  <span className={`w-1.5 h-1.5 rounded-full ${matchCount > 0 ? 'bg-amber-500' : 'bg-slate-600'}`} />
-                  <span className={matchCount > 0 ? 'text-slate-400' : 'text-slate-600'}>
-                      {matchCount === 0
-                          ? 'No matches in query'
-                          : matchCount === 1
-                            ? '1 match — will be replaced'
-                            : `${matchCount} matches — all will be replaced`}
-                  </span>
-              </span>
-          )}
           <span className="absolute right-3 bottom-2 text-[11px] text-slate-500 pointer-events-none">{localSpl.length} chars</span>
         </div>
 
@@ -202,6 +190,19 @@ export function QuerySection({ isIde }: QuerySectionProps): React.ReactElement {
           </div>
         )}
       </div>
+
+      {hasIdentifiers && !editorFocused && (
+          <div className="flex items-center gap-1.5 mt-1 px-0.5">
+              <span className={`w-1.5 h-1.5 rounded-full ${matchCount > 0 ? 'bg-amber-500' : 'bg-slate-600'}`} />
+              <span className={`text-[11px] ${matchCount > 0 ? 'text-slate-400' : 'text-slate-600'}`}>
+                  {matchCount === 0
+                      ? 'No matches in query'
+                      : matchCount === 1
+                        ? '1 match — will be replaced'
+                        : `${matchCount} matches — all will be replaced`}
+              </span>
+          </div>
+      )}
 
       <AnalysisResultBar
         explanation={explanation}

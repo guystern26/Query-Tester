@@ -10,6 +10,7 @@ export interface FieldValueEditorProps {
     inputId: EntityId;
     events: InputEvent[];
     rowIdentifier: string;
+    sampleValues?: Record<string, string>;
 }
 
 const PlusIcon = () => (
@@ -48,6 +49,7 @@ export function FieldValueEditor({
     inputId,
     events,
     rowIdentifier,
+    sampleValues,
 }: FieldValueEditorProps): React.ReactElement {
     const addEvent = useTestStore((s) => s.addEvent);
     const deleteEvent = useTestStore((s) => s.deleteEvent);
@@ -60,6 +62,20 @@ export function FieldValueEditor({
     const canAddEvent = events.length < MAX_EVENTS_PER_INPUT;
     const canAddField = fieldCount < MAX_FIELDS_PER_EVENT;
     const usedFieldNames = events.length > 0 ? events[0].fieldValues.map((fv) => fv.field) : [];
+
+    const handleFieldNameChange = (fi: number, name: string) => {
+        updateFieldNameInAllEvents(testId, scenarioId, inputId, fi, name);
+        // Auto-fill sample value when a field is picked from the dropdown
+        const sample = sampleValues?.[name];
+        if (sample && events.length > 0) {
+            const fv = events[0].fieldValues[fi];
+            if (fv && fv.value === '') {
+                updateFieldValue(testId, scenarioId, inputId, events[0].id, fv.id, {
+                    value: sample,
+                });
+            }
+        }
+    };
 
     const handleAddEvent = () => canAddEvent && addEvent(testId, scenarioId, inputId);
     const handleAddField = () => {
@@ -180,15 +196,7 @@ export function FieldValueEditor({
                                             </button>
                                             <FieldNameDropdown
                                                 value={fieldName}
-                                                onChange={(v) =>
-                                                    updateFieldNameInAllEvents(
-                                                        testId,
-                                                        scenarioId,
-                                                        inputId,
-                                                        fi,
-                                                        v
-                                                    )
-                                                }
+                                                onChange={(v) => handleFieldNameChange(fi, v)}
                                                 usedFields={usedFieldNames}
                                                 rowIdentifier={rowIdentifier}
                                             />

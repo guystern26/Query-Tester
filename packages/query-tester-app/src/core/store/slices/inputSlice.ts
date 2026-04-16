@@ -173,6 +173,8 @@ export function inputSlice(set: SetState) {
         const s = t && findScenario(t, scenarioId);
         const input = s && findInput(s, inputId);
         if (!input || input.events.length === 0) return;
+        // Cache sample values for later field picks
+        input.sampleValues = { ...(input.sampleValues || {}), ...sampleRow };
         for (const fv of input.events[0].fieldValues) {
           const val = sampleRow[fv.field];
           if (val !== undefined && val !== null && fv.value === '') {
