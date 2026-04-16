@@ -9,8 +9,9 @@ import { SearchableSelect, Message } from '../../common';
 import { TimeRangePicker } from './TimeRangePicker';
 import { lintSpl, SplWarning } from './splLinter';
 import { useAceMarkers } from './useAceMarkers';
+import { useInjectionMarkers } from '../../hooks/useInjectionMarkers';
 import { useAnalyzeQuery } from './useAnalyzeQuery';
-import { AnalysisResultBar, TogglePill } from './AnalysisResultBar';
+import { AnalysisResultBar } from './AnalysisResultBar';
 import { IDE_POLICY } from './ideCommandPolicy';
 import { formatSpl } from './splFormatter';
 import { useSplSyntax } from '../../hooks/useSplSyntax';
@@ -58,7 +59,7 @@ export function QuerySection({ isIde }: QuerySectionProps) {
   const [appChanged, setAppChanged] = useState(false);
   const [splWarnings, setSplWarnings] = useState<SplWarning[]>([]);
   const [editorFocused, setEditorFocused] = useState(false);
-  const [showNotes, setShowNotes] = useState(true);
+
   const [selectedFields, setSelectedFields] = useState<Set<string>>(new Set());
   const editorRef = useRef<HTMLDivElement>(null);
 
@@ -69,6 +70,8 @@ export function QuerySection({ isIde }: QuerySectionProps) {
     analysisSummary, analysisError, unmatchedNotes, trackedFields,
     runAnalysis, clearAnalysis, markStale,
   } = useAnalyzeQuery();
+
+  const { markers: injectionMarkers, matchCount, hasIdentifiers } = useInjectionMarkers();
 
   // Sync analysis loading + results to Zustand store for IntelligencePanel sidebar
   useEffect(() => { setStoreAnalysisLoading(isAnalyzing); }, [isAnalyzing, setStoreAnalysisLoading]);
@@ -84,10 +87,11 @@ export function QuerySection({ isIde }: QuerySectionProps) {
 
   // Merge warnings; hide all while focused; filter fields by click-selection
   const activeFields = useMemo(() => selectedFields.size === 0 ? [] : fieldHighlights.filter((w) => selectedFields.has(w.token)), [fieldHighlights, selectedFields]);
-  const mergedWarnings = useMemo<SplWarning[]>(() => {
-    if (editorFocused) return [];
-    return [...splWarnings, ...(showNotes ? analysisNotes : []), ...activeFields];
-  }, [editorFocused, splWarnings, analysisNotes, activeFields, showNotes]);
+  // Editor only shows injection markers — linter/analysis notes suppressed from editor
+  const editorMarkers = useMemo<SplWarning[]>(() => {
+      if (editorFocused) return [];
+      return injectionMarkers;
+  }, [editorFocused, injectionMarkers]);
 
   // Mark stale when SPL changes (ignore whitespace-only diffs from formatting)
   const normSpl = (s: string) => s.replace(/\s+/g, ' ').trim();
@@ -108,7 +112,7 @@ export function QuerySection({ isIde }: QuerySectionProps) {
   }, [localSpl, effectivePolicy]);
 
   // Apply inline Ace markers + gutter annotations + hover tooltips
-  useAceMarkers(editorRef, mergedWarnings);
+  useAceMarkers(editorRef, editorMarkers);
 
   useEffect(() => { if (app !== prevApp.current && prevApp.current !== '') setAppChanged(true); prevApp.current = app; }, [app]);
   const ssOptions = savedSearches.map((s) => ({ value: s.name, label: s.name }));
@@ -153,6 +157,18 @@ export function QuerySection({ isIde }: QuerySectionProps) {
       <div className="flex gap-3 items-start">
         <div ref={editorRef} className="relative flex-1 min-w-0" onFocus={handleEditorFocus} onBlur={handleEditorBlur}>
           <SearchInput value={localSpl} onChange={handleSplChange} syntax={splSyntax} placeholder="index=main sourcetype=access_combined | stats count by src_ip" minLines={6} maxLines={20} showLineNumbers />
+          {hasIdentifiers && !editorFocused && (
+              <span className="absolute left-3 bottom-2 text-[11px] pointer-events-none flex items-center gap-1.5">
+                  <span className={`w-1.5 h-1.5 rounded-full ${matchCount > 0 ? 'bg-amber-500' : 'bg-slate-600'}`} />
+                  <span className={matchCount > 0 ? 'text-slate-400' : 'text-slate-600'}>
+                      {matchCount === 0
+                          ? 'No matches in query'
+                          : matchCount === 1
+                            ? '1 match — will be replaced'
+                            : `${matchCount} matches — all will be replaced`}
+                  </span>
+              </span>
+          )}
           <span className="absolute right-3 bottom-2 text-[11px] text-slate-500 pointer-events-none">{localSpl.length} chars</span>
         </div>
 
@@ -181,9 +197,7 @@ export function QuerySection({ isIde }: QuerySectionProps) {
               {isAnalyzing ? 'Analyzing...' : analysisStale ? 'Re-analyze Query' : 'Analyze Query'}
             </button>
             {analysisStale && <span className="text-[11px] text-amber-400/80 text-center leading-tight">Query changed — re-analyze for updated results.</span>}
-            {hasAnalysis && !analysisStale && (
-              <TogglePill label={showNotes ? 'Hide Notes' : 'Reveal Notes'} active={showNotes} onClick={() => setShowNotes((v) => !v)} />
-            )}
+
           </div>
         )}
       </div>
