@@ -61,23 +61,20 @@ function TestsTableRowInner({
 
     return (
         <tr onClick={handleRowClick} className="border-b border-slate-800 hover:bg-navy-700/15 cursor-pointer transition-colors duration-200">
-            <td className="px-4 py-3">
-                <span className="text-sm font-semibold text-slate-200">{test.name}</span>
+            <td className="px-4 py-3 max-w-[180px]">
+                <span className="text-sm font-semibold text-slate-200 truncate block">{test.name}</span>
             </td>
-            <td className="px-4 py-3 max-w-[200px]">
+            <td className="px-4 py-3 max-w-[160px]">
                 <span className="text-xs text-slate-400 truncate block">{test.description || '\u2014'}</span>
             </td>
-            <td className="px-4 py-3">
-                <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-navy-700 text-slate-300 border border-slate-700">{test.app || '\u2014'}</span>
+            <td className="px-4 py-3 max-w-[150px]">
+                <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-navy-700 text-slate-300 border border-slate-700 truncate block">{test.app || '\u2014'}</span>
             </td>
             <td className="px-4 py-3 max-w-[160px]">
                 <span className="text-xs text-slate-400 truncate block">{test.savedSearchOrigin || '\u2014'}</span>
             </td>
             <td className="px-4 py-3">
                 <span className={'px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider border ' + badge.cls}>{badge.label}</span>
-            </td>
-            <td className="px-4 py-3 text-center">
-                <span className="text-xs text-slate-400">{test.scenarioCount}</span>
             </td>
             <td className="px-4 py-3">
                 {isCreatingSchedule ? (
@@ -100,19 +97,6 @@ function TestsTableRowInner({
                                 </span>
                             </>
                         )}
-                    </div>
-                ) : (
-                    <span className="text-[11px] text-slate-600">&mdash;</span>
-                )}
-            </td>
-            <td className="px-4 py-3">
-                {schedule && schedule.lastRunAt ? (
-                    <div className="flex items-center gap-1.5">
-                        <span className={'w-1.5 h-1.5 rounded-full shrink-0 ' + (STATUS_STYLES[schedule.lastRunStatus || '']?.dot || 'bg-slate-600')} />
-                        <span className={'text-[11px] font-medium ' + (STATUS_STYLES[schedule.lastRunStatus || '']?.text || 'text-slate-500')}>
-                            {STATUS_STYLES[schedule.lastRunStatus || '']?.label || schedule.lastRunStatus || '—'}
-                        </span>
-                        <span className="text-[10px] text-slate-500" title={schedule.lastRunAt}>{relativeTime(schedule.lastRunAt)}</span>
                     </div>
                 ) : (
                     <span className="text-[11px] text-slate-600">&mdash;</span>
@@ -170,6 +154,19 @@ function TestsTableRowInner({
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                         </button>
                     </div>
+                )}
+            </td>
+            <td className="px-4 py-3 whitespace-nowrap">
+                {schedule && schedule.lastRunAt ? (
+                    <div className="flex items-center gap-1.5">
+                        <span className={'w-1.5 h-1.5 rounded-full shrink-0 ' + (STATUS_STYLES[schedule.lastRunStatus || '']?.dot || 'bg-slate-600')} />
+                        <span className={'text-[11px] font-medium ' + (STATUS_STYLES[schedule.lastRunStatus || '']?.text || 'text-slate-500')}>
+                            {STATUS_STYLES[schedule.lastRunStatus || '']?.label || schedule.lastRunStatus || '\u2014'}
+                        </span>
+                        <span className="text-[10px] text-slate-500" title={schedule.lastRunAt}>{relativeTime(schedule.lastRunAt)}</span>
+                    </div>
+                ) : (
+                    <span className="text-[11px] text-slate-600">&mdash;</span>
                 )}
             </td>
         </tr>

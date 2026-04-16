@@ -1075,8 +1075,8 @@ video {
 .min-w-0 {
   min-width: 0px;
 }
-.min-w-\[1280px\] {
-  min-width: 1280px;
+.min-w-\[1400px\] {
+  min-width: 1400px;
 }
 .min-w-\[140px\] {
   min-width: 140px;
@@ -1099,8 +1099,14 @@ video {
 .max-w-7xl {
   max-width: 80rem;
 }
+.max-w-\[150px\] {
+  max-width: 150px;
+}
 .max-w-\[160px\] {
   max-width: 160px;
+}
+.max-w-\[180px\] {
+  max-width: 180px;
 }
 .max-w-\[200px\] {
   max-width: 200px;

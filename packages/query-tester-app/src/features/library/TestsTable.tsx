@@ -7,7 +7,7 @@ const TH = 'px-4 py-3.5 text-left text-[10px] font-bold text-slate-500/80 upperc
 function SkeletonRow() {
     return (
         <tr className="border-b border-slate-800">
-            {Array.from({ length: 11 }).map((_, i) => (
+            {Array.from({ length: 10 }).map((_, i) => (
                 <td key={i} className="px-4 py-3">
                     <div className="h-4 bg-navy-700 rounded animate-pulse" style={{ width: i === 1 ? '70%' : '60%' }} />
                 </td>
@@ -48,7 +48,7 @@ export function TestsTable({
                             <th className={TH}>Description</th>
                             <th className={TH}>App</th>
                             <th className={TH}>Type</th>
-                            <th className={TH + ' text-center'}>Scenarios</th>
+    
                             <th className={TH}>Schedule</th>
                             <th className={TH}>Last Run</th>
                             <th className={TH}>Created by</th>
@@ -80,7 +80,7 @@ export function TestsTable({
 
     return (
         <div className="bg-navy-800 rounded-xl border border-slate-700/20 overflow-x-auto shadow-lg shadow-black/20">
-            <table className="w-full min-w-[1280px]">
+            <table className="w-full min-w-[1400px]">
                 <thead>
                     <tr className="border-b border-slate-700 bg-navy-900/50">
                         <th className={TH}>Name</th>
@@ -88,12 +88,11 @@ export function TestsTable({
                         <th className={TH}>App</th>
                         <th className={TH}>Saved Search</th>
                         <th className={TH}>Type</th>
-                        <th className={TH + ' text-center'}>Scenarios</th>
                         <th className={TH}>Schedule</th>
-                        <th className={TH}>Last Run</th>
                         <th className={TH}>Created by</th>
                         <th className={TH}>Updated</th>
                         <th className={TH + ' whitespace-nowrap'}>Actions</th>
+                        <th className={TH}>Last Run</th>
                     </tr>
                 </thead>
                 <tbody>
