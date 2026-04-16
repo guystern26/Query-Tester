@@ -80,7 +80,7 @@ export function TestsTable({
 
     return (
         <div className="bg-navy-800 rounded-xl border border-slate-700/20 overflow-x-auto shadow-lg shadow-black/20">
-            <table className="w-full min-w-[1100px]">
+            <table className="w-full min-w-[1280px]">
                 <thead>
                     <tr className="border-b border-slate-700 bg-navy-900/50">
                         <th className={TH}>Name</th>
