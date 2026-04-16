@@ -100,14 +100,19 @@ def _validate_groups(
             if fail_fast and not detail.passed:
                 details.extend(group_details)
                 return False
-        details.extend(group_details)
         if not group_details:
             continue
 
         if group.condition_logic == "or":
             group_passed = any(d.passed for d in group_details)
+            # For OR groups that passed, only show the passing branches
+            if group_passed:
+                details.extend([d for d in group_details if d.passed])
+            else:
+                details.extend(group_details)
         else:
             group_passed = all(d.passed for d in group_details)
+            details.extend(group_details)
         group_results.append(group_passed)
         if fail_fast and not group_passed:
             return False
@@ -139,12 +144,17 @@ def _validate_flat_conditions(
             details.extend(field_details)
             return False
 
-    details.extend(field_details)
-
     if validation.field_logic == "or":
-        if field_details and not any(d.passed for d in field_details):
+        or_passed = bool(field_details) and any(d.passed for d in field_details)
+        # For OR logic that passed, only show the passing branches
+        if or_passed:
+            details.extend([d for d in field_details if d.passed])
+        else:
+            details.extend(field_details)
+        if field_details and not or_passed:
             return False
     else:
+        details.extend(field_details)
         if any(not d.passed for d in field_details):
             return False
     return True
