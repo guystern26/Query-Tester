@@ -33,11 +33,25 @@ Recognize all of the following as distinct data sources and use the specified ke
 - multisearch (each sub-search) → own source key per sub-search
 - Macros \`macro_name\` → key: "macro=<macro_name>"
 - savedsearch "name" → key: "savedsearch=<n>"
-When index and sourcetype appear together in the same search clause, combine them into one key. If only index is present, use index alone.
+
+IMPORTANT — Data source key must include ALL base filter clauses:
+When index and sourcetype appear together in the same search clause, combine them into one key. Also include any other base filter predicates that IDENTIFY the data source — these are filters that appear in the initial search clause (before the first pipe) and narrow WHICH data is being queried, not WHAT fields to extract. Common examples:
+- sourcetype=<st> → always include in the data source key
+- source=<s> → include in data source key
+- data_type=<dt> → include in data source key
+- project=<p> → include in data source key
+- eventtype=<et> → include in data source key
+- tag=<t> → include in data source key
+- Any other key=value filter in the base search clause that acts as a data source selector
+
+Example: "index=main sourcetype=access_combined data_type=web project=frontend" → key: "index=main sourcetype=access_combined data_type=web project=frontend"
+
+These base filter fields (sourcetype, source, data_type, project, eventtype, tag, etc.) must NOT appear in the extracted fields array — they are part of the data source identity, not fields to populate in test events.
+If only index is present with no other filters, use index alone.
 
 FIELDS TO INCLUDE (original/source fields):
 These are fields that exist in the raw data source or are natively provided by Splunk for that source.
-1. Filter predicates — fields in where, search, or initial search terms. Example: search index=main status=500 host=web* → status, host
+1. Filter predicates — fields in where, search, or MID-PIPELINE search terms. Example: search index=main status=500 host=web* → status, host. NOTE: Base search clause filters that are part of the data source key (index, sourcetype, source, data_type, project, eventtype, tag) are EXCLUDED — they belong to the data source identity, not the fields array.
 2. eval right-hand references — original fields consumed on the right side of =. Example: eval duration = end_time - start_time → end_time, start_time
 3. rex field= parameter — the source field being extracted from. Example: rex field=_raw "user=(?<extracted_user>\\w+)" → _raw
 4. stats/eventstats/streamstats — aggregation arguments and by-clause fields. Example: stats avg(response_time) by host → response_time, host
