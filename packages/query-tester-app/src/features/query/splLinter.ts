@@ -22,7 +22,7 @@ export interface SplWarning {
     /** Human-readable explanation. */
     message: string;
     /** Severity — drives styling. */
-    severity: 'error' | 'warning' | 'info' | 'field';
+    severity: 'error' | 'warning' | 'info' | 'field' | 'injection';
     /** Whether this command is blocked by policy. */
     isBlocked: boolean;
     /** Color index for field-tracking highlights (only when severity === 'field'). */

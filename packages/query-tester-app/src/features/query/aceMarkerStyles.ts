@@ -12,6 +12,7 @@ export const MARKER_CLASSES: Record<string, string> = {
     error: 'spl-lint-error',
     warning: 'spl-lint-warning',
     info: 'spl-lint-info',
+    injection: 'spl-injection-match',
 };
 
 /** Returns the CSS class for a field-tracking marker by color index. */
@@ -48,6 +49,13 @@ const MARKER_CSS = `
       position: absolute;
       background: rgba(74,222,128,0.12);
       border-bottom: 2px dotted rgba(74,222,128,0.5);
+      border-radius: 2px;
+      z-index: 4;
+    }
+    .spl-injection-match {
+      position: absolute;
+      background: rgba(245, 158, 11, 0.08);
+      border-bottom: 2px solid rgba(245, 158, 11, 0.5);
       border-radius: 2px;
       z-index: 4;
     }
