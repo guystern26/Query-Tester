@@ -124,7 +124,7 @@ function TestsTableRowInner({
             <td className="px-4 py-3">
                 <span className="text-xs text-slate-400" title={test.updatedAt}>{relativeTime(test.updatedAt)}</span>
             </td>
-            <td className="px-4 py-3">
+            <td className="px-4 py-3 whitespace-nowrap">
                 {isLoading ? (
                     <div className="flex items-center justify-center">
                         <div className="w-4 h-4 border-2 border-slate-600 border-t-blue-400 rounded-full animate-spin" />
