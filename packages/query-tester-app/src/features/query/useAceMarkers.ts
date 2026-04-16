@@ -114,7 +114,7 @@ export function useAceMarkers(
             const id = session.addMarker(range, cls, 'text', true);
             markerIds.current.push(id);
 
-            if (w.severity !== 'field') {
+            if (w.severity !== 'field' && w.severity !== 'injection') {
                 annotations.push({
                     row: startPos.row,
                     column: startPos.column,
