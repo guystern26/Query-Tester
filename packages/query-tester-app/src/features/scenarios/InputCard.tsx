@@ -6,6 +6,7 @@ import { FieldValueEditor } from '../../components/inputs/FieldValueEditor';
 import { JsonInputView } from '../../components/inputs/JsonInputView';
 import { QueryDataView } from '../../components/inputs/QueryDataView';
 import { DataSourceSelector } from './DataSourceSelector';
+import { useInjectionMarkers } from '../../hooks/useInjectionMarkers';
 import { EventGeneratorToggle } from './EventGeneratorToggle';
 import { NoEventsIcon, ChevronIcon, MODE_LABELS, INPUT_MODES } from './inputIcons';
 
@@ -32,6 +33,7 @@ function InputCardInner({ testId, scenarioId, input, index, isOpen = true, onTog
   const deleteInput = useTestStore((s) => s.deleteInput);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const num = index ?? 1;
+  const { matchCount, hasIdentifiers } = useInjectionMarkers();
 
   const setMode = (mode: InputMode) => {
     setInputMode(testId, scenarioId, input.id, mode);
@@ -128,7 +130,7 @@ function InputCardInner({ testId, scenarioId, input, index, isOpen = true, onTog
           </button>
         </div>
 
-        <DataSourceSelector testId={testId} scenarioId={scenarioId} inputId={input.id} value={input.rowIdentifier} />
+        <DataSourceSelector testId={testId} scenarioId={scenarioId} inputId={input.id} value={input.rowIdentifier} matchCount={matchCount} hasIdentifiers={hasIdentifiers} />
 
         <div className="flex gap-0.5 mb-4">
           {INPUT_MODES.map(({ key, label, Icon }) => {

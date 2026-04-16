@@ -12,6 +12,8 @@ export interface DataSourceSelectorProps {
   scenarioId: EntityId;
   inputId: EntityId;
   value: string;
+  matchCount: number;
+  hasIdentifiers: boolean;
 }
 
 const ChevronDown = () => (
@@ -20,7 +22,7 @@ const ChevronDown = () => (
   </svg>
 );
 
-export function DataSourceSelector({ testId, scenarioId, inputId, value }: DataSourceSelectorProps) {
+export function DataSourceSelector({ testId, scenarioId, inputId, value, matchCount, hasIdentifiers }: DataSourceSelectorProps) {
   const test = useTestStore(selectActiveTest);
   const selectDataSource = useTestStore((s) => s.selectDataSource);
   const fetchSampleValues = useTestStore((s) => s.fetchSampleValues);
@@ -69,6 +71,9 @@ export function DataSourceSelector({ testId, scenarioId, inputId, value }: DataS
 
   return (
     <div ref={wrapRef} className="relative w-full mb-4">
+      <div className="mb-1.5">
+        <span className="text-[11px] text-slate-500 uppercase tracking-wider font-semibold">Inject Into</span>
+      </div>
       <div className="flex">
         <input
           type="text"
@@ -95,12 +100,20 @@ export function DataSourceSelector({ testId, scenarioId, inputId, value }: DataS
         )}
       </div>
 
-      <p className="mt-1 text-[11px] text-slate-500 leading-snug">
-        Use the full filter clause from your query (e.g.{' '}
-        <code className="text-slate-400">index=main sourcetype=access_combined</code>).
-        A partial match like <code className="text-slate-400">index=main</code> will replace
-        every occurrence in the query.
+      <p className="mt-1.5 text-[11px] text-slate-500 leading-snug">
+        This text will be <strong className="text-slate-400">found and replaced</strong> in
+        your query with a temp index containing your test events.
       </p>
+      {hasIdentifiers && value.trim() && (
+        <div className="flex items-center gap-1.5 mt-1.5">
+          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${matchCount > 0 ? 'bg-amber-500' : 'bg-slate-600'}`} />
+          <span className={`text-[11px] ${matchCount > 0 ? 'text-amber-500/80' : 'text-slate-600'}`}>
+            {matchCount === 0
+              ? 'No matches in query'
+              : `${matchCount} match${matchCount !== 1 ? 'es' : ''} highlighted in query`}
+          </span>
+        </div>
+      )}
       {loadingValues && (
         <div className="flex items-center gap-1.5 mt-1.5 text-[11px] text-blue-300">
           <span className="w-2.5 h-2.5 border-[1.5px] border-blue-300 border-t-transparent rounded-full animate-spin" />
