@@ -53,20 +53,21 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     },
     {
         id: 'row-identifier',
-        title: 'Set your row identifier',
+        title: 'Set your data source',
         content:
-            'The row identifier tells the injector where to insert your test data into the query. ' +
-            'It should match the base search clause — typically the index and sourcetype.',
+            'The "Inject Into" field tells the test runner which part of your query to replace ' +
+            'with test data. It should match the base search clause — typically the index and ' +
+            'sourcetype. Matching text is highlighted in amber in the query editor.',
         selector: '[data-tutorial="row-identifier"], input[placeholder*="index=main sourcetype"]',
         panel: 'data',
     },
     {
         id: 'row-id-value',
-        title: 'The value must be exact too',
+        title: 'The value must match exactly',
         content:
-            'The identifier must exactly match what appears in your SPL. If your query says ' +
-            '`index=main sourcetype=access_combined`, the identifier must be that exact string. ' +
-            'Whitespace and casing matter.',
+            'The text must exactly match what appears in your SPL. If your query says ' +
+            'index=main sourcetype=access_combined, the inject-into field must be that exact ' +
+            'string. Watch the highlight in the query panel to confirm it matches.',
         selector: '[data-tutorial="row-identifier"], input[placeholder*="index=main sourcetype"]',
         panel: 'data',
     },
