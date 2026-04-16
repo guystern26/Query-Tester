@@ -103,6 +103,8 @@ export function DataSourceSelector({ testId, scenarioId, inputId, value, matchCo
       <p className="mt-1.5 text-[11px] text-slate-500 leading-snug">
         This text will be <strong className="text-slate-400">found and replaced</strong> in
         your query with a temp index containing your test events.
+        Enter only the data source filter (e.g. <code className="text-slate-400">index=main sourcetype=...</code>),
+        not the pipe or brackets before it.
       </p>
       {hasIdentifiers && value.trim() && (
         <div className="flex items-center gap-1.5 mt-1.5">

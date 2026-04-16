@@ -64,7 +64,7 @@ export function useInjectionMarkers(): InjectionMatchResult {
         for (const scenario of test.scenarios) {
             for (const input of scenario.inputs) {
                 const trimmed = input.rowIdentifier.trim();
-                if (trimmed) ids.push(trimmed);
+                if (trimmed.length >= 6) ids.push(trimmed);
             }
         }
         return [...new Set(ids)]; // deduplicate
