@@ -59,8 +59,13 @@ export function llmActionsSlice(_set: SetState, get: GetState) {
             scenarioId: EntityId,
             spl: string,
         ): Promise<ExtractedDataSource[]> => {
-            const sources = await extractDataSources(spl);
-
+            let sources: ExtractedDataSource[];
+            try {
+                sources = await extractDataSources(spl);
+            } catch {
+                // Fallback mock data for dev mode (no LLM configured)
+                sources = _mockExtractedSources(spl);
+            }
             const store = get() as ReturnType<typeof get> & {
                 setFieldExtraction: (id: EntityId, sources: ExtractedDataSource[]) => void;
             };
@@ -76,7 +81,8 @@ export function llmActionsSlice(_set: SetState, get: GetState) {
             testId: EntityId,
             spl: string,
         ): Promise<{ fields: string[]; newCount: number }> => {
-            const fields = await extractValidationFields(spl);
+            let fields: string[];
+            try { fields = await extractValidationFields(spl); } catch { fields = _mockValidationFields(spl); }
 
             const test = get().tests.find((t) => t.id === testId);
             const existingFields = new Set(
@@ -84,10 +90,11 @@ export function llmActionsSlice(_set: SetState, get: GetState) {
             );
             const newFields = fields.filter((f) => !existingFields.has(f));
 
+            // Store suggested fields for the dropdown — don't auto-create groups
             const store = get() as ReturnType<typeof get> & {
-                applySuggestedValidationFields: (id: EntityId, flds: string[]) => void;
+                setSuggestedValidationFields: (id: EntityId, flds: string[]) => void;
             };
-            store.applySuggestedValidationFields(testId, fields);
+            store.setSuggestedValidationFields(testId, fields);
 
             return { fields, newCount: newFields.length };
         },
@@ -147,4 +154,33 @@ export function llmActionsSlice(_set: SetState, get: GetState) {
             }
         },
     };
+}
+
+// ── Mock data for dev mode (no LLM / no Splunk) ────────────────────────────
+
+function _mockExtractedSources(spl: string): ExtractedDataSource[] {
+    // Parse index=X sourcetype=Y from the SPL to build a plausible source
+    const idxMatch = /index\s*=\s*(\S+)/.exec(spl);
+    const stMatch = /sourcetype\s*=\s*(\S+)/.exec(spl);
+    const ri = (idxMatch ? 'index=' + idxMatch[1] : 'index=main') + (stMatch ? ' sourcetype=' + stMatch[1] : '');
+    // Extract field names from stats/eval/by clauses
+    const fields: string[] = [];
+    const byMatch = /\bby\s+([\w,\s]+)/gi;
+    let m: RegExpExecArray | null;
+    while ((m = byMatch.exec(spl)) !== null) { for (const f of m[1].split(/[,\s]+/)) { if (f && !fields.includes(f)) fields.push(f); } }
+    const asMatch = /\bas\s+(\w+)/gi;
+    while ((m = asMatch.exec(spl)) !== null) { if (!fields.includes(m[1])) fields.push(m[1]); }
+    if (fields.length === 0) fields.push('_time', 'host', 'source', 'sourcetype');
+    return [{ rowIdentifier: ri, fields }];
+}
+
+function _mockValidationFields(spl: string): string[] {
+    const fields: string[] = [];
+    const byMatch = /\bby\s+([\w,\s]+)/gi;
+    let m: RegExpExecArray | null;
+    while ((m = byMatch.exec(spl)) !== null) { for (const f of m[1].split(/[,\s]+/)) { if (f && !fields.includes(f)) fields.push(f); } }
+    const asMatch = /\bas\s+(\w+)/gi;
+    while ((m = asMatch.exec(spl)) !== null) { if (!fields.includes(m[1])) fields.push(m[1]); }
+    if (fields.length === 0) fields.push('count', 'status', 'host');
+    return fields;
 }

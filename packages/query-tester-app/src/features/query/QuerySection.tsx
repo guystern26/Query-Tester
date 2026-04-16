@@ -33,6 +33,8 @@ export function QuerySection({ isIde }: QuerySectionProps) {
   const setStoreAnalysisNotes = useTestStore((s) => s.setAnalysisNotes);
   const setStoreAnalysisLoading = useTestStore((s) => s.setAnalysisLoading);
   const chatSkills = useTestStore((s) => s.chatSkills);
+  const extractDS = useTestStore((s) => s.fetchExtractDataSources);
+  const suggestVF = useTestStore((s) => s.fetchSuggestValidationFields);
 
   const app = test?.app ?? '';
   const spl = test?.query?.spl ?? '';
@@ -87,13 +89,10 @@ export function QuerySection({ isIde }: QuerySectionProps) {
     return [...splWarnings, ...(showNotes ? analysisNotes : []), ...activeFields];
   }, [editorFocused, splWarnings, analysisNotes, activeFields, showNotes]);
 
-  // Mark analysis stale when SPL changes — ignore whitespace-only diffs (formatting)
+  // Mark stale when SPL changes (ignore whitespace-only diffs from formatting)
   const normSpl = (s: string) => s.replace(/\s+/g, ' ').trim();
   const prevSplRef = useRef(localSpl);
-  useEffect(() => {
-    if (normSpl(prevSplRef.current) !== normSpl(localSpl)) { markStale(); setSelectedFields(new Set()); }
-    prevSplRef.current = localSpl;
-  }, [localSpl, markStale]);
+  useEffect(() => { if (normSpl(prevSplRef.current) !== normSpl(localSpl)) { markStale(); setSelectedFields(new Set()); } prevSplRef.current = localSpl; }, [localSpl, markStale]);
 
   const handleToggleField = useCallback((name: string) => {
     setSelectedFields((prev) => { const n = new Set(prev); if (n.has(name)) n.delete(name); else n.add(name); return n; });
@@ -171,6 +170,8 @@ export function QuerySection({ isIde }: QuerySectionProps) {
                 setSelectedFields(new Set());
                 const skills = chatSkills.filter((s) => s.enabled).map((s) => ({ name: s.name, prompt: s.prompt }));
                 runAnalysis(formatted, skills.length > 0 ? skills : undefined);
+                // Fire extract + suggest in parallel (background)
+                if (test && !isIde) { const sid = test.scenarios[0]?.id; if (sid) void extractDS(test.id, sid, formatted).catch(() => {}); void suggestVF(test.id, formatted).catch(() => {}); }
               }}>
               {isAnalyzing ? (
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin"><path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round" /></svg>

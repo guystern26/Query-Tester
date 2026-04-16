@@ -152,7 +152,7 @@ function InputCardInner({ testId, scenarioId, input, index, isOpen = true, onTog
 
         <div>
           {input.inputMode === 'fields' && (
-            <FieldValueEditor testId={testId} scenarioId={scenarioId} inputId={input.id} events={input.events} />
+            <FieldValueEditor testId={testId} scenarioId={scenarioId} inputId={input.id} events={input.events} rowIdentifier={input.rowIdentifier} />
           )}
           {input.inputMode === 'json' && (
             <JsonInputView testId={testId} scenarioId={scenarioId} inputId={input.id} />

@@ -103,6 +103,12 @@ export function testSlice(set: SetState, _get: GetState) {
         if (t) t.fieldExtraction = { sources, timestamp: new Date().toISOString() };
       }),
 
+    setSuggestedValidationFields: (testId: EntityId, fields: string[]) =>
+      set((draft) => {
+        const t = findTest(draft.tests, testId);
+        if (t) t.suggestedValidationFields = fields;
+      }),
+
     createTestFromTransfer: (spl: string, app: string, name: string) => {
       skipNextTestsChange();
       set((draft) => {

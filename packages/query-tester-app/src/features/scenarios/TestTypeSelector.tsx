@@ -42,7 +42,7 @@ export function TestTypeSelector({ compact = false }: Props) {
         <span className="text-[11px] text-slate-500 uppercase tracking-wider shrink-0">Type</span>
         <div className="flex rounded-lg p-0.5 gap-0.5 shrink-0">
           <button className={`${pillBase} ${testType === 'standard' ? pillActive : pillInactive}`} onClick={() => handleSelect('standard')}>{LABELS.standard}</button>
-          <button className={`${pillBase} ${testType === 'query_only' ? pillActive : pillInactive}`} onClick={() => handleSelect('query_only')}>{LABELS.query_only}</button>
+          <button data-tutorial="query-only" className={`${pillBase} ${testType === 'query_only' ? pillActive : pillInactive}`} onClick={() => handleSelect('query_only')}>{LABELS.query_only}</button>
         </div>
       </div>
     );

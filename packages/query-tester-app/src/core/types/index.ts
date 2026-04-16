@@ -140,6 +140,7 @@ export interface TestDefinition {
   validation: ValidationConfig;
   /** AI extraction result (section 6.1). Stored on test for save/load. */
   fieldExtraction?: FieldExtraction;
+  suggestedValidationFields?: string[];
 }
 
 // ─── AI extraction (6.1) ────────────────────────────────────────────────────

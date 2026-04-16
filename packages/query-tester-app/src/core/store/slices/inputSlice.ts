@@ -161,12 +161,10 @@ export function inputSlice(set: SetState) {
         if (!input) return;
         input.rowIdentifier = source.rowIdentifier;
         input.inputMode = 'fields';
-        input.events = [
-          {
-            id: genId(),
-            fieldValues: source.fields.map((f) => ({ id: genId(), field: f, value: '' })),
-          },
-        ];
+        // Don't auto-populate fields — user picks from dropdown
+        if (input.events.length === 0) {
+          input.events = [{ id: genId(), fieldValues: [] }];
+        }
       }),
 
     applyFieldSampleValues: (testId: EntityId, scenarioId: EntityId, inputId: EntityId, sampleRow: Record<string, string>) =>

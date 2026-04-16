@@ -26,10 +26,10 @@ export function FieldNameSelector({ testId, groupId, value, className = '' }: Fi
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
-  // Get suggested fields from field extraction (output fields)
-  const suggested = test?.fieldExtraction?.sources.flatMap((s) => s.fields) || [];
-  // Deduplicate
-  const uniqueSuggested = Array.from(new Set(suggested));
+  // Merge field extraction + LLM-suggested validation fields
+  const extracted = test?.fieldExtraction?.sources.flatMap((s) => s.fields) || [];
+  const suggested = test?.suggestedValidationFields || [];
+  const uniqueSuggested = Array.from(new Set([...extracted, ...suggested]));
   const hasSuggestions = uniqueSuggested.length > 0;
 
   // Filter suggestions by current input

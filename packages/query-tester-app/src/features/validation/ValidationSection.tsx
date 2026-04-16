@@ -32,7 +32,7 @@ export function ValidationSection() {
     <div className="flex flex-col gap-3">
       <ResultCountSection testId={test.id} resultCount={test.validation.resultCount} />
 
-      <div className="flex bg-navy-950 rounded-lg p-1 border border-slate-700 w-fit">
+      <div data-tutorial="validation-type" className="flex bg-navy-950 rounded-lg p-1 border border-slate-700 w-fit">
         <button
           className={`${segBase} rounded-md ${type === 'standard' ? 'bg-navy-700 text-white border-2 border-slate-600' : 'text-slate-400 hover:text-slate-200'}`}
           onClick={() => setValidationType(test.id, 'standard')}

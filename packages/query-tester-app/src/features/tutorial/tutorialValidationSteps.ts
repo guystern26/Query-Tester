@@ -8,7 +8,7 @@ export const TUTORIAL_VALIDATION_STEPS: TutorialStep[] = [
         content:
             'The simplest validation: just check how many rows your query returns. Set an ' +
             'expected count with an operator (equals, greater than, etc.) and you have a test.',
-        selector: '[data-tutorial="result-count"], .bg-navy-900.rounded-lg.p-3.border',
+        selector: '[data-tutorial="result-count"]',
         panel: 'validation',
     },
     {
@@ -17,7 +17,7 @@ export const TUTORIAL_VALIDATION_STEPS: TutorialStep[] = [
         content:
             'Choose how to compare the actual result count: exactly equals, greater than, ' +
             'less than, or a range. "Greater than 0" is a common smoke test.',
-        selector: '[data-tutorial="result-count-op"], .bg-navy-900.rounded-lg.p-3 select',
+        selector: '[data-tutorial="result-count"] select',
         panel: 'validation',
     },
     {
@@ -35,7 +35,7 @@ export const TUTORIAL_VALIDATION_STEPS: TutorialStep[] = [
         content:
             'Field conditions within a group are ANDed (all must match). Switch to OR when ' +
             'any single condition passing is enough. Groups let you mix AND/OR logic.',
-        selector: '[data-tutorial="field-logic"], .bg-navy-800.rounded-lg.border.border-slate-700.p-4',
+        selector: '[data-tutorial="field-logic"], .bg-navy-900.rounded-lg.border.border-slate-700.p-4',
         panel: 'validation',
     },
     {
@@ -44,7 +44,7 @@ export const TUTORIAL_VALIDATION_STEPS: TutorialStep[] = [
         content:
             'Choose whether conditions apply to any row, every row, or a specific row. ' +
             '"Any" passes if at least one row matches. "Every" requires all rows to match.',
-        selector: '[data-tutorial="validation-scope"], .bg-navy-900.rounded-lg.p-3.border.border-slate-800',
+        selector: '[data-tutorial="validation-scope"]',
         panel: 'validation',
     },
     {
@@ -53,7 +53,7 @@ export const TUTORIAL_VALIDATION_STEPS: TutorialStep[] = [
         content:
             'Standard mode validates query results directly. iJump mode tests Splunk alerts — ' +
             'it checks whether the alert would have triggered based on your test data.',
-        selector: '[data-tutorial="validation-type"], .bg-navy-950.rounded-lg.p-1.border.border-slate-700.w-fit',
+        selector: '[data-tutorial="validation-type"]',
         panel: 'validation',
     },
     {
@@ -62,7 +62,7 @@ export const TUTORIAL_VALIDATION_STEPS: TutorialStep[] = [
         content:
             'iJump mode wraps your query in alert trigger logic. It validates that the alert ' +
             'fires (or does not fire) given your test events. Perfect for testing alerting rules.',
-        selector: '[data-tutorial="ijump-mode"], .bg-navy-950.rounded-lg.p-1.border.border-slate-700.w-fit :last-child',
+        selector: '[data-tutorial="validation-type"] button:last-child',
         panel: 'validation',
     },
     {
@@ -71,7 +71,7 @@ export const TUTORIAL_VALIDATION_STEPS: TutorialStep[] = [
         content:
             'Skip data injection and validation entirely — just run the SPL and see what comes ' +
             'back. Useful for exploring queries or debugging before writing full test scenarios.',
-        selector: '[data-tutorial="query-only"], .bg-navy-950\\/80.rounded-xl.p-0\\.5.border :last-child',
+        selector: '[data-tutorial="query-only"]',
         panel: 'setup',
     },
     {
@@ -92,23 +92,6 @@ export const TUTORIAL_VALIDATION_STEPS: TutorialStep[] = [
             'the full result card with actual values compared against your conditions.',
         selector: '[data-tutorial="results-bar"], .fixed.bottom-0.left-0.right-0',
         panel: 'results',
-    },
-    {
-        id: 'export-btn',
-        title: 'Export your test',
-        content:
-            'Export downloads your test definition as a JSON file. Use it to share tests with ' +
-            'teammates, back them up locally, or send them to a backend system as a payload ' +
-            'for CI/CD integration.',
-        selector: '[data-tutorial="export-btn"]',
-    },
-    {
-        id: 'import-btn',
-        title: 'Import a test',
-        content:
-            'Import loads a test definition from a local JSON file. Use it to restore a backup, ' +
-            'load a test shared by a teammate, or bring in tests from another environment.',
-        selector: '[data-tutorial="import-btn"]',
     },
     {
         id: 'save-test-btn',

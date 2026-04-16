@@ -19,7 +19,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
             'This bar shows your test name, target app, and test type. Every test targets ' +
             'a specific Splunk app — this determines the namespace for all SPL execution. ' +
             'Once you add data, the app locks to prevent namespace mismatches.',
-        selector: '[data-tutorial="setup-bar"], .flex.items-center.gap-5.px-5.py-2.bg-navy-900.rounded-xl',
+        selector: '[data-tutorial="setup-bar"], .flex.items-center.gap-5.px-5.py-2.bg-navy-800.rounded-xl',
         panel: 'setup',
     },
     {
@@ -58,7 +58,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
             'The row identifier tells the injector where to insert your test data into the query. ' +
             'It should match the base search clause — typically the index and sourcetype.',
         selector: '[data-tutorial="row-identifier"], input[placeholder*="index=main sourcetype"]',
-        panel: 'query',
+        panel: 'data',
     },
     {
         id: 'row-id-value',
@@ -68,7 +68,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
             '`index=main sourcetype=access_combined`, the identifier must be that exact string. ' +
             'Whitespace and casing matter.',
         selector: '[data-tutorial="row-identifier"], input[placeholder*="index=main sourcetype"]',
-        panel: 'query',
+        panel: 'data',
     },
     {
         id: 'input-modes',
@@ -77,7 +77,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
             'Each scenario needs test data. Choose Fields mode to build events field-by-field, ' +
             'JSON mode to paste raw events, Query Data to pull real events from Splunk, ' +
             'or No Events when your query generates its own data.',
-        selector: '[data-tutorial="input-modes"], .bg-navy-950\\/80.rounded-xl.p-1.border.w-fit.mb-4',
+        selector: '[data-tutorial="input-modes"], .flex.gap-0\\.5.mb-4',
         panel: 'data',
     },
     {
@@ -86,7 +86,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
         content:
             'Build events by adding field names and values. Each row becomes a field in the ' +
             'generated event. This is the easiest way to create structured test data.',
-        selector: '[data-tutorial="mode-fields"], .bg-navy-950\\/80.rounded-xl.mb-4 .rounded-lg.bg-accent-900:first-child',
+        selector: '[data-tutorial="mode-fields"], .flex.gap-0\\.5.mb-4 button:first-child',
         panel: 'data',
     },
     {
@@ -95,7 +95,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
         content:
             'Paste raw JSON events directly. Useful when you have sample data from a real ' +
             'Splunk search or need complex nested structures.',
-        selector: '[data-tutorial="mode-json"], .bg-navy-950\\/80.rounded-xl.mb-4 .rounded-lg:nth-child(2)',
+        selector: '[data-tutorial="mode-json"], .flex.gap-0\\.5.mb-4 button:nth-child(2)',
         panel: 'data',
     },
     {
@@ -105,7 +105,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
             'Pull real events from Splunk as test input. Write an SPL query and pick a time range — ' +
             'the results become your test data. Great for replaying specific incidents or using ' +
             'production data from a known time window.',
-        selector: '[data-tutorial="mode-query-data"], .bg-navy-950\\/80.rounded-xl.mb-4 .rounded-lg:nth-child(3)',
+        selector: '[data-tutorial="mode-query-data"], .flex.gap-0\\.5.mb-4 button:nth-child(3)',
         panel: 'data',
     },
     {
@@ -114,7 +114,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
         content:
             'Skip event injection entirely. Use this when your query generates data on its own ' +
             '(e.g. | makeresults, | inputlookup) and you only need to validate the output.',
-        selector: '[data-tutorial="mode-no-events"], .bg-navy-950\\/80.rounded-xl.mb-4 .rounded-lg:last-child',
+        selector: '[data-tutorial="mode-no-events"], .flex.gap-0\\.5.mb-4 button:last-child',
         panel: 'data',
     },
     {

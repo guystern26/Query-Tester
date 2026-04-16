@@ -95,17 +95,6 @@ export function TopBar({ mode = 'builder', onNavigateLibrary, onNavigateSetup, o
             <>
               <Button variant="secondary" size="sm" onClick={handleClearClick}>Clear</Button>
               <div className="w-px h-5 bg-slate-700 mx-1" />
-              <Button variant="secondary" size="sm" onClick={handleSave} data-tutorial="export-btn">Export</Button>
-              <Button variant="secondary" size="sm" onClick={handleLoadClick} data-tutorial="import-btn">Import</Button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".json"
-                onChange={handleFileChange}
-                className="hidden"
-                aria-hidden="true"
-              />
-              <div className="w-px h-5 bg-slate-700 mx-1" />
               <div className="relative flex items-center" data-tutorial="save-test-btn">
                 <Button variant="primary" size="sm" className="bg-green-500 hover:bg-green-400 text-white" onClick={() => { setResultsBarExpanded(false); setSaveModalOpen(true); }}>
                   Save Test
@@ -117,7 +106,7 @@ export function TopBar({ mode = 'builder', onNavigateLibrary, onNavigateSetup, o
                   />
                 )}
               </div>
-              <BugReportButton />
+              <input ref={fileInputRef} type="file" accept=".json" onChange={handleFileChange} className="hidden" aria-hidden="true" />
             </>
           )}
         </div>
@@ -126,6 +115,7 @@ export function TopBar({ mode = 'builder', onNavigateLibrary, onNavigateSetup, o
           <TestNavigation />
           {onNavigateLibrary && (
             <nav className="flex items-center gap-1 ml-3 pl-3 border-l border-slate-700">
+              <BugReportButton />
               <button className="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-400 hover:text-slate-200 hover:bg-navy-800 transition cursor-pointer" onClick={onNavigateLibrary}>
                 Library
               </button>

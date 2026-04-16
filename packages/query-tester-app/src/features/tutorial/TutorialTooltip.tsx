@@ -43,7 +43,13 @@ function computePosition(
     tooltipEl: HTMLDivElement | null
 ): Position | null {
     const target = queryFirst(targetSelector);
-    if (!target || !tooltipEl) return null;
+    if (!tooltipEl) return null;
+    // If target not found, center the tooltip on screen
+    if (!target) {
+        const tw = tooltipEl.offsetWidth;
+        const th = tooltipEl.offsetHeight;
+        return { top: window.innerHeight / 2 - th / 2, left: window.innerWidth / 2 - tw / 2, placement: 'below' as Placement, arrowLeft: tw / 2 };
+    }
 
     const tr = target.getBoundingClientRect();
     const tw = tooltipEl.offsetWidth;
