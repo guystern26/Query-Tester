@@ -22,7 +22,7 @@ const ChevronDown = () => (
   </svg>
 );
 
-export function DataSourceSelector({ testId, scenarioId, inputId, value, matchCount, hasIdentifiers }: DataSourceSelectorProps) {
+export function DataSourceSelector({ testId, scenarioId, inputId, value, matchCount, hasIdentifiers }: DataSourceSelectorProps): React.ReactElement {
   const test = useTestStore(selectActiveTest);
   const selectDataSource = useTestStore((s) => s.selectDataSource);
   const fetchSampleValues = useTestStore((s) => s.fetchSampleValues);

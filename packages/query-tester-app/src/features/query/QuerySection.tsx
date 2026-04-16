@@ -22,7 +22,7 @@ interface QuerySectionProps {
   isIde?: boolean;
 }
 
-export function QuerySection({ isIde }: QuerySectionProps) {
+export function QuerySection({ isIde }: QuerySectionProps): React.ReactElement {
   const test = useTestStore(selectActiveTest);
   const commandPolicy = useTestStore((s) => s.commandPolicy);
   const splDriftWarning = useTestStore((s) => s.splDriftWarning);
@@ -87,11 +87,12 @@ export function QuerySection({ isIde }: QuerySectionProps) {
 
   // Merge warnings; hide all while focused; filter fields by click-selection
   const activeFields = useMemo(() => selectedFields.size === 0 ? [] : fieldHighlights.filter((w) => selectedFields.has(w.token)), [fieldHighlights, selectedFields]);
-  // Editor only shows injection markers — linter/analysis notes suppressed from editor
+  // Editor shows linter warnings (dangerous commands) + injection markers
+  // Analysis notes from AI are suppressed from editor — they show in results only
   const editorMarkers = useMemo<SplWarning[]>(() => {
       if (editorFocused) return [];
-      return injectionMarkers;
-  }, [editorFocused, injectionMarkers]);
+      return [...splWarnings, ...injectionMarkers];
+  }, [editorFocused, splWarnings, injectionMarkers]);
 
   // Mark stale when SPL changes (ignore whitespace-only diffs from formatting)
   const normSpl = (s: string) => s.replace(/\s+/g, ' ').trim();
