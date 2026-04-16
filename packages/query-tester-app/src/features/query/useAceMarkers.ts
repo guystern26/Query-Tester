@@ -4,7 +4,7 @@
  */
 import { useEffect, useRef } from 'react';
 import type { SplWarning } from './splLinter';
-import { MARKER_CLASSES, fieldMarkerClass, injectCss, showTooltip, removeTooltip } from './aceMarkerStyles';
+import { MARKER_CLASSES, fieldMarkerClass, injectionMarkerClass, injectCss, showTooltip, removeTooltip } from './aceMarkerStyles';
 
 /** Minimal Ace typings — just what we use. */
 interface AceRange {
@@ -103,7 +103,9 @@ export function useAceMarkers(
             const endPos = session.doc.indexToPosition(w.end, 0);
             const baseCls = w.severity === 'field'
                 ? fieldMarkerClass(w.colorIndex ?? 0)
-                : (MARKER_CLASSES[w.severity] || MARKER_CLASSES.warning);
+                : w.severity === 'injection'
+                  ? injectionMarkerClass(w.colorIndex ?? 0)
+                  : (MARKER_CLASSES[w.severity] || MARKER_CLASSES.warning);
             const cls = w.isBlocked ? baseCls + ' spl-lint-blocked' : baseCls;
             const range = new RangeCtor(
                 startPos.row,

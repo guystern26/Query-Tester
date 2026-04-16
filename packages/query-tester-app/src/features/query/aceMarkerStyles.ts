@@ -20,6 +20,13 @@ export function fieldMarkerClass(colorIndex: number): string {
     return 'spl-field-' + (colorIndex % 10);
 }
 
+/** Returns the CSS class for an injection marker by input color index. */
+export function injectionMarkerClass(colorIndex: number): string {
+    return 'spl-inject-' + (colorIndex % INJECTION_COLOR_COUNT);
+}
+
+const INJECTION_COLOR_COUNT = 6;
+
 // ── CSS injection ───────────────────────────────────────────────────────────────
 
 const MARKER_CSS = `
@@ -59,6 +66,12 @@ const MARKER_CSS = `
       border-radius: 2px;
       z-index: 4;
     }
+    .spl-inject-0 { position:absolute; background:rgba(245,158,11,0.10); border-bottom:2px solid rgba(245,158,11,0.6); border-radius:2px; z-index:4; }
+    .spl-inject-1 { position:absolute; background:rgba(56,189,248,0.10); border-bottom:2px solid rgba(56,189,248,0.6); border-radius:2px; z-index:4; }
+    .spl-inject-2 { position:absolute; background:rgba(244,114,182,0.10); border-bottom:2px solid rgba(244,114,182,0.6); border-radius:2px; z-index:4; }
+    .spl-inject-3 { position:absolute; background:rgba(74,222,128,0.10); border-bottom:2px solid rgba(74,222,128,0.6); border-radius:2px; z-index:4; }
+    .spl-inject-4 { position:absolute; background:rgba(192,132,252,0.10); border-bottom:2px solid rgba(192,132,252,0.6); border-radius:2px; z-index:4; }
+    .spl-inject-5 { position:absolute; background:rgba(251,146,60,0.10); border-bottom:2px solid rgba(251,146,60,0.6); border-radius:2px; z-index:4; }
     .spl-lint-blocked {
       border-bottom-style: dashed !important;
     }
