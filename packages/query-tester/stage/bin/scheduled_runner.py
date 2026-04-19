@@ -232,11 +232,18 @@ def _run_single_test(kv, session_key, scheduled):
     test_id = scheduled.get("testId", "")
     start_ms = int(time.time() * 1000)
 
-    # Re-read fresh record to catch concurrent runs (dedup at execution time)
+    # SHC dedup: re-read fresh record from KVStore to catch concurrent runs
+    # across multiple search heads sharing the same KVStore.
     try:
         fresh = kv.get_by_id(COLLECTION_SCHEDULED_TESTS, sched_id)
+        fresh_status = fresh.get("queueStatus", "idle")
+        # Another SH already claimed this run
+        if fresh_status == "running":
+            logger.info("Skipping %s — already running on another search head.", sched_id)
+            return
+        # Another SH already completed this run recently
         if _ran_recently(fresh):
-            logger.info("Skipping %s at execution time — already ran recently.", sched_id)
+            logger.info("Skipping %s — already ran recently (SHC dedup).", sched_id)
             _update_record(kv, sched_id, {"queueStatus": "idle", "queuedAt": ""})
             return
     except Exception:
