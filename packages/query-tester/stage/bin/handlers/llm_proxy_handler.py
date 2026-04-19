@@ -81,10 +81,17 @@ def _call_llm(llm_cfg, system_prompt, user_message):
         logger.error("LLM connection error: %s", exc.reason)
         raise ValueError("Cannot reach LLM endpoint: {0}".format(exc.reason))
 
+    # Try OpenAI-style response first, then common alternatives
     choice = (data.get("choices") or [{}])[0]
     content = (choice.get("message") or {}).get("content", "")
     if not content:
-        raise ValueError("Empty response from LLM.")
+        content = (choice.get("delta") or {}).get("content", "")
+    if not content:
+        content = data.get("content", "") or data.get("output", "") or data.get("text", "")
+    if not content:
+        raw_resp = json.dumps(data)[:500]
+        logger.error("LLM empty response. Raw: %s", raw_resp)
+        raise ValueError("Empty response from LLM. Check query_tester.log for raw response.")
     return content
 
 

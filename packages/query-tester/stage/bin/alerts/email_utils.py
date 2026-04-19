@@ -53,11 +53,12 @@ def get_email_config(session_key=None):
             # Build web URL from splunk_host + scheme (Setup page fields).
             # splunk_web_url is rarely set directly; fall back to host/scheme.
             web_url = cfg.get("splunk_web_url", "")
-            if not web_url or "localhost" in web_url:
+            if not web_url or "localhost" in web_url or "127.0.0.1" in web_url:
                 host = cfg.get("splunk_host", "")
                 scheme = cfg.get("splunk_scheme", "https")
-                if host and host != "localhost":
-                    web_url = "{0}://{1}".format(scheme, host)
+                web_port = cfg.get("splunk_web_port", "8000")
+                if host and host not in ("localhost", "127.0.0.1"):
+                    web_url = "{0}://{1}:{2}".format(scheme, host, web_port)
                 else:
                     web_url = SPLUNK_WEB_URL
             return {

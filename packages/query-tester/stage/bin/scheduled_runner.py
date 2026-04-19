@@ -232,6 +232,16 @@ def _run_single_test(kv, session_key, scheduled):
     test_id = scheduled.get("testId", "")
     start_ms = int(time.time() * 1000)
 
+    # Re-read fresh record to catch concurrent runs (dedup at execution time)
+    try:
+        fresh = kv.get_by_id(COLLECTION_SCHEDULED_TESTS, sched_id)
+        if _ran_recently(fresh):
+            logger.info("Skipping %s at execution time — already ran recently.", sched_id)
+            _update_record(kv, sched_id, {"queueStatus": "idle", "queuedAt": ""})
+            return
+    except Exception:
+        pass  # if re-read fails, proceed with the run
+
     logger.info("Running scheduled test %s (testId=%s)", sched_id, test_id)
 
     status = "error"
