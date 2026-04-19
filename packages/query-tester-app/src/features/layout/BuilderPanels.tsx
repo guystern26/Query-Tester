@@ -78,12 +78,15 @@ export function BuilderPanels({ rowRef, queryRef, dataRef, validationRef, hasQue
                         key={panel.id}
                         ref={panel.ref}
                         onClick={shut ? () => handleClick(panel.id) : undefined}
-                        className={`bg-navy-800 rounded-xl border border-slate-700/20 transition-all duration-300 ease-in-out flex flex-col ${
+                        className={`bg-navy-800 rounded-xl border border-slate-700/20 flex flex-col ${
                             shut
                                 ? 'p-3 cursor-pointer hover:border-slate-500 hover:bg-navy-700/30 items-center justify-center'
                                 : 'p-5 gap-4 overflow-y-auto shadow-lg shadow-black/20'
                         }`}
-                        style={shut ? { flex: '1 1 0%' } : { flex: panel.weight + ' 1 0%' }}
+                        style={{
+                            flex: shut ? '1 1 0%' : panel.weight + ' 1 0%',
+                            transition: 'flex 400ms ease, border-color 200ms ease, background-color 200ms ease',
+                        }}
                     >
                         {shut ? (
                             <span className="text-[13px] font-bold text-slate-500 uppercase tracking-wide">{panel.label}</span>
