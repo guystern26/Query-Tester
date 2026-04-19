@@ -247,7 +247,7 @@ def _swap_cache_lookups(spl, run_id, test_id=None):
     for info in reversed(parsed):
         if info["is_testing"]:
             continue  # testing=true — safe, leave as-is
-        if len(info["args"]) < 6:
+        if len(info["args"]) < 5:
             continue  # malformed — skip
 
         original_lookup = info["args"][0]

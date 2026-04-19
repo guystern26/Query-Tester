@@ -148,7 +148,7 @@ class TestCheckCacheMacros:
         spl = '`cache(my_lookup, id)`'
         warnings = check_cache_macros(spl)
         assert len(warnings) == 1
-        assert "6 arguments" in warnings[0]
+        assert "5 arguments" in warnings[0]
 
     def test_mixed_testing_values(self):
         spl = (
@@ -518,12 +518,14 @@ class TestEdgeCases:
     # ── Exactly 5 args (missing vanish_time) ──────────────────────────────
 
     def test_five_args_missing_vanish(self):
+        """5 args (no vanish) — valid, should NOT produce a warning."""
         spl = '`cache(my_lookup, id, prop, stack, false)`'
         parsed = parse_cache_macros(spl)
         assert len(parsed) == 1
         assert len(parsed[0]["args"]) == 5
         warnings = check_cache_macros(spl)
-        assert any("6 arguments" in w for w in warnings)
+        # vanish is optional — 5 args is valid
+        assert not any("arguments" in w for w in warnings)
 
     # ── Exactly 7+ args (extra args) ──────────────────────────────────────
 
@@ -594,12 +596,12 @@ class TestMalformedCacheMacros:
         assert result == spl
 
     def test_five_args_no_vanish(self):
-        """5 args — missing vanish_time. Still < 6, no swap."""
+        """5 args — vanish_time optional. Should swap (testing=false)."""
         spl = '`cache(my_lookup, id, prop, stack, false)`'
         parsed = parse_cache_macros(spl)
         assert len(parsed[0]["args"]) == 5
         result = _swap_cache_lookups(spl, "r1")
-        assert result == spl
+        assert "temp_cache_r1_my_lookup" in result
 
     def test_random_text_as_args(self):
         spl = '`cache(asdf, qwer, zxcv, poiu, lkjh, mnbv)`'
@@ -669,14 +671,14 @@ class TestMalformedCacheMacros:
         spl = '`cache(sijfshjsh)`'
         warnings = check_cache_macros(spl)
         assert len(warnings) == 1
-        assert "6 arguments" in warnings[0]
+        assert "5 arguments" in warnings[0]
         assert "Found 1" in warnings[0]
 
     def test_warning_for_empty_cache(self):
         spl = '`cache()`'
         warnings = check_cache_macros(spl)
         assert len(warnings) == 1
-        assert "6 arguments" in warnings[0]
+        assert "5 arguments" in warnings[0]
 
     def test_no_warning_for_non_cache(self):
         """Normal SPL with no cache macro produces no cache warnings."""

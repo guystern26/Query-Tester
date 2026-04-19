@@ -221,11 +221,11 @@ def check_cache_macros(spl):
     """Return informational warnings about cache macros in the SPL."""
     warnings = []  # type: List[str]
     for info in parse_cache_macros(spl):
-        if len(info["args"]) < 6:
+        if len(info["args"]) < 5:
             warnings.append(
-                "cache macro requires 6 arguments "
-                "(lookup_name, id_fields, prop_fields, stacking_fields, testing, vanish_time). "
-                "Found {0}.".format(len(info["args"]))
+                "cache macro requires at least 5 arguments "
+                "(lookup_name, id_fields, prop_fields, stacking_fields, testing). "
+                "vanish_time is optional. Found {0}.".format(len(info["args"]))
             )
         elif not info["is_testing"]:
             warnings.append(

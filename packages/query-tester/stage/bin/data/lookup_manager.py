@@ -25,9 +25,30 @@ logger = get_logger(__name__)
 TEMP_LOOKUP_PREFIX = "temp_lookup_"
 
 
+_session_key_holder = {"key": None}  # type: Dict[str, Any]
+
+
+def set_session_key(session_key):
+    # type: (str) -> None
+    """Store a session key for reuse by lookup operations."""
+    _session_key_holder["key"] = session_key
+
+
 def _admin_service(app="QueryTester"):
     # type: (str) -> Any
-    """Connect with admin credentials from config.py."""
+    """Connect using session key (preferred) or admin credentials fallback."""
+    sk = _session_key_holder.get("key")
+    if sk:
+        try:
+            return splunk_client.connect(
+                host=SPLUNK_HOST,
+                port=int(SPLUNK_PORT),
+                token=sk,
+                app=app,
+                owner="nobody",
+            )
+        except Exception:
+            logger.warning("Session key login failed, falling back to credentials")
     return splunk_client.connect(
         host=SPLUNK_HOST,
         port=int(SPLUNK_PORT),
@@ -79,7 +100,11 @@ def create_temp_lookup(
         fields = ["_key"] + [f for f in fieldnames if f != "_key"]
         fields_list = ", ".join(fields)
 
-    service = _admin_service(app)
+    try:
+        service = _admin_service(app)
+    except Exception as exc:
+        logger.error("Failed to connect for lookup creation (run_id=%s): %s", run_id, exc)
+        raise
 
     # Create KVStore collection
     try:
@@ -87,6 +112,7 @@ def create_temp_lookup(
         logger.info("Created KVStore collection: %s", coll_name)
     except Exception as exc:
         if "409" not in str(exc) and "already exists" not in str(exc).lower():
+            logger.error("Failed to create KVStore collection %s: %s", coll_name, exc)
             raise
 
     # Create transforms.conf lookup definition
