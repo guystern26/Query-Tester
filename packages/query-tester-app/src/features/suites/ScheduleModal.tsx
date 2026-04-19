@@ -154,7 +154,9 @@ export function ScheduleModal({ open, onClose, editingTest, preselectedTestId }:
                 {/* Linked saved search info */}
                 {selectedTest && (
                     <div className="text-[11px] text-slate-500 bg-navy-950 px-3 py-2 rounded-lg border border-slate-800">
-                        SPL is static (not linked to a saved search)
+                        {selectedTest.savedSearchOrigin
+                            ? <>Linked to saved search: <span className="text-slate-300 font-medium">{selectedTest.savedSearchOrigin}</span></>
+                            : 'SPL is static (not linked to a saved search)'}
                     </div>
                 )}
 
