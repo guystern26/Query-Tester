@@ -146,13 +146,14 @@ class TestInputlookup:
 # ── Lookup ─────────────────────────────────────────────────────────────
 
 class TestLookup:
-    def test_standard_replacement(self):
+    def test_index_with_lookup_enrichment(self):
+        """Lookup is just enrichment — only index= gets replaced, lookup untouched."""
         _run("index=main | lookup users_list user AS username | stats count",
              _inputs(""), "lookup",
-             "{} | lookup {} user AS username | stats count".format(R, LK))
+             "{} | lookup users_list user AS username | stats count".format(R))
 
-    def test_with_ri(self):
-        """When RI matches, lookup is enrichment — don't swap lookup name."""
+    def test_with_ri_index(self):
+        """RI is index clause — lookup stays untouched."""
         _run("index=main sourcetype=syslog | lookup users_list user | stats count",
              _inputs("index=main sourcetype=syslog"), "lookup",
              "{} | lookup users_list user | stats count".format(R))
