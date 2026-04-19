@@ -141,19 +141,43 @@ def _inject_inputlookup(spl: str, run_id: str, inputs: List[ParsedInput]) -> str
     return spl[:match.start()] + replacement + spl[match.end():]
 
 
+_LOOKUP_RI_RE = re.compile(r'(?i)^(?:lookup|inputlookup)\s+(.+)$')
+
+
 def _inject_lookup(spl: str, run_id: str, inputs: List[ParsedInput]) -> str:
-    # First try standard index replacement via row identifiers
+    """Handle lookup injection.
+
+    If the RI starts with 'lookup <name>', swap only <name> with a temp
+    lookup in the SPL. The test runner will create a temp KVStore lookup
+    with the user's test data under that name.
+    Otherwise, treat as standard index replacement — lookups untouched.
+    """
     replacement = _build_replacement(run_id)
-    ri_result = _apply_row_identifiers(spl, inputs, replacement)
-    if ri_result is not None:
-        # RI matched (e.g. index=main) — lookup is just enrichment
-        return ri_result
-    # No RI match — swap the first lookup name with the temp lookup.
-    # This handles the case where the data source IS the lookup.
-    # Also replace the outer index if present.
-    result = _replace_outer_index(spl, replacement)
-    temp_name = "temp_lookup_{0}".format(run_id)
-    return LOOKUP_PATTERN.sub(lambda m: m.group(1) + temp_name, result, count=1)
+    result = spl
+    ri_matched = False
+
+    for inp in inputs:
+        ri = inp.row_identifier.strip()
+        if not ri:
+            continue
+        m = _LOOKUP_RI_RE.match(ri)
+        if m:
+            # RI is "lookup <name>" — swap <name> with temp lookup
+            lookup_name = m.group(1).strip()
+            temp_name = "temp_lookup_{0}".format(run_id)
+            pattern = re.compile(r'\b' + re.escape(lookup_name) + r'\b')
+            result = pattern.sub(temp_name, result)
+            ri_matched = True
+        else:
+            # Standard RI (e.g. "index=main") — find-and-replace
+            replaced = _replace_by_row_identifier(result, ri, replacement)
+            if replaced is not None:
+                result = replaced
+                ri_matched = True
+
+    if ri_matched:
+        return result
+    return _replace_outer_index(spl, replacement)
 
 
 def _replace_by_row_identifier(
