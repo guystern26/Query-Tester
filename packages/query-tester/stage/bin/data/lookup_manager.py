@@ -25,38 +25,28 @@ logger = get_logger(__name__)
 TEMP_LOOKUP_PREFIX = "temp_lookup_"
 
 
-_session_key_holder = {"key": None}  # type: Dict[str, Any]
-
-
-def set_session_key(session_key):
-    # type: (str) -> None
-    """Store a session key for reuse by lookup operations."""
-    _session_key_holder["key"] = session_key
-
-
 def _admin_service(app="QueryTester"):
     # type: (str) -> Any
-    """Connect using session key (preferred) or admin credentials fallback."""
-    sk = _session_key_holder.get("key")
-    if sk:
-        try:
-            return splunk_client.connect(
-                host=SPLUNK_HOST,
-                port=int(SPLUNK_PORT),
-                token=sk,
-                app=app,
-                owner="nobody",
-            )
-        except Exception:
-            logger.warning("Session key login failed, falling back to credentials")
-    return splunk_client.connect(
-        host=SPLUNK_HOST,
-        port=int(SPLUNK_PORT),
-        username=SPLUNK_USERNAME,
-        password=SPLUNK_PASSWORD,
-        app=app,
-        owner="nobody",
-    )
+    """Connect with admin credentials from config.py.
+
+    Only admin has the capabilities to create KVStore collections and
+    transforms definitions. Normal user session keys cannot do this.
+    """
+    try:
+        return splunk_client.connect(
+            host=SPLUNK_HOST,
+            port=int(SPLUNK_PORT),
+            username=SPLUNK_USERNAME,
+            password=SPLUNK_PASSWORD,
+            app=app,
+            owner="nobody",
+        )
+    except Exception as exc:
+        logger.error(
+            "Admin login failed (host=%s, port=%s, user=%s): %s",
+            SPLUNK_HOST, SPLUNK_PORT, SPLUNK_USERNAME, exc,
+        )
+        raise
 
 
 def _coll_name(run_id):
