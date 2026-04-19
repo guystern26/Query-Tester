@@ -16,7 +16,7 @@ from core.payload_parser import parse
 from core.response_builder import build_error_response, build_response
 from data.data_indexer import index_events
 from data.hec_config import resolve_hec_context
-from data.lookup_manager import create_temp_lookup, delete_temp_lookup, create_temp_kvstore_lookup, delete_temp_kvstore_lookup
+from data.lookup_manager import create_temp_lookup, delete_temp_lookup, create_temp_kvstore_lookup, delete_temp_kvstore_lookup, set_session_key as _set_lookup_session_key
 from data.sub_query_runner import run_sub_query
 from generators.event_generator import build_events
 from spl.preflight import get_blocked_commands_set
@@ -46,6 +46,7 @@ class TestRunner:
         self._session_key = session_key
         self._executor = QueryExecutor(session_key)
         self._hec_ctx = (config or {}).get("hec_ctx")  # type: Optional[Dict[str, Any]]
+        _set_lookup_session_key(session_key)
 
     def run_test(self, raw_payload: Dict[str, Any]) -> Tuple[Dict[str, Any], int]:
         """

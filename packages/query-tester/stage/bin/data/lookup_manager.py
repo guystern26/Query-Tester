@@ -24,27 +24,45 @@ logger = get_logger(__name__)
 
 TEMP_LOOKUP_PREFIX = "temp_lookup_"
 
+# Session key — set by test_runner so we can read Setup page credentials
+_session_key = {"key": None}  # type: Dict[str, Any]
+
+
+def set_session_key(sk):
+    # type: (str) -> None
+    """Store session key for reading admin credentials from Setup page."""
+    _session_key["key"] = sk
+
 
 def _admin_service(app="QueryTester"):
     # type: (str) -> Any
-    """Connect with admin credentials from config.py.
+    """Connect with admin credentials from Setup page, fallback to config.py."""
+    username = SPLUNK_USERNAME
+    password = SPLUNK_PASSWORD
 
-    Only admin has the capabilities to create KVStore collections and
-    transforms definitions. Normal user session keys cannot do this.
-    """
+    sk = _session_key.get("key")
+    if sk:
+        try:
+            from runtime_config import get_runtime_config
+            cfg = get_runtime_config(sk)
+            username = cfg.get("splunk_username") or SPLUNK_USERNAME
+            password = cfg.get("splunk_password") or SPLUNK_PASSWORD
+        except Exception as exc:
+            logger.debug("Could not read credentials from Setup page: %s", exc)
+
     try:
         return splunk_client.connect(
             host=SPLUNK_HOST,
             port=int(SPLUNK_PORT),
-            username=SPLUNK_USERNAME,
-            password=SPLUNK_PASSWORD,
+            username=username,
+            password=password,
             app=app,
             owner="nobody",
         )
     except Exception as exc:
         logger.error(
             "Admin login failed (host=%s, port=%s, user=%s): %s",
-            SPLUNK_HOST, SPLUNK_PORT, SPLUNK_USERNAME, exc,
+            SPLUNK_HOST, SPLUNK_PORT, username, exc,
         )
         raise
 
