@@ -183,9 +183,8 @@ export function QuerySection({ isIde }: QuerySectionProps): React.ReactElement {
               ) : (
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2.09 6.26L20 10l-5.91 1.74L12 18l-2.09-6.26L4 10l5.91-1.74L12 2z" /></svg>
               )}
-              {isAnalyzing ? 'Analyzing...' : analysisStale ? 'Re-analyze Query' : 'Analyze Query'}
+              {isAnalyzing ? 'Analyzing...' : analysisStale ? 'Re-analyze' : 'Analyze Query'}
             </button>
-            {analysisStale && <span className="text-[11px] text-amber-400/80 text-center leading-tight">Query changed — re-analyze for updated results.</span>}
 
           </div>
         )}
