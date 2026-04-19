@@ -56,9 +56,13 @@ def get_email_config(session_key=None):
             if not web_url or "localhost" in web_url or "127.0.0.1" in web_url:
                 host = cfg.get("splunk_host", "")
                 scheme = cfg.get("splunk_scheme", "https")
-                web_port = cfg.get("splunk_web_port", "8000")
+                web_port = cfg.get("splunk_web_port", "443")
                 if host and host not in ("localhost", "127.0.0.1"):
-                    web_url = "{0}://{1}:{2}".format(scheme, host, web_port)
+                    # Omit port for standard ports (443 for https, 80 for http)
+                    if (scheme == "https" and web_port == "443") or (scheme == "http" and web_port == "80"):
+                        web_url = "{0}://{1}".format(scheme, host)
+                    else:
+                        web_url = "{0}://{1}:{2}".format(scheme, host, web_port)
                 else:
                     web_url = SPLUNK_WEB_URL
             return {
