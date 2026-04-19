@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 """
 logger.py
-File-based logger for the Splunk Query Tester backend.
+File-based JSON logger for the Splunk Query Tester backend.
+Outputs structured JSON so Splunk auto-extracts all fields.
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
+import time
 from typing import Optional
 
 
@@ -27,6 +30,22 @@ _LOG_LEVEL_MAP = {
     "WARNING": logging.WARNING,
     "ERROR": logging.ERROR,
 }
+
+
+class JsonFormatter(logging.Formatter):
+    """Formats log records as single-line JSON for Splunk auto-extraction."""
+
+    def format(self, record):
+        # type: (logging.LogRecord) -> str
+        entry = {
+            "timestamp": self.formatTime(record, "%Y-%m-%dT%H:%M:%S.") + "%03dZ" % record.msecs,
+            "log_level": record.levelname,
+            "module": record.name,
+            "message": record.getMessage(),
+        }
+        if record.exc_info and record.exc_info[0] is not None:
+            entry["exception"] = self.formatException(record.exc_info)
+        return json.dumps(entry, ensure_ascii=False)
 
 
 def _get_splunk_home():
@@ -62,7 +81,7 @@ def _get_log_path():
 def get_logger(name):
     # type: (str) -> logging.Logger
     """
-    Return a module-specific logger configured to write to the query tester log file.
+    Return a module-specific logger configured to write JSON to the log file.
     Safe to call multiple times — deduplicates file handlers.
     """
     logger = logging.getLogger(name)
@@ -82,10 +101,7 @@ def get_logger(name):
 
     if not handler_already_attached:
         file_handler = logging.FileHandler(log_path)
-        formatter = logging.Formatter(
-            "%(asctime)s %(levelname)-8s [%(name)s] %(message)s"
-        )
-        file_handler.setFormatter(formatter)
+        file_handler.setFormatter(JsonFormatter())
         setattr(file_handler, "_query_tester_log_path", log_path)
         logger.addHandler(file_handler)
 

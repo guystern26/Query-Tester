@@ -1,6 +1,6 @@
 <dashboard version="1.1" theme="dark">
   <label>Query Tester — Monitoring</label>
-  <description>Operational dashboard for monitoring product usage, performance, errors, and scheduled runs.</description>
+  <description>Operational dashboard for monitoring product usage, performance, errors, and scheduled runs. Logs are JSON-structured — all fields auto-extracted.</description>
 
   <fieldset submitButton="true" autoRun="true">
     <input type="time" token="time_range" searchWhenChanged="true">
@@ -20,7 +20,7 @@
       <title>Total Test Runs</title>
       <single>
         <search>
-          <query>index=_internal source="*query_tester.log" ("completed: status=" OR "Running scheduled test" OR "Test execution") earliest=$time_range.earliest$ latest=$time_range.latest$
+          <query>index=_internal source="*query_tester.log" message="*completed*status=*" earliest=$time_range.earliest$ latest=$time_range.latest$
 | stats count</query>
         </search>
         <option name="colorBy">value</option>
@@ -32,7 +32,7 @@
       <title>Manual Runs</title>
       <single>
         <search>
-          <query>index=_internal source="*query_tester.log" "triggerType" "manual" earliest=$time_range.earliest$ latest=$time_range.latest$
+          <query>index=_internal source="*query_tester.log" message="*manual*run*" earliest=$time_range.earliest$ latest=$time_range.latest$
 | stats count</query>
         </search>
         <option name="drilldown">none</option>
@@ -42,7 +42,7 @@
       <title>Scheduled Runs</title>
       <single>
         <search>
-          <query>index=_internal source="*query_tester.log" "Running scheduled test" earliest=$time_range.earliest$ latest=$time_range.latest$
+          <query>index=_internal source="*query_tester.log" message="Running scheduled test*" earliest=$time_range.earliest$ latest=$time_range.latest$
 | stats count</query>
         </search>
         <option name="drilldown">none</option>
@@ -63,15 +63,16 @@
       </single>
     </panel>
     <panel>
-      <title>Unique Users</title>
+      <title>Warnings</title>
       <single>
         <search>
-          <query>index=_internal source="*query_tester.log" earliest=$time_range.earliest$ latest=$time_range.latest$
-| rex "user=(?&lt;username&gt;\w+)"
-| where isnotnull(username)
-| stats dc(username) as unique_users
-| eval unique_users=if(unique_users&gt;0, unique_users, 0)</query>
+          <query>index=_internal source="*query_tester.log" log_level=WARNING earliest=$time_range.earliest$ latest=$time_range.latest$
+| stats count</query>
         </search>
+        <option name="colorBy">value</option>
+        <option name="useColors">1</option>
+        <option name="rangeColors">["0x65a637","0xf58f39"]</option>
+        <option name="rangeValues">[0]</option>
         <option name="drilldown">none</option>
       </single>
     </panel>
@@ -79,8 +80,8 @@
       <title>Avg Duration (ms)</title>
       <single>
         <search>
-          <query>index=_internal source="*query_tester.log" "completed*duration=" earliest=$time_range.earliest$ latest=$time_range.latest$
-| rex "duration=(?&lt;dur_ms&gt;\d+)ms"
+          <query>index=_internal source="*query_tester.log" message="*completed*duration=*" earliest=$time_range.earliest$ latest=$time_range.latest$
+| rex field=message "duration=(?&lt;dur_ms&gt;\d+)ms"
 | stats avg(dur_ms) as avg_duration
 | eval avg_duration=round(avg_duration, 0)</query>
         </search>
@@ -95,11 +96,11 @@
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <row>
     <panel>
-      <title>Test Runs Over Time</title>
+      <title>Test Runs Over Time (by Status)</title>
       <chart>
         <search>
-          <query>index=_internal source="*query_tester.log" ("completed: status=" OR "completed*duration=") earliest=$time_range.earliest$ latest=$time_range.latest$
-| rex "status=(?&lt;run_status&gt;\w+)"
+          <query>index=_internal source="*query_tester.log" message="*completed*status=*" earliest=$time_range.earliest$ latest=$time_range.latest$
+| rex field=message "status=(?&lt;run_status&gt;\w+)"
 | timechart count by run_status</query>
         </search>
         <option name="charting.chart">column</option>
@@ -110,35 +111,34 @@
       </chart>
     </panel>
     <panel>
-      <title>Errors Over Time</title>
+      <title>Log Volume by Level</title>
       <chart>
         <search>
-          <query>index=_internal source="*query_tester.log" log_level=ERROR earliest=$time_range.earliest$ latest=$time_range.latest$
-| timechart count as errors</query>
+          <query>index=_internal source="*query_tester.log" earliest=$time_range.earliest$ latest=$time_range.latest$
+| timechart count by log_level</query>
         </search>
         <option name="charting.chart">area</option>
+        <option name="charting.chart.stackMode">stacked</option>
         <option name="charting.chart.nullValueMode">zero</option>
-        <option name="charting.fieldColors">{"errors":"#d93f3c"}</option>
-        <option name="charting.legend.placement">none</option>
+        <option name="charting.fieldColors">{"INFO":"#65a637","WARNING":"#f58f39","ERROR":"#d93f3c","DEBUG":"#999999"}</option>
+        <option name="charting.legend.placement">bottom</option>
         <option name="charting.drilldown">none</option>
       </chart>
     </panel>
   </row>
 
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
-  <!-- ROW 3: User Activity + Status Breakdown                                -->
+  <!-- ROW 3: Module Activity + Error Breakdown                               -->
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <row>
     <panel>
-      <title>Runs by User</title>
+      <title>Log Events by Module</title>
       <chart>
         <search>
-          <query>index=_internal source="*query_tester.log" ("completed: status=" OR "completed*duration=") earliest=$time_range.earliest$ latest=$time_range.latest$
-| rex "user=(?&lt;username&gt;\w+)"
-| where isnotnull(username)
-| stats count by username
+          <query>index=_internal source="*query_tester.log" earliest=$time_range.earliest$ latest=$time_range.latest$
+| stats count by module
 | sort - count
-| head 20</query>
+| head 15</query>
         </search>
         <option name="charting.chart">bar</option>
         <option name="charting.drilldown">none</option>
@@ -149,8 +149,8 @@
       <title>Status Distribution</title>
       <chart>
         <search>
-          <query>index=_internal source="*query_tester.log" "completed*status=" earliest=$time_range.earliest$ latest=$time_range.latest$
-| rex "status=(?&lt;run_status&gt;\w+)"
+          <query>index=_internal source="*query_tester.log" message="*completed*status=*" earliest=$time_range.earliest$ latest=$time_range.latest$
+| rex field=message "status=(?&lt;run_status&gt;\w+)"
 | stats count by run_status</query>
         </search>
         <option name="charting.chart">pie</option>
@@ -159,18 +159,17 @@
       </chart>
     </panel>
     <panel>
-      <title>Trigger Type (Manual vs Scheduled)</title>
+      <title>Errors by Module</title>
       <chart>
         <search>
-          <query>index=_internal source="*query_tester.log" ("Running scheduled test" OR "triggerType" OR "manual run") earliest=$time_range.earliest$ latest=$time_range.latest$
-| eval trigger_type=case(
-    like(_raw, "%Running scheduled test%"), "scheduled",
-    like(_raw, "%manual%") OR like(_raw, "%triggerType%manual%"), "manual",
-    1=1, "other")
-| stats count by trigger_type</query>
+          <query>index=_internal source="*query_tester.log" log_level=ERROR earliest=$time_range.earliest$ latest=$time_range.latest$
+| stats count by module
+| sort - count
+| head 10</query>
         </search>
-        <option name="charting.chart">pie</option>
+        <option name="charting.chart">bar</option>
         <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">none</option>
       </chart>
     </panel>
   </row>
@@ -180,11 +179,11 @@
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <row>
     <panel>
-      <title>Run Duration Distribution (ms)</title>
+      <title>Run Duration Distribution</title>
       <chart>
         <search>
-          <query>index=_internal source="*query_tester.log" "completed*duration=" earliest=$time_range.earliest$ latest=$time_range.latest$
-| rex "duration=(?&lt;dur_ms&gt;\d+)ms"
+          <query>index=_internal source="*query_tester.log" message="*completed*duration=*" earliest=$time_range.earliest$ latest=$time_range.latest$
+| rex field=message "duration=(?&lt;dur_ms&gt;\d+)ms"
 | eval dur_bucket=case(
     dur_ms&lt;1000, "0-1s",
     dur_ms&lt;5000, "1-5s",
@@ -206,16 +205,15 @@
       <title>Slowest Test Runs (Top 10)</title>
       <table>
         <search>
-          <query>index=_internal source="*query_tester.log" "completed*duration=" earliest=$time_range.earliest$ latest=$time_range.latest$
-| rex "test (?&lt;sched_id&gt;[a-f0-9-]+) completed"
-| rex "testId=(?&lt;test_id&gt;[a-f0-9-]+)"
-| rex "status=(?&lt;run_status&gt;\w+)"
-| rex "duration=(?&lt;dur_ms&gt;\d+)ms"
+          <query>index=_internal source="*query_tester.log" message="*completed*duration=*" earliest=$time_range.earliest$ latest=$time_range.latest$
+| rex field=message "test (?&lt;sched_id&gt;[a-f0-9-]+) completed"
+| rex field=message "status=(?&lt;run_status&gt;\w+)"
+| rex field=message "duration=(?&lt;dur_ms&gt;\d+)ms"
 | eval dur_sec=round(dur_ms/1000, 1)
 | sort - dur_ms
 | head 10
-| table _time sched_id test_id run_status dur_sec
-| rename sched_id as "Schedule ID", test_id as "Test ID", run_status as "Status", dur_sec as "Duration (s)"</query>
+| table _time sched_id run_status dur_sec module
+| rename sched_id as "Schedule ID", run_status as "Status", dur_sec as "Duration (s)", module as "Module"</query>
         </search>
         <option name="drilldown">none</option>
         <option name="count">10</option>
@@ -232,31 +230,15 @@
       <table>
         <search>
           <query>index=_internal source="*query_tester.log" log_level=ERROR earliest=$time_range.earliest$ latest=$time_range.latest$
-| rex "ERROR\s+-\s+(?&lt;error_msg&gt;.+)"
-| eval error_msg=substr(error_msg, 1, 120)
-| stats count by error_msg
+| eval short_msg=substr(message, 1, 150)
+| stats count latest(_time) as last_seen by short_msg module
 | sort - count
 | head 15
-| rename error_msg as "Error Message", count as "Count"</query>
+| rename short_msg as "Error Message", module as "Module", count as "Count", last_seen as "Last Seen"</query>
         </search>
         <option name="drilldown">none</option>
         <option name="count">15</option>
       </table>
-    </panel>
-    <panel>
-      <title>Errors by Module</title>
-      <chart>
-        <search>
-          <query>index=_internal source="*query_tester.log" log_level=ERROR earliest=$time_range.earliest$ latest=$time_range.latest$
-| rex "ERROR\s+(?&lt;module&gt;[\w.]+)\s+-"
-| stats count by module
-| sort - count
-| head 10</query>
-        </search>
-        <option name="charting.chart">bar</option>
-        <option name="charting.drilldown">none</option>
-        <option name="charting.legend.placement">none</option>
-      </chart>
     </panel>
   </row>
 
@@ -268,11 +250,13 @@
       <title>Scheduler Activity</title>
       <chart>
         <search>
-          <query>index=_internal source="*query_tester.log" ("Enqueued test" OR "Processing*queued" OR "Skipping*dedup" OR "Skipping*already running") earliest=$time_range.earliest$ latest=$time_range.latest$
+          <query>index=_internal source="*query_tester.log" module="scheduled_runner" earliest=$time_range.earliest$ latest=$time_range.latest$
 | eval action=case(
-    like(_raw, "%Enqueued test%"), "Enqueued",
-    like(_raw, "%Processing%queued%"), "Processing",
-    like(_raw, "%Skipping%dedup%") OR like(_raw, "%already running%") OR like(_raw, "%already ran recently%"), "Deduplicated",
+    like(message, "Enqueued test%"), "Enqueued",
+    like(message, "Processing%queued%"), "Processing",
+    like(message, "Running scheduled test%"), "Running",
+    like(message, "Scheduled test%completed%"), "Completed",
+    like(message, "Skipping%"), "Skipped/Dedup",
     1=1, "Other")
 | timechart count by action</query>
         </search>
@@ -286,7 +270,7 @@
       <title>Dedup Events (SHC Health)</title>
       <single>
         <search>
-          <query>index=_internal source="*query_tester.log" ("Skipping*dedup" OR "already running" OR "already ran recently") earliest=$time_range.earliest$ latest=$time_range.latest$
+          <query>index=_internal source="*query_tester.log" module="scheduled_runner" message="Skipping*" earliest=$time_range.earliest$ latest=$time_range.latest$
 | stats count</query>
         </search>
         <option name="drilldown">none</option>
@@ -297,10 +281,10 @@
       </single>
     </panel>
     <panel>
-      <title>Missed Run Sweeps</title>
+      <title>Missed Runs</title>
       <single>
         <search>
-          <query>index=_internal source="*query_tester.log" "Missed run detected" earliest=$time_range.earliest$ latest=$time_range.latest$
+          <query>index=_internal source="*query_tester.log" message="Missed run detected*" earliest=$time_range.earliest$ latest=$time_range.latest$
 | stats count</query>
         </search>
         <option name="drilldown">none</option>
@@ -311,10 +295,10 @@
       </single>
     </panel>
     <panel>
-      <title>SPL Drift Detections</title>
+      <title>SPL Drift</title>
       <single>
         <search>
-          <query>index=_internal source="*query_tester.log" "SPL drift detected" earliest=$time_range.earliest$ latest=$time_range.latest$
+          <query>index=_internal source="*query_tester.log" message="SPL drift detected*" earliest=$time_range.earliest$ latest=$time_range.latest$
 | stats count</query>
         </search>
         <option name="drilldown">none</option>
@@ -406,19 +390,23 @@
   </row>
 
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
-  <!-- ROW 9: Recent Errors (raw log)                                         -->
+  <!-- ROW 9: Recent Errors (raw JSON events)                                 -->
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <row>
     <panel>
-      <title>Recent Error Logs</title>
-      <event>
+      <title>Recent Errors</title>
+      <table>
         <search>
           <query>index=_internal source="*query_tester.log" log_level=ERROR earliest=$time_range.earliest$ latest=$time_range.latest$
 | sort - _time
-| head 50</query>
+| head 50
+| table _time module message exception
+| rename module as "Module", message as "Error", exception as "Stack Trace"</query>
         </search>
+        <option name="drilldown">none</option>
         <option name="count">10</option>
-      </event>
+        <option name="wrap">true</option>
+      </table>
     </panel>
   </row>
 
@@ -430,12 +418,12 @@
       <title>Email Delivery</title>
       <chart>
         <search>
-          <query>index=_internal source="*query_tester.log" ("send_failure_emails" OR "Failed to send email" OR "No valid recipients") earliest=$time_range.earliest$ latest=$time_range.latest$
+          <query>index=_internal source="*query_tester.log" (module="alerts.alert_email" OR module="alerts.email_utils") earliest=$time_range.earliest$ latest=$time_range.latest$
 | eval email_status=case(
-    like(_raw, "%Failed to send email%"), "Failed",
-    like(_raw, "%No valid recipients%"), "No Recipients",
-    like(_raw, "%send_failure_emails%"), "Sent",
-    1=1, "Other")
+    like(message, "%Failed to send email%"), "Failed",
+    like(message, "%No valid recipients%"), "No Recipients",
+    log_level="ERROR", "Error",
+    1=1, "OK")
 | timechart count by email_status</query>
         </search>
         <option name="charting.chart">column</option>
@@ -444,14 +432,13 @@
       </chart>
     </panel>
     <panel>
-      <title>LLM Proxy Calls</title>
+      <title>LLM Proxy Health</title>
       <chart>
         <search>
-          <query>index=_internal source="*query_tester.log" ("LLM" OR "llm") earliest=$time_range.earliest$ latest=$time_range.latest$
+          <query>index=_internal source="*query_tester.log" (module="handlers.llm_proxy_handler" OR module="analysis.llm_analyzer") earliest=$time_range.earliest$ latest=$time_range.latest$
 | eval llm_status=case(
-    like(_raw, "%LLM empty response%") OR like(_raw, "%LLM HTTP%"), "Error",
-    like(_raw, "%LLM not configured%"), "Not Configured",
-    like(_raw, "%LLM analysis failed%"), "Analysis Failed",
+    log_level="ERROR", "Error",
+    log_level="WARNING", "Warning",
     1=1, "OK")
 | timechart count by llm_status</query>
         </search>
