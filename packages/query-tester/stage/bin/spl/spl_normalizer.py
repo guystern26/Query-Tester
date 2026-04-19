@@ -5,7 +5,16 @@ Normalize user-pasted SPL before analysis and execution.
 """
 from __future__ import annotations
 
+import re
 from typing import Optional
+
+
+# Commands that should be stripped from SPL before test execution.
+# These are action commands that have side effects (sending email, writing data).
+STRIP_COMMANDS = re.compile(
+    r'\|\s*sendemail\b[^|]*$',
+    re.IGNORECASE | re.MULTILINE,
+)
 
 
 def normalize_spl(spl):
@@ -17,6 +26,7 @@ def normalize_spl(spl):
     - Converts Windows line endings (\\r\\n) to \\n
     - Strips leading/trailing whitespace
     - Collapses runs of spaces/tabs within a line to single space
+    - Strips side-effect commands (sendemail) from the end of the pipeline
     - Does NOT modify content inside quoted strings
     - Preserves meaningful newlines in multiline SPL
     """
@@ -31,6 +41,9 @@ def normalize_spl(spl):
 
     if not result:
         return ""
+
+    # Remove side-effect commands (sendemail) from the pipeline
+    result = STRIP_COMMANDS.sub('', result).rstrip()
 
     # Normalize internal whitespace line-by-line, preserving quoted content
     lines = result.split("\n")

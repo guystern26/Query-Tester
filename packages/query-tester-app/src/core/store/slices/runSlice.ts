@@ -60,22 +60,9 @@ export function runSlice(set: SetState, get: GetState) {
         }
       }
 
-      // Re-fetch saved search SPL if test originated from one (in case it changed in Splunk)
-      const origin = test.query?.savedSearchOrigin;
-      if (origin && test.app) {
-        try {
-          const freshSpl = await getSavedSearchSpl(test.app, origin);
-          if (freshSpl && freshSpl.trim() !== (test.query?.spl ?? '').trim()) {
-            set((draft) => {
-              const t = draft.tests.find((x) => x.id === test.id);
-              if (t && t.query) t.query.spl = freshSpl;
-            });
-          }
-        } catch { /* saved search may have been deleted — run with stored SPL */ }
-      }
-
-      // Re-read test after possible SPL update
-      const freshTest = get().tests.find((t) => t.id === activeTestId) || test;
+      // Manual runs always use the SPL currently in the editor — never re-fetch.
+      // Saved search sync only happens on scheduled (cron) runs via the backend.
+      const freshTest = test;
       abortController = new AbortController();
 
       set((draft) => {

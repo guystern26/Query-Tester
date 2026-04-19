@@ -97,7 +97,12 @@ export function QuerySection({ isIde }: QuerySectionProps): React.ReactElement {
   // Mark stale when SPL changes (ignore whitespace-only diffs from formatting)
   const normSpl = (s: string) => s.replace(/\s+/g, ' ').trim();
   const prevSplRef = useRef(localSpl);
-  useEffect(() => { if (normSpl(prevSplRef.current) !== normSpl(localSpl)) { markStale(); setSelectedFields(new Set()); } prevSplRef.current = localSpl; }, [localSpl, markStale]);
+  const skipStaleRef = useRef(false);
+  useEffect(() => {
+    if (skipStaleRef.current) { skipStaleRef.current = false; prevSplRef.current = localSpl; return; }
+    if (normSpl(prevSplRef.current) !== normSpl(localSpl)) { markStale(); setSelectedFields(new Set()); }
+    prevSplRef.current = localSpl;
+  }, [localSpl, markStale]);
 
   const handleToggleField = useCallback((name: string) => {
     setSelectedFields((prev) => { const n = new Set(prev); if (n.has(name)) n.delete(name); else n.add(name); return n; });
@@ -169,6 +174,7 @@ export function QuerySection({ isIde }: QuerySectionProps): React.ReactElement {
               disabled={isAnalyzing || !localSpl.trim()} onClick={() => {
                 const formatted = formatSpl(localSpl);
                 if (formatted !== localSpl) {
+                  skipStaleRef.current = true;
                   setLocalSpl(formatted);
                   if (test) updateSpl(test.id, formatted);
                 }
