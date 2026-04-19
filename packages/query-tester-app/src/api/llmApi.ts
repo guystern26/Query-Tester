@@ -226,7 +226,7 @@ export async function analyzeQuery(spl: string, skills?: SkillSnippet[]): Promis
     } catch {
         // LLM returned non-JSON — use the raw text as the explanation
         return {
-            explanation: raw.trim().slice(0, 500),
+            explanation: raw.trim(),
             fields: [],
             notes: [],
             summary: 'LLM returned plain text instead of JSON — showing raw response.',
