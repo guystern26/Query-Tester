@@ -88,10 +88,10 @@ export function DataSourceSelector({ testId, scenarioId, inputId, value, matchCo
           <button
             type="button"
             onClick={() => setOpen(!open)}
-            className={`px-2 bg-navy-950 border rounded-r-lg cursor-pointer transition-all duration-200 flex items-center ${
+            className={`px-2 bg-navy-950 border rounded-r-lg cursor-pointer transition-colors duration-200 flex items-center ${
               open
-                ? 'border-accent-600 text-slate-200'
-                : 'border-blue-500/50 text-blue-400 animate-pulse hover:text-blue-300 hover:border-blue-400'
+                ? 'border-blue-400 text-slate-200'
+                : 'border-blue-500/50 text-blue-400 hover:text-blue-300 hover:border-blue-400'
             }`}
             title="Select from extracted sources"
           >
@@ -124,7 +124,7 @@ export function DataSourceSelector({ testId, scenarioId, inputId, value, matchCo
       )}
 
       {open && hasSources && (
-        <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-navy-900 border border-slate-700 rounded-lg shadow-lg overflow-hidden">
+        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-navy-900 border border-slate-700 rounded-lg shadow-xl overflow-hidden">
           {sources.map((src, i) => {
             const isUsed = usedIdentifiers.has(src.rowIdentifier.trim());
             return (

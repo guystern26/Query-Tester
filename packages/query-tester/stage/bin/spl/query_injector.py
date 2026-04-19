@@ -142,11 +142,18 @@ def _inject_inputlookup(spl: str, run_id: str, inputs: List[ParsedInput]) -> str
 
 
 def _inject_lookup(spl: str, run_id: str, inputs: List[ParsedInput]) -> str:
-    # Same as standard — just replace the row identifier wherever it appears.
-    # If the RI is a lookup name (e.g. "users_list"), it will match inside
-    # "| lookup users_list" and get replaced. If the RI is "index=main",
-    # only the index clause is replaced and lookups stay untouched.
-    return _inject_standard(spl, run_id, inputs)
+    # First try standard index replacement via row identifiers
+    replacement = _build_replacement(run_id)
+    ri_result = _apply_row_identifiers(spl, inputs, replacement)
+    if ri_result is not None:
+        # RI matched (e.g. index=main) — lookup is just enrichment
+        return ri_result
+    # No RI match — swap the first lookup name with the temp lookup.
+    # This handles the case where the data source IS the lookup.
+    # Also replace the outer index if present.
+    result = _replace_outer_index(spl, replacement)
+    temp_name = "temp_lookup_{0}".format(run_id)
+    return LOOKUP_PATTERN.sub(lambda m: m.group(1) + temp_name, result, count=1)
 
 
 def _replace_by_row_identifier(
