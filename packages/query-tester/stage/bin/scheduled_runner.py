@@ -74,11 +74,12 @@ _startup_sweep_done = False
 
 def _parse_iso(iso_str):
     # type: (str) -> float
-    """Parse ISO timestamp to epoch seconds. Returns 0 on failure."""
+    """Parse ISO timestamp (UTC) to epoch seconds. Returns 0 on failure."""
     if not iso_str:
         return 0.0
     try:
-        return time.mktime(time.strptime(iso_str, "%Y-%m-%dT%H:%M:%SZ"))
+        import calendar
+        return calendar.timegm(time.strptime(iso_str, "%Y-%m-%dT%H:%M:%SZ"))
     except (ValueError, OverflowError):
         return 0.0
 
