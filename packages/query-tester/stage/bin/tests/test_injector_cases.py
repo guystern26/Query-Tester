@@ -152,9 +152,10 @@ class TestLookup:
              "{} | lookup {} user AS username | stats count".format(R, LK))
 
     def test_with_ri(self):
+        """When RI matches, lookup is enrichment — don't swap lookup name."""
         _run("index=main sourcetype=syslog | lookup users_list user | stats count",
              _inputs("index=main sourcetype=syslog"), "lookup",
-             "{} | lookup {} user | stats count".format(R, LK))
+             "{} | lookup users_list user | stats count".format(R))
 
 
 # ── No index / tstats ─────────────────────────────────────────────────
