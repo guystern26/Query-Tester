@@ -24,7 +24,26 @@ function isSplunkEnv(): boolean {
 
 function cleanJsonResponse(text: string): string {
     let cleaned = text.trim();
+    // Strip markdown fences
     cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '');
+    cleaned = cleaned.trim();
+    // If the response doesn't start with { or [, try to extract JSON from it
+    if (!cleaned.startsWith('{') && !cleaned.startsWith('[')) {
+        const braceIdx = cleaned.indexOf('{');
+        const bracketIdx = cleaned.indexOf('[');
+        const startIdx = braceIdx >= 0 && (bracketIdx < 0 || braceIdx < bracketIdx) ? braceIdx : bracketIdx;
+        if (startIdx >= 0) {
+            cleaned = cleaned.slice(startIdx);
+        }
+    }
+    // If the response has trailing text after the JSON, trim it
+    if (cleaned.startsWith('{')) {
+        let depth = 0;
+        for (let i = 0; i < cleaned.length; i++) {
+            if (cleaned[i] === '{') depth++;
+            else if (cleaned[i] === '}') { depth--; if (depth === 0) { cleaned = cleaned.slice(0, i + 1); break; } }
+        }
+    }
     return cleaned.trim();
 }
 
@@ -79,7 +98,8 @@ export async function extractDataSources(spl: string): Promise<ExtractedDataSour
     try {
         parsed = JSON.parse(cleaned);
     } catch {
-        throw new Error('Failed to parse LLM response as JSON: ' + cleaned.slice(0, 100));
+        // LLM returned non-JSON — return empty sources
+        return [];
     }
 
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
@@ -110,7 +130,7 @@ export async function extractValidationFields(spl: string): Promise<string[]> {
                 .map((s) => s.trim().replace(/^["']|["']$/g, ''))
                 .filter(Boolean);
         }
-        throw new Error('Failed to parse LLM response: ' + cleaned.slice(0, 100));
+        return [];
     }
 }
 
@@ -204,7 +224,13 @@ export async function analyzeQuery(spl: string, skills?: SkillSnippet[]): Promis
     try {
         parsed = JSON.parse(cleaned);
     } catch {
-        throw new Error('Failed to parse LLM analysis response: ' + cleaned.slice(0, 100));
+        // LLM returned non-JSON — use the raw text as the explanation
+        return {
+            explanation: raw.trim().slice(0, 500),
+            fields: [],
+            notes: [],
+            summary: 'LLM returned plain text instead of JSON — showing raw response.',
+        };
     }
 
     return {
