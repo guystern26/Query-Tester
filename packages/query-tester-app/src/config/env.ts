@@ -35,7 +35,7 @@ export const ENV = {
   LLM_ENDPOINT: 'https://api.openai.com/v1/chat/completions',
   LLM_API_KEY: '',  // configured via Splunk Setup page (storage/passwords)
   LLM_MODEL: 'gpt-4o-mini',
-  LLM_MAX_TOKENS: 1024,
+  LLM_MAX_TOKENS: 4096,
 
   // ─── Limits ────────────────────────────────────────────────────────────
   MAX_QUERY_DATA_EVENTS: 10_000,

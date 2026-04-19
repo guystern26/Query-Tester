@@ -71,7 +71,7 @@ ADMIN_ROLES = ["admin", "sc_admin", "query_tester_admin"]
 
 LLM_ENDPOINT = ""                     # e.g. "https://api.openai.com/v1/chat/completions"
 LLM_MODEL = "gpt-4o-mini"
-LLM_MAX_TOKENS = 1024
+LLM_MAX_TOKENS = 4096
 
 # ─── Limits ──────────────────────────────────────────────────────────────────
 

@@ -30,7 +30,7 @@ def _get_llm_config(session_key):
         )
 
     model = str(cfg.get("llm_model") or "gpt-4o-mini").strip()
-    max_tokens = int(cfg.get("llm_max_tokens") or 1024)
+    max_tokens = int(cfg.get("llm_max_tokens") or 4096)
 
     # API key from secrets
     api_key = str(cfg.get("llm_api_key") or "").strip()
