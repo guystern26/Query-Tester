@@ -40,8 +40,9 @@ export function useInjectionMarkers(): InjectionMatchResult {
     const spl = test?.query?.spl ?? '';
 
     // Collect rowIdentifiers with their input index for per-input coloring
+    // Skip in query_only (Real Data) mode — no injection happens
     const indexedIds = useMemo(() => {
-        if (!test) return [];
+        if (!test || test.testType === 'query_only') return [];
         const result: Array<{ id: string; colorIndex: number }> = [];
         let idx = 0;
         for (const scenario of test.scenarios) {
