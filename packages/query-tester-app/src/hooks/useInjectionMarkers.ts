@@ -37,7 +37,7 @@ function findAllMatches(haystack: string, needle: string): Array<{ start: number
 export function useInjectionMarkers(): InjectionMatchResult {
     const test = useTestStore(selectActiveTest);
 
-    const spl = test?.query?.spl ?? '';
+    const spl = (test && test.query && test.query.spl) || '';
 
     // Collect rowIdentifiers with their input index for per-input coloring
     // Skip in query_only (Real Data) mode — no injection happens

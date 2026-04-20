@@ -60,8 +60,8 @@ export function DataSourceSelector({ testId, scenarioId, inputId, value, matchCo
   const handleSelect = (source: ExtractedDataSource) => {
     selectDataSource(testId, scenarioId, inputId, source);
     setOpen(false);
-    const app = test?.app ?? '';
-    const tr = test?.query?.timeRange;
+    const app = (test && test.app) || '';
+    const tr = test && test.query ? test.query.timeRange : undefined;
     if (app && source.fields.length > 0) {
       setLoadingValues(true);
       fetchSampleValues(testId, scenarioId, inputId, source.rowIdentifier, source.fields, app, tr)
