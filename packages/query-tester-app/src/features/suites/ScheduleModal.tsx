@@ -43,6 +43,7 @@ export function ScheduleModal({ open, onClose, editingTest, preselectedTestId }:
     const [enabled, setEnabled] = useState(true);
     const [alertOn, setAlertOn] = useState(false);
     const [recipients, setRecipients] = useState<string[]>([DEFAULT_ALERT_EMAIL]);
+    const [useCurrentQuery, setUseCurrentQuery] = useState(false);
 
     useEffect(() => {
         if (open) fetchSavedTests();
@@ -60,6 +61,7 @@ export function ScheduleModal({ open, onClose, editingTest, preselectedTestId }:
             setEnabled(editingTest.enabled);
             setAlertOn(editingTest.alertOnFailure);
             setRecipients(editingTest.emailRecipients.length > 0 ? editingTest.emailRecipients : [DEFAULT_ALERT_EMAIL]);
+            setUseCurrentQuery(!editingTest.savedSearchOrigin);
         } else {
             setTestId(preselectedTestId || '');
             const pre = savedTests.find((t) => t.id === preselectedTestId);
@@ -69,6 +71,7 @@ export function ScheduleModal({ open, onClose, editingTest, preselectedTestId }:
             setEnabled(true);
             setAlertOn(false);
             setRecipients([DEFAULT_ALERT_EMAIL]);
+            setUseCurrentQuery(false);
         }
     }, [open, editingTest, preselectedTestId]);
 
@@ -92,6 +95,8 @@ export function ScheduleModal({ open, onClose, editingTest, preselectedTestId }:
             updateSavedTest(selectedTest.id, trimmedName, selectedTest.description);
         }
 
+        const origin = useCurrentQuery ? null : (selectedTest.savedSearchOrigin || null);
+
         if (editingTest) {
             // Close immediately — updateScheduledTest applies optimistic update
             onClose();
@@ -101,6 +106,7 @@ export function ScheduleModal({ open, onClose, editingTest, preselectedTestId }:
                 enabled,
                 alertOnFailure: alertOn,
                 emailRecipients: finalRecipients,
+                savedSearchOrigin: origin,
             });
         } else {
             // Close immediately — creation continues in background
@@ -109,7 +115,7 @@ export function ScheduleModal({ open, onClose, editingTest, preselectedTestId }:
                 testId: selectedTest.id,
                 testName: trimmedName,
                 app: selectedTest.app,
-                savedSearchOrigin: selectedTest.savedSearchOrigin || null,
+                savedSearchOrigin: origin,
                 cronSchedule: cron,
                 intervalKey,
                 enabled,
@@ -151,38 +157,39 @@ export function ScheduleModal({ open, onClose, editingTest, preselectedTestId }:
                     </div>
                 )}
 
-                {/* SPL source toggle — linked to saved search vs current query */}
-                {selectedTest && (
-                    <div className="text-[11px] bg-navy-950 px-3 py-2.5 rounded-lg border border-slate-800">
-                        {selectedTest.savedSearchOrigin ? (
-                            <div className="flex items-center justify-between gap-2">
-                                <div className="text-slate-500">
-                                    <span className="text-blue-400">&#8635;</span> Synced with saved search: <span className="text-slate-300 font-medium">{selectedTest.savedSearchOrigin}</span>
-                                </div>
+                {/* SPL source toggle — synced with saved search vs current query */}
+                {selectedTest && selectedTest.savedSearchOrigin && (
+                    <div className="text-[11px] bg-navy-950 px-3 py-2.5 rounded-lg border border-slate-800 flex items-center justify-between gap-2">
+                        {useCurrentQuery ? (
+                            <>
+                                <span className="text-slate-400">Using current query <span className="text-slate-600">(not synced)</span></span>
                                 <button
                                     type="button"
-                                    className="text-[11px] px-2 py-0.5 rounded border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 hover:text-amber-300 cursor-pointer transition-colors whitespace-nowrap"
-                                    onClick={() => {
-                                        // Unlink from saved search — cron runs will use the stored SPL
-                                        if (editingTest) {
-                                            updateScheduledTest(editingTest.id, { savedSearchOrigin: '' });
-                                        }
-                                        // Also clear on the savedTests metadata
-                                        const meta = savedTests.find((t) => t.id === testId);
-                                        if (meta) {
-                                            meta.savedSearchOrigin = '';
-                                        }
-                                        fetchSavedTests();
-                                    }}
+                                    className="text-[11px] px-2 py-0.5 rounded border border-blue-500/30 text-blue-400 hover:bg-blue-500/10 cursor-pointer transition-colors whitespace-nowrap"
+                                    onClick={() => setUseCurrentQuery(false)}
+                                >
+                                    Sync with saved search
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <span className="text-slate-500">
+                                    <span className="text-blue-400">&#8635;</span> Synced: <span className="text-slate-300 font-medium">{selectedTest.savedSearchOrigin}</span>
+                                </span>
+                                <button
+                                    type="button"
+                                    className="text-[11px] px-2 py-0.5 rounded border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 cursor-pointer transition-colors whitespace-nowrap"
+                                    onClick={() => setUseCurrentQuery(true)}
                                 >
                                     Use current query
                                 </button>
-                            </div>
-                        ) : (
-                            <span className="text-slate-500">
-                                Using saved query <span className="text-slate-600">(not synced with a saved search)</span>
-                            </span>
+                            </>
                         )}
+                    </div>
+                )}
+                {selectedTest && !selectedTest.savedSearchOrigin && (
+                    <div className="text-[11px] text-slate-500 bg-navy-950 px-3 py-2 rounded-lg border border-slate-800">
+                        Using current query
                     </div>
                 )}
 
