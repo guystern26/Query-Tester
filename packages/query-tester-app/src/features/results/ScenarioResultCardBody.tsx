@@ -62,12 +62,32 @@ export function ScenarioResultCardBody({
 
     return (
         <div className="px-4 pb-4 flex flex-col gap-3 border-t border-slate-700/40">
-            {/* Error banner */}
-            {result.error && (
-                <div className="mt-3 px-3 py-2 rounded border-l-4 border-red-500 bg-red-500/10 text-[13px] text-red-300">
-                    {result.error}
-                </div>
-            )}
+            {/* Error banner — distinguish Splunk query errors from internal errors */}
+            {result.error && (() => {
+                const isSplunkError = result.error.includes('Query execution failed')
+                    || result.error.includes('Search cancelled')
+                    || result.error.includes('Error in')
+                    || result.error.includes('Unknown search command');
+                const cleanMsg = result.error
+                    .replace(/^Query execution failed:\s*/i, '')
+                    .replace(/^HTTP 400 Client Error.*?--\s*/i, '')
+                    .trim();
+                return isSplunkError ? (
+                    <div className="mt-3 px-3 py-2.5 rounded-lg border border-amber-500/30 bg-amber-500/5 flex gap-2.5 items-start">
+                        <svg className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <div>
+                            <div className="text-[12px] font-semibold text-amber-300 mb-0.5">Splunk Query Error</div>
+                            <div className="text-[13px] text-amber-200/80 font-mono">{cleanMsg}</div>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="mt-3 px-3 py-2 rounded border-l-4 border-red-500 bg-red-500/10 text-[13px] text-red-300">
+                        {result.error}
+                    </div>
+                );
+            })()}
 
             {/* Scenario warnings */}
             {result.warnings && result.warnings.length > 0 && (

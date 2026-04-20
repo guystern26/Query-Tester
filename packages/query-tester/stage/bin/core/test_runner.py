@@ -164,7 +164,9 @@ class TestRunner:
                             INDEX_SETTLE_SECS)
                 time.sleep(INDEX_SETTLE_SECS)
 
-        if strategy == "lookup" and all_events:
+        # Only create a temp lookup if the injected SPL actually references it
+        temp_lookup_name = "temp_lookup_{0}".format(run_id)
+        if temp_lookup_name in injected_spl and all_events:
             create_temp_lookup(run_id, all_events, payload.app)
 
         return self._execute_and_validate(
