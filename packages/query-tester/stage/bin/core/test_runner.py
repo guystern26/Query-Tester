@@ -172,7 +172,8 @@ class TestRunner:
             warnings=scenario_warnings,
         )
 
-    def _run_query_only(self, payload: TestPayload, spl: str) -> ScenarioResult:
+    def _run_query_only(self, payload, spl):
+        # type: (TestPayload, str) -> ScenarioResult
         """Run the SPL as-is with no injection or data indexing."""
         dummy = ParsedScenario(name="Query Only", inputs=[])
         return self._execute_and_validate(payload, dummy, spl, "Query Only")
