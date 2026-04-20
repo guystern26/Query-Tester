@@ -2934,6 +2934,9 @@ body {
   --tw-bg-opacity: 1;
   background-color: rgb(245 158 11 / var(--tw-bg-opacity, 1));
 }
+.hover\:bg-amber-500\/10:hover {
+  background-color: rgb(245 158 11 / 0.1);
+}
 .hover\:bg-amber-700\/60:hover {
   background-color: rgb(180 83 9 / 0.6);
 }
@@ -3016,6 +3019,10 @@ body {
 .hover\:text-amber-200:hover {
   --tw-text-opacity: 1;
   color: rgb(253 230 138 / var(--tw-text-opacity, 1));
+}
+.hover\:text-amber-300:hover {
+  --tw-text-opacity: 1;
+  color: rgb(252 211 77 / var(--tw-text-opacity, 1));
 }
 .hover\:text-amber-400:hover {
   --tw-text-opacity: 1;

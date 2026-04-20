@@ -12,7 +12,7 @@ from typing import Optional
 # Commands that should be stripped from SPL before test execution.
 # These are action commands that have side effects (sending email, writing data).
 STRIP_COMMANDS = re.compile(
-    r'\|\s*sendemail\b[^|]*$',
+    r'\|\s*(?:sendemail|outputlookup)\b[^|]*$',
     re.IGNORECASE | re.MULTILINE,
 )
 
