@@ -18,6 +18,16 @@ from config import (
 
 logger = get_logger(__name__)
 
+_FALSE_STRINGS = {"0", "false", "False", "no", "No", ""}
+
+
+def _to_bool(val):
+    # type: (Any) -> bool
+    """Normalize KVStore boolean values (may be string '0'/'false')."""
+    if isinstance(val, bool):
+        return val
+    return str(val) not in _FALSE_STRINGS
+
 
 def get_hec_config(session_key=None):
     # type: (Optional[str]) -> Dict[str, Any]
@@ -81,7 +91,7 @@ def resolve_hec_context(session_key):
         cfg["hec_scheme"], cfg["hec_host"], cfg["hec_port"],
     )
     ctx = ssl.create_default_context()
-    if not cfg["hec_ssl_verify"]:
+    if not _to_bool(cfg["hec_ssl_verify"]):
         ctx.check_hostname = False
         ctx.verify_mode = ssl.CERT_NONE
     return {
