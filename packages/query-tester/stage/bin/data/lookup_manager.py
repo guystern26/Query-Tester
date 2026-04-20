@@ -101,7 +101,11 @@ def create_temp_lookup(
     lookup_name = _coll_name(run_id)
     coll_name = lookup_name
 
-    fieldnames = list(events[0].keys())
+    # Collect field names from ALL events (not just the first)
+    all_keys = set()  # type: set
+    for evt in events:
+        all_keys.update(evt.keys())
+    fieldnames = sorted(all_keys)
     unique_events = _deduplicate(events, fieldnames)
 
     if not fields_list:

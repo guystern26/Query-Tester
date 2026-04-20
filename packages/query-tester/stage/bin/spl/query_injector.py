@@ -141,7 +141,7 @@ def _inject_inputlookup(spl: str, run_id: str, inputs: List[ParsedInput]) -> str
     return spl[:match.start()] + replacement + spl[match.end():]
 
 
-_LOOKUP_RI_RE = re.compile(r'(?i)^(?:lookup|inputlookup)\s+(.+)$')
+_LOOKUP_RI_RE = re.compile(r'(?i)^(?:lookup|inputlookup)\s+([\w\-\.]+)')
 
 
 def _inject_lookup(spl: str, run_id: str, inputs: List[ParsedInput]) -> str:
