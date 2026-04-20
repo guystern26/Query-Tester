@@ -109,7 +109,7 @@ export function ScheduleModal({ open, onClose, editingTest, preselectedTestId }:
                 testId: selectedTest.id,
                 testName: trimmedName,
                 app: selectedTest.app,
-                savedSearchOrigin: null,
+                savedSearchOrigin: selectedTest.savedSearchOrigin || null,
                 cronSchedule: cron,
                 intervalKey,
                 enabled,
@@ -151,12 +151,38 @@ export function ScheduleModal({ open, onClose, editingTest, preselectedTestId }:
                     </div>
                 )}
 
-                {/* Linked saved search info */}
+                {/* SPL source toggle — linked to saved search vs current query */}
                 {selectedTest && (
-                    <div className="text-[11px] text-slate-500 bg-navy-950 px-3 py-2 rounded-lg border border-slate-800">
-                        {selectedTest.savedSearchOrigin
-                            ? <>Linked to saved search: <span className="text-slate-300 font-medium">{selectedTest.savedSearchOrigin}</span></>
-                            : 'SPL is static (not linked to a saved search)'}
+                    <div className="text-[11px] bg-navy-950 px-3 py-2.5 rounded-lg border border-slate-800">
+                        {selectedTest.savedSearchOrigin ? (
+                            <div className="flex items-center justify-between gap-2">
+                                <div className="text-slate-500">
+                                    <span className="text-blue-400">&#8635;</span> Synced with saved search: <span className="text-slate-300 font-medium">{selectedTest.savedSearchOrigin}</span>
+                                </div>
+                                <button
+                                    type="button"
+                                    className="text-[11px] px-2 py-0.5 rounded border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 hover:text-amber-300 cursor-pointer transition-colors whitespace-nowrap"
+                                    onClick={() => {
+                                        // Unlink from saved search — cron runs will use the stored SPL
+                                        if (editingTest) {
+                                            updateScheduledTest(editingTest.id, { savedSearchOrigin: '' });
+                                        }
+                                        // Also clear on the savedTests metadata
+                                        const meta = savedTests.find((t) => t.id === testId);
+                                        if (meta) {
+                                            meta.savedSearchOrigin = '';
+                                        }
+                                        fetchSavedTests();
+                                    }}
+                                >
+                                    Use current query
+                                </button>
+                            </div>
+                        ) : (
+                            <span className="text-slate-500">
+                                Using saved query <span className="text-slate-600">(not synced with a saved search)</span>
+                            </span>
+                        )}
                     </div>
                 )}
 
