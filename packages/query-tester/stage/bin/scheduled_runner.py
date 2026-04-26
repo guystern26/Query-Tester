@@ -101,9 +101,14 @@ def _ran_recently(record):
 def _update_record(kv, sched_id, updates):
     # type: (KVStoreClient, str, Dict[str, Any]) -> None
     """Thread-safe read-modify-write on a scheduled_tests record."""
+    if not sched_id:
+        logger.warning("Skipping _update_record — empty sched_id")
+        return
     with _kv_lock:
         try:
             fresh = kv.get_by_id(COLLECTION_SCHEDULED_TESTS, sched_id)
+            if isinstance(fresh, list):
+                fresh = fresh[0] if fresh else {}
             fresh.update(updates)
             kv.upsert(COLLECTION_SCHEDULED_TESTS, sched_id, fresh)
         except Exception as exc:
@@ -139,7 +144,7 @@ def _sweep_missed_runs(kv, all_tests, now_ts):
         if rec.get("queueStatus", "idle") != "idle":
             continue
 
-        sched_id = rec.get("id", "")
+        sched_id = rec.get("id") or rec.get("_key", "")
         interval_key = rec.get("intervalKey", "")
         if not interval_key or interval_key not in INTERVAL_SECONDS:
             continue  # legacy record without intervalKey — skip
@@ -186,7 +191,7 @@ def _enqueue_due_tests(kv, all_tests):
     for rec in all_tests:
         if not is_enabled(rec):
             continue
-        sched_id = rec.get("id", "")
+        sched_id = rec.get("id") or rec.get("_key", "")
         queue_status = rec.get("queueStatus", "idle")
 
         # Reset stale 'running' tests (crashed worker)
@@ -374,7 +379,7 @@ def _process_queue(kv, session_key, all_tests, max_workers):
         for rec in batch:
             worker_kv = KVStoreClient(session_key)
             future = pool.submit(_run_single_test, worker_kv, session_key, rec)
-            futures[future] = rec.get("id", "unknown")
+            futures[future] = rec.get("id") or rec.get("_key", "unknown")
 
         for future in as_completed(futures):
             sched_id = futures[future]
