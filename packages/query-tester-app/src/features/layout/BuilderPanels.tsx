@@ -66,7 +66,7 @@ export function BuilderPanels({ rowRef, queryRef, dataRef, validationRef, hasQue
     }, [viewMode, visible, collapsed, openOne]);
 
     useEffect(() => {
-        if (viewMode === 'single') { const open = visible.filter((p) => !collapsed[p.id]); if (open.length !== 1) openOne(visible[0]?.id || 'query'); }
+        if (viewMode === 'single') { const open = visible.filter((p) => !collapsed[p.id]); if (open.length !== 1) openOne((visible[0] && visible[0].id) || 'query'); }
     }, [viewMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
     return (

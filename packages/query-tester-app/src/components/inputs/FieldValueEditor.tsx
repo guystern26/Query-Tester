@@ -66,7 +66,7 @@ export function FieldValueEditor({
     const handleFieldNameChange = (fi: number, name: string) => {
         updateFieldNameInAllEvents(testId, scenarioId, inputId, fi, name);
         // Auto-fill sample value when a field is picked from the dropdown
-        const sample = sampleValues?.[name];
+        const sample = sampleValues ? sampleValues[name] : undefined;
         if (sample && events.length > 0) {
             const fv = events[0].fieldValues[fi];
             if (fv && fv.value === '') {
@@ -113,7 +113,9 @@ export function FieldValueEditor({
 
     const fieldNames: string[] = [];
     for (let fi = 0; fi < fieldCount; fi++) {
-        fieldNames.push(events[0]?.fieldValues[fi]?.field ?? '');
+        const e0 = events[0];
+        const fv = e0 ? e0.fieldValues[fi] : undefined;
+        fieldNames.push(fv ? fv.field : '');
     }
 
     return (
@@ -209,7 +211,7 @@ export function FieldValueEditor({
                                                 <input
                                                     className="w-36 px-2.5 py-2 text-sm bg-navy-800/30 border border-slate-700/40 rounded-md text-slate-200 placeholder-slate-600 focus:outline-none focus:border-blue-300 focus:bg-navy-800/50 transition-all duration-200"
                                                     type="text"
-                                                    value={fv?.value ?? ''}
+                                                    value={(fv && fv.value) || ''}
                                                     onChange={(e) =>
                                                         fv &&
                                                         updateFieldValue(

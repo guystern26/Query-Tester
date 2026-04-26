@@ -20,10 +20,11 @@ export function FieldNameDropdown({
     const wrapRef = useRef<HTMLDivElement>(null);
 
     // Only show fields from the source matching this input's rowIdentifier
-    const matchingSource = test?.fieldExtraction?.sources.find(
+    const sources = (test && test.fieldExtraction && test.fieldExtraction.sources) || [];
+    const matchingSource = sources.find(
         (s) => s.rowIdentifier === rowIdentifier
     );
-    const extracted = matchingSource?.fields || [];
+    const extracted = (matchingSource && matchingSource.fields) || [];
     const available = Array.from(new Set(extracted)).filter(
         (f) => f !== value && !usedFields.includes(f)
     );

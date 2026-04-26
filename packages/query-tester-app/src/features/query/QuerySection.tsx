@@ -37,9 +37,9 @@ export function QuerySection({ isIde }: QuerySectionProps): React.ReactElement {
   const extractDS = useTestStore((s) => s.fetchExtractDataSources);
   const suggestVF = useTestStore((s) => s.fetchSuggestValidationFields);
 
-  const app = test?.app ?? '';
-  const spl = test?.query?.spl ?? '';
-  const origin = test?.query?.savedSearchOrigin ?? '';
+  const app = (test && test.app) || '';
+  const spl = (test && test.query && test.query.spl) || '';
+  const origin = (test && test.query && test.query.savedSearchOrigin) || '';
   const effectivePolicy = isIde ? IDE_POLICY : commandPolicy;
   const splSyntax = useSplSyntax();
 
@@ -114,7 +114,7 @@ export function QuerySection({ isIde }: QuerySectionProps): React.ReactElement {
   }, [localSpl, effectivePolicy, debouncedUpdateSpl]);
 
   useEffect(() => { // Re-lint on external SPL/policy change
-    if (!editorRef.current?.contains(document.activeElement)) setSplWarnings(lintSpl(localSpl, effectivePolicy));
+    if (!(editorRef.current && editorRef.current.contains(document.activeElement))) setSplWarnings(lintSpl(localSpl, effectivePolicy));
   }, [localSpl, effectivePolicy]);
 
   // Apply inline Ace markers + gutter annotations + hover tooltips
@@ -168,7 +168,7 @@ export function QuerySection({ isIde }: QuerySectionProps): React.ReactElement {
 
         {test && (
           <div className="flex flex-col gap-2 flex-shrink-0 pt-0.5">
-            <TimeRangePicker value={test.query?.timeRange} onChange={(tr) => setTimeRange(test.id, tr)} />
+            <TimeRangePicker value={test.query ? test.query.timeRange : undefined} onChange={(tr) => setTimeRange(test.id, tr)} />
             <button
               className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-semibold transition-colors duration-200 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap tracking-wide border ${analysisStale ? 'bg-amber-500/15 border-amber-500/40 text-amber-300 shadow-[0_0_8px_rgba(245,158,11,0.25)] animate-pulse' : 'border-slate-600 text-blue-300 hover:border-slate-500 hover:text-blue-200'}`}
               disabled={isAnalyzing || !localSpl.trim()} onClick={() => {
@@ -182,7 +182,7 @@ export function QuerySection({ isIde }: QuerySectionProps): React.ReactElement {
                 const skills = chatSkills.filter((s) => s.enabled).map((s) => ({ name: s.name, prompt: s.prompt }));
                 runAnalysis(formatted, skills.length > 0 ? skills : undefined);
                 // Fire extract + suggest in parallel (background)
-                if (test && !isIde) { const sid = test.scenarios[0]?.id; if (sid) void extractDS(test.id, sid, formatted).catch(() => {}); void suggestVF(test.id, formatted).catch(() => {}); }
+                if (test && !isIde) { const s0 = test.scenarios[0]; const sid = s0 ? s0.id : undefined; if (sid) { void extractDS(test.id, sid, formatted).catch(() => {}); void suggestVF(test.id, formatted).catch(() => {}); } }
               }}>
               {isAnalyzing ? (
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin"><path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round" /></svg>

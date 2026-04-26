@@ -3,7 +3,7 @@
  * Replaces the plain row identifier text input on InputCard.
  */
 import React, { useState, useRef, useEffect } from 'react';
-import type { EntityId, ExtractedDataSource, Scenario } from 'core/types';
+import type { EntityId, ExtractedDataSource } from 'core/types';
 import { useTestStore } from 'core/store/testStore';
 import { selectActiveTest } from 'core/store/selectors';
 
@@ -31,7 +31,7 @@ export function DataSourceSelector({ testId, scenarioId, inputId, value, matchCo
   const [loadingValues, setLoadingValues] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
-  const sources = test?.fieldExtraction?.sources || [];
+  const sources = (test && test.fieldExtraction && test.fieldExtraction.sources) || [];
   const hasSources = sources.length > 0;
 
   // Find which row identifiers are already used by other inputs in this scenario
