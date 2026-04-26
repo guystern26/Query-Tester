@@ -101,9 +101,9 @@ def create_temp_lookup(
     lookup_name = _coll_name(run_id)
     coll_name = lookup_name
 
-    # Collect field names from ALL events (not just the first)
+    # Collect field names from first 10 events (covers sparse fields without scanning all)
     all_keys = set()  # type: set
-    for evt in events:
+    for evt in events[:10]:
         all_keys.update(evt.keys())
     fieldnames = sorted(all_keys)
     unique_events = _deduplicate(events, fieldnames)
