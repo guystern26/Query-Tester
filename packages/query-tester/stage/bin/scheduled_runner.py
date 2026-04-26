@@ -233,16 +233,12 @@ def _run_single_test(kv, session_key, scheduled):
     test_id = scheduled.get("testId", "")
     start_ms = int(time.time() * 1000)
 
-    # SHC dedup: re-read fresh record from KVStore to catch concurrent runs
-    # across multiple search heads sharing the same KVStore.
+    # SHC dedup: re-read fresh record to check if another SH already completed this test.
+    # Only check lastRunAt — do NOT check queueStatus=running here, because on an SHC
+    # _process_queue sets "running" before submitting to the thread pool, and all other
+    # SHs would see "running" and skip, leaving only 1 SH able to run (fragile).
     try:
         fresh = kv.get_by_id(COLLECTION_SCHEDULED_TESTS, sched_id)
-        fresh_status = fresh.get("queueStatus", "idle")
-        # Another SH already claimed this run
-        if fresh_status == "running":
-            logger.info("Skipping %s — already running on another search head.", sched_id)
-            return
-        # Another SH already completed this run recently
         if _ran_recently(fresh):
             logger.info("Skipping %s — already ran recently (SHC dedup).", sched_id)
             _update_record(kv, sched_id, {"queueStatus": "idle", "queuedAt": ""})
