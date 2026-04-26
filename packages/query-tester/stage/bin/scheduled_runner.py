@@ -144,7 +144,7 @@ def _sweep_missed_runs(kv, all_tests, now_ts):
         if rec.get("queueStatus", "idle") != "idle":
             continue
 
-        sched_id = rec.get("id") or rec.get("_key", "")
+        sched_id = rec.get("_key") or rec.get("id", "")
         interval_key = rec.get("intervalKey", "")
         if not interval_key or interval_key not in INTERVAL_SECONDS:
             continue  # legacy record without intervalKey — skip
@@ -191,7 +191,7 @@ def _enqueue_due_tests(kv, all_tests):
     for rec in all_tests:
         if not is_enabled(rec):
             continue
-        sched_id = rec.get("id") or rec.get("_key", "")
+        sched_id = rec.get("_key") or rec.get("id", "")
         queue_status = rec.get("queueStatus", "idle")
 
         # Reset stale 'running' tests (crashed worker)
@@ -379,7 +379,7 @@ def _process_queue(kv, session_key, all_tests, max_workers):
         for rec in batch:
             worker_kv = KVStoreClient(session_key)
             future = pool.submit(_run_single_test, worker_kv, session_key, rec)
-            futures[future] = rec.get("id") or rec.get("_key", "unknown")
+            futures[future] = rec.get("_key") or rec.get("id", "unknown")
 
         for future in as_completed(futures):
             sched_id = futures[future]
