@@ -294,6 +294,25 @@ def _run_single_test(kv, session_key, scheduled):
 
         payload, query_spl = build_test_payload(definition, saved_test, scheduled)
 
+        # If linked to a saved search, fetch fresh SPL from Splunk
+        origin = scheduled.get("savedSearchOrigin") or ""
+        if origin:
+            try:
+                from scheduling.spl_drift import fetch_current_spl
+                test_app = scheduled.get("app") or payload.get("app", "search")
+                fresh_spl = fetch_current_spl(session_key, origin, app=test_app)
+                if fresh_spl:
+                    logger.info("Using fresh SPL from saved search '%s' for %s",
+                                origin, sched_id)
+                    payload["query"] = fresh_spl
+                    query_spl = fresh_spl
+                else:
+                    logger.warning("Could not fetch saved search '%s' — using stored SPL.",
+                                   origin)
+            except Exception as exc:
+                logger.warning("Failed to fetch saved search '%s': %s — using stored SPL.",
+                               origin, exc)
+
         from core.test_runner import TestRunner
         runner = TestRunner(session_key)
         result, _ = runner.run_test(payload)

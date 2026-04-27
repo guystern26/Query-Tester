@@ -24,16 +24,22 @@ def compute_spl_hash(spl):
     return hashlib.md5(normalized).hexdigest()[:12]
 
 
-def fetch_current_spl(session_key, saved_search_name):
-    # type: (str, str) -> Optional[str]
-    """Fetch the current SPL from a Splunk saved search."""
-    service = get_service(session_key, app="QueryTester", owner="admin")
-    try:
-        search = service.saved_searches[saved_search_name]
-        return search["search"]
-    except Exception as exc:
-        logger.warning("Could not fetch saved search %s: %s", saved_search_name, exc)
-        return None
+def fetch_current_spl(session_key, saved_search_name, app=None):
+    # type: (str, str, Optional[str]) -> Optional[str]
+    """Fetch the current SPL from a Splunk saved search.
+
+    Tries the specified app first, then falls back to '-' (all apps).
+    """
+    apps_to_try = [app, "-"] if app else ["-"]
+    for try_app in apps_to_try:
+        try:
+            service = get_service(session_key, app=try_app or "-", owner="-")
+            search = service.saved_searches[saved_search_name]
+            return search["search"]
+        except Exception:
+            continue
+    logger.warning("Could not fetch saved search '%s' in any app.", saved_search_name)
+    return None
 
 
 def check_spl_drift(session_key, saved_search_origin, stored_hash):
