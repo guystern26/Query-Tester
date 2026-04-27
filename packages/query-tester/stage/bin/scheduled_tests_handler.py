@@ -32,12 +32,35 @@ logger = get_logger(__name__)
 COLLECTION_SCHEDULED_TESTS = "scheduled_tests"
 BOOL_FIELDS = ("enabled", "alertOnFailure")
 
+def _hour_from_range(minute, start, end):
+    # type: (int, int, int) -> int
+    """Deterministic hour from minute, matching frontend hourFromRange."""
+    return start + (minute % (end - start + 1))
+
+
+def _build_cron(interval_key, minute):
+    # type: (str, int) -> str
+    """Build a full 5-field cron from interval key + minute. Must match frontend buildCron."""
+    if interval_key == "daily":
+        return "{0} {1} * * *".format(minute, _hour_from_range(minute, 6, 9))
+    if interval_key == "2d":
+        return "{0} {1} */2 * *".format(minute, _hour_from_range(minute, 6, 9))
+    if interval_key == "3d":
+        return "{0} {1} */3 * *".format(minute, _hour_from_range(minute, 6, 9))
+    if interval_key == "evening":
+        return "{0} {1} * * *".format(minute, _hour_from_range(minute, 18, 21))
+    if interval_key == "weekly":
+        return "{0} 22 * * 5".format(minute)
+    return "{0} 6 * * *".format(minute)
+
+
+# Used only for suggest_minute pattern matching (finding existing tests with same interval)
 INTERVAL_PATTERNS = {
-    "daily": "* * *",       # morning 6-9, any hour match
-    "2d": "*/2 * *",        # morning 6-9, every 2 days
-    "3d": "*/3 * *",        # morning 6-9, every 3 days
-    "evening": "* * *",     # evening 18-21, any hour match
-    "weekly": "* * 5",      # Friday
+    "daily": None,       # use _build_cron instead
+    "2d": None,
+    "3d": None,
+    "evening": None,
+    "weekly": None,
     # Legacy keys (kept for backward compat with existing schedules)
     "hourly": "* * * *",
     "2h": "*/2 * * *",
@@ -90,8 +113,7 @@ def _suggest_minute(kv, interval_key):
     if interval_key == "weekly":
         return _suggest_weekly_slot(kv)
 
-    pattern = INTERVAL_PATTERNS.get(interval_key)
-    if not pattern:
+    if interval_key not in INTERVAL_PATTERNS:
         return {"error": "Unknown interval_key: {0}".format(interval_key)}
 
     try:
@@ -99,14 +121,13 @@ def _suggest_minute(kv, interval_key):
     except Exception:
         records = []
 
-    # Collect used minutes for records matching this interval pattern
+    # Collect used minutes for records matching this interval key
     used_minutes = []  # type: List[int]
     for rec in records:
-        cron = rec.get("cronSchedule", "")
-        parts = cron.strip().split()
-        if len(parts) == 5:
-            rec_pattern = " ".join(parts[1:])
-            if rec_pattern == pattern:
+        if rec.get("intervalKey") == interval_key:
+            cron = rec.get("cronSchedule", "")
+            parts = cron.strip().split()
+            if len(parts) == 5:
                 try:
                     used_minutes.append(int(parts[0]))
                 except (ValueError, TypeError):
@@ -125,7 +146,7 @@ def _suggest_minute(kv, interval_key):
         least_used = [m for m, c in counts.items() if c == min_count]
         minute = random.choice(least_used) if least_used else random.randint(0, 59)
 
-    cron = "{0} {1}".format(minute, pattern)
+    cron = _build_cron(interval_key, minute)
     return {"minute": minute, "cron": cron}
 
 
