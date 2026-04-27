@@ -13,6 +13,57 @@
   </fieldset>
 
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- ROW 0: Run Workflow — full pipeline from trigger to completion          -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <row>
+    <panel>
+      <title>Run Workflow — Scheduled Test Pipeline</title>
+      <table>
+        <search>
+          <query>index=_internal source="*query_tester.log" module="scheduled_runner" earliest=$time_range.earliest$ latest=$time_range.latest$
+| eval stage=case(
+    like(message, "SHC stagger%"), "1. Stagger delay",
+    like(message, "Missed run detected%"), "2. Missed run detected",
+    like(message, "Enqueued test%") OR like(message, "%sweep enqueued%"), "3. Enqueued",
+    like(message, "Processing%queued%"), "4. Processing queue",
+    like(message, "Skipping%dedup%") OR like(message, "Skipping%already%"), "5. Skipped (dedup)",
+    like(message, "Running scheduled test%"), "6. Running",
+    like(message, "%completed%status=%"), "7. Completed",
+    like(message, "Resetting stale%"), "X. Stale reset",
+    like(message, "Failed%"), "X. Error",
+    1=1, "Other")
+| stats count as Events latest(_time) as "Last Seen" by stage
+| sort stage</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="count">15</option>
+      </table>
+    </panel>
+    <panel>
+      <title>Run Workflow — Manual Test Pipeline</title>
+      <table>
+        <search>
+          <query>index=_internal source="*query_tester.log" (module="query_tester" OR module="core.test_runner" OR module="spl.query_executor" OR module="spl.query_injector" OR module="data.data_indexer") earliest=$time_range.earliest$ latest=$time_range.latest$
+| eval stage=case(
+    like(message, "Manual test run started%"), "1. Manual run started",
+    like(message, "Cache macro scan%"), "2. SPL analysis",
+    like(message, "Indexed batch%"), "3. HEC indexing",
+    like(message, "Executed SPL%"), "4. Query execution",
+    like(message, "Manual test run completed%"), "5. Completed",
+    like(message, "Scenario%failed%"), "X. Scenario error",
+    like(message, "Error handling POST%"), "X. Handler error",
+    1=1, "Other")
+| where stage!="Other"
+| stats count as Events latest(_time) as "Last Seen" by stage
+| sort stage</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="count">10</option>
+      </table>
+    </panel>
+  </row>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <!-- ROW 1: Key Metrics (single values)                                     -->
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <row>
@@ -32,7 +83,7 @@
       <title>Manual Runs</title>
       <single>
         <search>
-          <query>index=_internal source="*query_tester.log" message="*manual*run*" earliest=$time_range.earliest$ latest=$time_range.latest$
+          <query>index=_internal source="*query_tester.log" message="Manual test run completed*" earliest=$time_range.earliest$ latest=$time_range.latest$
 | stats count</query>
         </search>
         <option name="drilldown">none</option>

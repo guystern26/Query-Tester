@@ -239,13 +239,18 @@ class QueryTesterHandler(PersistentServerConnectionApplication):
             payload = normalize_payload(request.get("payload"))
             start_ms = int(time.time() * 1000)
             cold_config = _get_cold_config(session_key)
+            username = get_username(request)
+            test_name = payload.get("testName", "")
+            logger.info("Manual test run started by %s: %s", username, test_name)
             runner = TestRunner(session_key, config=cold_config)
             self._current_runner = runner
             result, status_code = runner.run_test(payload)
             duration_ms = int(time.time() * 1000) - start_ms
+            run_status = result.get("status", "error")
+            logger.info("Manual test run completed: %s, status=%s, duration=%dms, user=%s",
+                        test_name, run_status, duration_ms, username)
             _write_manual_history(
-                session_key, payload, result, duration_ms,
-                get_username(request),
+                session_key, payload, result, duration_ms, username,
             )
             return json_response(result, status_code)
         except Exception as exc:
