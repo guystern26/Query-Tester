@@ -243,30 +243,32 @@ def _run_single_test(kv, session_key, scheduled):
     sched_id = scheduled.get("_key") or scheduled.get("id", "")
     test_id = scheduled.get("testId", "")
 
-    # Layer 1: Random delay (10-30s) — staggers KVStore reads across SHs
+    # Layer 1: Claim immediately — write our hostname before the delay
+    _update_record(kv, sched_id, {"runningOnHost": LOCAL_HOSTNAME})
+
+    # Layer 2: Random delay (10-30s) — gives KVStore time to replicate the claim
     delay = random.randint(SHC_DELAY_MIN, SHC_DELAY_MAX)
-    logger.info("SHC stagger: waiting %ds before running %s", delay, sched_id)
+    logger.info("SHC stagger: waiting %ds before running %s (claimed by %s)",
+                delay, sched_id, LOCAL_HOSTNAME)
     time.sleep(delay)
 
-    # Layer 2: Re-read fresh record — by now another SH may have finished
+    # Layer 3: Re-read after delay — check if we're still the owner + ran recently
     try:
         fresh = kv.get_by_id(COLLECTION_SCHEDULED_TESTS, sched_id)
         if isinstance(fresh, list):
             fresh = fresh[0] if fresh else {}
         if _ran_recently(fresh):
             logger.info("Skipping %s — already ran recently (SHC dedup).", sched_id)
-            _update_record(kv, sched_id, {"queueStatus": "idle", "queuedAt": ""})
+            _update_record(kv, sched_id, {"queueStatus": "idle", "queuedAt": "", "runningOnHost": ""})
             return
-        # Layer 3: Claim ownership — write our hostname so other SHs can see who's running
-        running_host = fresh.get("runningOnHost", "")
-        if running_host and running_host != LOCAL_HOSTNAME:
-            logger.info("Skipping %s — already claimed by %s.", sched_id, running_host)
+        # Another SH overwrote our claim during the delay — they won
+        owner = fresh.get("runningOnHost", "")
+        if owner and owner != LOCAL_HOSTNAME:
+            logger.info("Skipping %s — lost claim to %s.", sched_id, owner)
             return
     except Exception:
         pass  # if re-read fails, proceed with the run
 
-    # Claim this test for our hostname
-    _update_record(kv, sched_id, {"runningOnHost": LOCAL_HOSTNAME})
     start_ms = int(time.time() * 1000)
 
     logger.info("Running scheduled test %s (testId=%s) on host %s",
