@@ -14,6 +14,15 @@ import { runAgentPipeline } from '../../../features/ide/agentLoop';
 import type { AgentPipelineConfig } from '../../../features/ide/agentLoop';
 import type { ChatMessageEntry, ChatSliceState, AgentRole } from './chatSlice';
 
+export interface DebugStepResult {
+    stage: number;
+    spl: string;
+    rowCount: number;
+    timeMs: number;
+    status: 'ok' | 'zero' | 'error';
+    error?: string;
+}
+
 const AUTO_SAMPLE_ROWS = 5;
 
 interface ChatStoreGet {
@@ -151,6 +160,38 @@ export function createSendChatMessage(set: SetState, get: ChatStoreGet): (text: 
     };
 }
 
+function splitPipePrefixes(spl: string): string[] {
+    const prefixes: string[] = [];
+    let depth = 0;
+    let inDouble = false;
+    let inSingle = false;
+    let lastSplit = 0;
+    const segments: string[] = [];
+
+    for (let i = 0; i < spl.length; i++) {
+        const ch = spl[i];
+        if (ch === '"' && !inSingle) inDouble = !inDouble;
+        else if (ch === "'" && !inDouble) inSingle = !inSingle;
+        else if (!inDouble && !inSingle) {
+            if (ch === '[') depth++;
+            else if (ch === ']') depth--;
+            else if (ch === '|' && depth === 0) {
+                segments.push(spl.slice(lastSplit, i).trim());
+                lastSplit = i + 1;
+            }
+        }
+    }
+    segments.push(spl.slice(lastSplit).trim());
+
+    let cumulative = '';
+    for (const seg of segments) {
+        if (!seg) continue;
+        cumulative = cumulative ? cumulative + ' | ' + seg : seg;
+        prefixes.push(cumulative);
+    }
+    return prefixes;
+}
+
 export function createExecuteChatAction(set: SetState, get: ChatStoreGet): (messageId: string, actionId: string) => Promise<void> {
     return async (messageId: string, actionId: string) => {
         const state = get();
@@ -181,6 +222,98 @@ export function createExecuteChatAction(set: SetState, get: ChatStoreGet): (mess
                 action.payload, test.app ?? '',
                 tr ? { earliest: tr.earliest || '0', latest: tr.latest || 'now' } : undefined,
             );
+            return;
+        }
+
+        if (action.type === 'debug_pipeline') {
+            const spl = test.query && test.query.spl ? test.query.spl : '';
+            if (!spl.trim()) {
+                set((d) => {
+                    const target = d.chatMessages.find((m) => m.id === messageId);
+                    if (target) {
+                        if (!target.actionResults) target.actionResults = {};
+                        target.actionResults[actionId] = { status: 'error', error: 'No SPL in editor' };
+                    }
+                });
+                return;
+            }
+
+            const prefixes = splitPipePrefixes(spl);
+            if (prefixes.length <= 1) {
+                set((d) => {
+                    const target = d.chatMessages.find((m) => m.id === messageId);
+                    if (target) {
+                        if (!target.actionResults) target.actionResults = {};
+                        target.actionResults[actionId] = { status: 'error', error: 'Query has only one stage' };
+                    }
+                });
+                return;
+            }
+
+            set((d) => {
+                const target = d.chatMessages.find((m) => m.id === messageId);
+                if (target) {
+                    if (!target.actionResults) target.actionResults = {};
+                    target.actionResults[actionId] = { status: 'loading', debugSteps: [] };
+                }
+            });
+
+            const tr = test.query && test.query.timeRange
+                ? { earliest: test.query.timeRange.earliest || '0', latest: test.query.timeRange.latest || 'now' }
+                : undefined;
+            const steps: DebugStepResult[] = [];
+            let foundZero = false;
+            const DEBUG_HEAD_LIMIT = 10;
+
+            for (let i = 0; i < prefixes.length; i++) {
+                if (foundZero) break;
+                const prefix = prefixes[i] + ' | head ' + DEBUG_HEAD_LIMIT;
+                const start = Date.now();
+                try {
+                    const resp = await runIdeQuery(test.app || '', prefix, tr);
+                    const elapsed = Date.now() - start;
+                    const count = resp.resultCount || 0;
+                    const step: DebugStepResult = {
+                        stage: i + 1,
+                        spl: prefixes[i],
+                        rowCount: count,
+                        timeMs: elapsed,
+                        status: count === 0 ? 'zero' : 'ok',
+                    };
+                    steps.push(step);
+                    set((d) => {
+                        const target = d.chatMessages.find((m) => m.id === messageId);
+                        if (target && target.actionResults) {
+                            target.actionResults[actionId] = { status: 'loading', debugSteps: [...steps] };
+                        }
+                    });
+                    if (count === 0) foundZero = true;
+                } catch (e) {
+                    const err = e as { message?: string };
+                    steps.push({
+                        stage: i + 1,
+                        spl: prefixes[i],
+                        rowCount: 0,
+                        timeMs: Date.now() - start,
+                        status: 'error',
+                        error: err.message || 'Query failed',
+                    });
+                    foundZero = true;
+                    set((d) => {
+                        const target = d.chatMessages.find((m) => m.id === messageId);
+                        if (target && target.actionResults) {
+                            target.actionResults[actionId] = { status: 'loading', debugSteps: [...steps] };
+                        }
+                    });
+                }
+            }
+
+            set((d) => {
+                const target = d.chatMessages.find((m) => m.id === messageId);
+                if (target && target.actionResults) {
+                    target.actionResults[actionId] = { status: 'success', debugSteps: steps };
+                }
+            });
             return;
         }
 

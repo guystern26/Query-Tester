@@ -12,6 +12,7 @@ import { extractBaseSearch } from '../../../features/ide/chatUtils';
 import type { ParsedAction } from '../../../features/ide/chatUtils';
 import type { AgentStep } from '../../../features/ide/agentLoop';
 import { abortChat, createSendChatMessage, createExecuteChatAction } from './chatActions';
+import type { DebugStepResult } from './chatActions';
 import { fetchChatSkills, createChatSkill, updateChatSkill, deleteChatSkill } from '../../../api/chatSkillsApi';
 
 export type AgentRole = 'manager' | 'explainer' | 'writer' | 'validator';
@@ -29,6 +30,7 @@ export interface ActionResult {
     status: 'loading' | 'success' | 'error';
     rows?: Record<string, string>[];
     error?: string;
+    debugSteps?: DebugStepResult[];
 }
 
 export interface ChatMessageEntry {
