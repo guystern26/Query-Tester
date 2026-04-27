@@ -71,7 +71,7 @@ export function scheduledTestsSlice(set: SetState) {
         },
 
         updateScheduledTest: async (id: string, patch: Partial<ScheduledTest>) => {
-            // Snapshot for rollback, then apply optimistically
+            // Snapshot for rollback — deep copy inside set to avoid revoked proxy
             let snapshot: ScheduledTest | undefined;
             set((draft) => {
                 draft.isLoadingScheduled = true;
@@ -79,7 +79,7 @@ export function scheduledTestsSlice(set: SetState) {
                 draft.scheduledError = null;
                 const idx = draft.scheduledTests.findIndex((t) => t.id === id);
                 if (idx !== -1) {
-                    snapshot = { ...draft.scheduledTests[idx] };
+                    snapshot = JSON.parse(JSON.stringify(draft.scheduledTests[idx]));
                     Object.assign(draft.scheduledTests[idx], patch);
                 }
             });
