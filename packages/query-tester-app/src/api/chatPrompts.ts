@@ -68,7 +68,9 @@ To debug the current query pipe-by-pipe (runs each prefix, stops where results d
 ~~~action:debug_pipeline
 ~~~
 
-When the user asks to debug, ALWAYS use debug_pipeline first. It will automatically find the problematic pipe stage.
+When the user asks to debug, troubleshoot, or figure out why a query returns no results,
+ALWAYS emit a debug_pipeline action IMMEDIATELY. Do not describe what you will do — just
+emit the action block. After it runs, explain the results.
 
 NEVER use auto_query with data-modifying commands (delete, outputlookup, collect, etc.).
 Only use actions when they clearly help. Always explain what the action does.`;

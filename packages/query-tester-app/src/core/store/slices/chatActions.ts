@@ -152,6 +152,15 @@ export function createSendChatMessage(set: SetState, get: ChatStoreGet): (text: 
                 });
             }
             set((d) => { d.chatMessages.push(entry); d.chatLoading = false; });
+            // Auto-execute debug_pipeline and auto_query actions
+            if (entry.actions && entry.actions.length > 0) {
+                const execFn = createExecuteChatAction(set, get);
+                for (const act of entry.actions) {
+                    if (act.type === 'debug_pipeline' || act.type === 'auto_query') {
+                        setTimeout(() => { void execFn(entry.id, act.id); }, 100);
+                    }
+                }
+            }
         } catch (e) {
             const err = e as { name?: string; message?: string };
             if (err.name === 'AbortError') { set((d) => { d.chatLoading = false; }); return; }
