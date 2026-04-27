@@ -54,6 +54,7 @@ INTERVAL_SECONDS = {
     "daily": 86400,
     "2d": 172800,
     "3d": 259200,
+    "evening": 86400,
     "weekly": 604800,
     # Legacy keys (backward compat)
     "hourly": 3600,

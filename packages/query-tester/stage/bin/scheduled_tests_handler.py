@@ -33,10 +33,11 @@ COLLECTION_SCHEDULED_TESTS = "scheduled_tests"
 BOOL_FIELDS = ("enabled", "alertOnFailure")
 
 INTERVAL_PATTERNS = {
-    "daily": "6 * * *",
-    "2d": "6 */2 * *",
-    "3d": "6 */3 * *",
-    "weekly": "22 * * 5",
+    "daily": "* * *",       # morning 6-9, any hour match
+    "2d": "*/2 * *",        # morning 6-9, every 2 days
+    "3d": "*/3 * *",        # morning 6-9, every 3 days
+    "evening": "* * *",     # evening 18-21, any hour match
+    "weekly": "* * 5",      # Friday
     # Legacy keys (kept for backward compat with existing schedules)
     "hourly": "* * * *",
     "2h": "*/2 * * *",
