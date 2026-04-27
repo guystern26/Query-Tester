@@ -19,6 +19,8 @@ from __future__ import annotations
 
 import json
 import os
+import platform
+import random
 import sys
 import time
 import threading
@@ -48,6 +50,9 @@ TEST_TIMEOUT_SECONDS = 300    # 5 min max per individual test
 DEDUP_WINDOW_SECONDS = 120    # skip if ran in last 2 min
 STALE_RUNNING_SECONDS = 600   # reset 'running' after 10 min (crashed/timed-out worker)
 MISSED_RUN_MULTIPLIER = 1.5   # consider missed if lastRunAt > interval * 1.5
+SHC_DELAY_MIN = 10            # random delay before processing (seconds)
+SHC_DELAY_MAX = 30            # spreads KVStore reads across SHs
+LOCAL_HOSTNAME = platform.node()  # this search head's hostname
 
 # Interval key → expected seconds between runs
 INTERVAL_SECONDS = {
@@ -235,24 +240,37 @@ def _enqueue_due_tests(kv, all_tests):
 def _run_single_test(kv, session_key, scheduled):
     # type: (KVStoreClient, str, Dict[str, Any]) -> None
     """Run a single scheduled test and record the result."""
-    sched_id = scheduled.get("id", "")
+    sched_id = scheduled.get("_key") or scheduled.get("id", "")
     test_id = scheduled.get("testId", "")
-    start_ms = int(time.time() * 1000)
 
-    # SHC dedup: re-read fresh record to check if another SH already completed this test.
-    # Only check lastRunAt — do NOT check queueStatus=running here, because on an SHC
-    # _process_queue sets "running" before submitting to the thread pool, and all other
-    # SHs would see "running" and skip, leaving only 1 SH able to run (fragile).
+    # Layer 1: Random delay (10-30s) — staggers KVStore reads across SHs
+    delay = random.randint(SHC_DELAY_MIN, SHC_DELAY_MAX)
+    logger.info("SHC stagger: waiting %ds before running %s", delay, sched_id)
+    time.sleep(delay)
+
+    # Layer 2: Re-read fresh record — by now another SH may have finished
     try:
         fresh = kv.get_by_id(COLLECTION_SCHEDULED_TESTS, sched_id)
+        if isinstance(fresh, list):
+            fresh = fresh[0] if fresh else {}
         if _ran_recently(fresh):
             logger.info("Skipping %s — already ran recently (SHC dedup).", sched_id)
             _update_record(kv, sched_id, {"queueStatus": "idle", "queuedAt": ""})
             return
+        # Layer 3: Claim ownership — write our hostname so other SHs can see who's running
+        running_host = fresh.get("runningOnHost", "")
+        if running_host and running_host != LOCAL_HOSTNAME:
+            logger.info("Skipping %s — already claimed by %s.", sched_id, running_host)
+            return
     except Exception:
         pass  # if re-read fails, proceed with the run
 
-    logger.info("Running scheduled test %s (testId=%s)", sched_id, test_id)
+    # Claim this test for our hostname
+    _update_record(kv, sched_id, {"runningOnHost": LOCAL_HOSTNAME})
+    start_ms = int(time.time() * 1000)
+
+    logger.info("Running scheduled test %s (testId=%s) on host %s",
+                sched_id, test_id, LOCAL_HOSTNAME)
 
     status = "error"
     result = {}  # type: Dict[str, Any]
@@ -301,24 +319,42 @@ def _run_single_test(kv, session_key, scheduled):
             logger.info("SPL drift detected for %s: %s",
                         sched_id, spl_drift_details)
 
-    write_history_record(
-        kv, sched_id, ran_at, status, duration_ms, summary,
-        scenario_results, current_spl=query_spl,
-        spl_drift=spl_drift, spl_drift_details=spl_drift_details,
-    )
+    # Layer 3 check: re-read to confirm we're still the owner
+    is_owner = True
+    try:
+        final = kv.get_by_id(COLLECTION_SCHEDULED_TESTS, sched_id)
+        if isinstance(final, list):
+            final = final[0] if final else {}
+        owner = final.get("runningOnHost", "")
+        if owner and owner != LOCAL_HOSTNAME:
+            is_owner = False
+            logger.info("Not the owner of %s (owner=%s, we=%s) — skipping post-run actions.",
+                        sched_id, owner, LOCAL_HOSTNAME)
+    except Exception:
+        pass  # if re-read fails, assume we're the owner
 
-    # Mark done: update lastRun + reset queue status to idle
+    if is_owner:
+        write_history_record(
+            kv, sched_id, ran_at, status, duration_ms, summary,
+            scenario_results, current_spl=query_spl,
+            spl_drift=spl_drift, spl_drift_details=spl_drift_details,
+        )
+
+    # Mark done: update lastRun + reset queue status + clear host claim
     _update_record(kv, sched_id, {
         "lastRunAt": ran_at,
         "lastRunStatus": status,
         "queueStatus": "idle",
         "queuedAt": "",
+        "runningOnHost": "",
     })
 
-    logger.info("Scheduled test %s completed: status=%s, duration=%dms",
-                sched_id, status, duration_ms)
+    logger.info("Scheduled test %s completed: status=%s, duration=%dms, owner=%s",
+                sched_id, status, duration_ms, is_owner)
 
-    # Send failure emails
+    # Send failure emails — only if we're the owner
+    if not is_owner:
+        return
     alert_flag = scheduled.get("alertOnFailure", False)
     should_alert = alert_flag in (True, "1", "true", "True")
     if status in ("fail", "error") and should_alert:
