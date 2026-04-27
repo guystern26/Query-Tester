@@ -28,7 +28,9 @@ export const scheduledTestsInitialState: ScheduledTestsState = {
     scheduledError: null,
 };
 
-export function scheduledTestsSlice(set: SetState) {
+type GetState = () => { scheduledTests: ScheduledTest[] };
+
+export function scheduledTestsSlice(set: SetState, get: GetState) {
     return {
         fetchScheduledTests: async () => {
             set((draft) => {
@@ -71,15 +73,17 @@ export function scheduledTestsSlice(set: SetState) {
         },
 
         updateScheduledTest: async (id: string, patch: Partial<ScheduledTest>) => {
-            // Snapshot for rollback — deep copy inside set to avoid revoked proxy
-            let snapshot: ScheduledTest | undefined;
+            // Snapshot for rollback — read from real state (not Immer draft)
+            const current = get().scheduledTests.find((t) => t.id === id);
+            const snapshot: ScheduledTest | undefined = current
+                ? Object.assign({}, current)
+                : undefined;
             set((draft) => {
                 draft.isLoadingScheduled = true;
                 draft.togglingScheduleId = id;
                 draft.scheduledError = null;
-                const idx = draft.scheduledTests.findIndex((t) => t.id === id);
+                const idx = draft.scheduledTests.findIndex((t: ScheduledTest) => t.id === id);
                 if (idx !== -1) {
-                    snapshot = JSON.parse(JSON.stringify(draft.scheduledTests[idx]));
                     Object.assign(draft.scheduledTests[idx], patch);
                 }
             });

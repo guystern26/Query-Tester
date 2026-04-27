@@ -52,7 +52,7 @@ export const useTestStore = create<TestStoreState>()(
         ...fileSlice(set, get),
 
         ...scheduledTestsInitialState,
-        ...scheduledTestsSlice(set),
+        ...scheduledTestsSlice(set, get),
 
         ...testLibraryInitialState,
         ...testLibrarySlice(set, get),
