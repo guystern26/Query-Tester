@@ -4,6 +4,7 @@
  */
 import React, { useState, useCallback } from 'react';
 import type { ChatMessageEntry, ActionResult } from '../../core/store/slices/chatSlice';
+import type { DebugStepResult } from 'core/store/slices/chatActions';
 import type { ParsedAction } from './chatUtils';
 import { ChatActionResult } from './ChatActionResult';
 import { AgentStepCard } from './AgentStepCard';
@@ -126,6 +127,59 @@ function CodeBlock({ code }: { code: string }): React.ReactElement {
     );
 }
 
+// ── Debug pipeline result ────────────────────────────────────────
+
+function DebugPipelineResult({ steps }: { steps: DebugStepResult[] }): React.ReactElement {
+    const [expandedStage, setExpandedStage] = useState<number | null>(null);
+    const problemStage = steps.find((s) => s.status === 'zero' || s.status === 'error');
+
+    return (
+        <div className="flex flex-col gap-1 mt-1">
+            {steps.map((step) => {
+                const isExpanded = expandedStage === step.stage;
+                const icon = step.status === 'ok' ? '\u2713' : step.status === 'zero' ? '\u2717' : '\u26A0';
+                const color = step.status === 'ok' ? 'text-green-400' : step.status === 'zero' ? 'text-red-400' : 'text-amber-400';
+                const bg = step.status === 'ok' ? 'bg-green-400/5' : step.status === 'zero' ? 'bg-red-500/5' : 'bg-amber-500/5';
+
+                const parts = step.spl.split('|');
+                const lastPipe = parts[parts.length - 1].trim();
+                const label = parts.length === 1 ? lastPipe : '| ' + lastPipe;
+
+                return (
+                    <div key={step.stage} className={`rounded px-2 py-1 ${bg}`}>
+                        <div
+                            className="flex items-center gap-2 cursor-pointer"
+                            onClick={() => setExpandedStage(isExpanded ? null : step.stage)}
+                        >
+                            <span className={`text-[11px] font-mono ${color}`}>{icon}</span>
+                            <span className="text-[11px] text-slate-400 font-mono flex-1 truncate">{label}</span>
+                            <span className={`text-[10px] tabular-nums ${color}`}>
+                                {step.rowCount} row{step.rowCount !== 1 ? 's' : ''}
+                            </span>
+                            <span className="text-[10px] text-slate-600 tabular-nums">{step.timeMs}ms</span>
+                        </div>
+                        {isExpanded && (
+                            <pre className="text-[9px] text-slate-500 font-mono mt-1 pl-5 whitespace-pre-wrap break-all">
+                                {step.spl}
+                            </pre>
+                        )}
+                        {isExpanded && step.error && (
+                            <div className="text-[10px] text-red-400 mt-1 pl-5">{step.error}</div>
+                        )}
+                    </div>
+                );
+            })}
+            {problemStage && (
+                <div className="text-[11px] text-amber-300 mt-1 px-2">
+                    Results dropped at stage {problemStage.stage}: <span className="text-slate-400 font-mono">
+                        {(problemStage.spl.split('|').pop() || '').trim()}
+                    </span>
+                </div>
+            )}
+        </div>
+    );
+}
+
 // ── Action button (run_query / update_spl) ──────────────────────
 
 interface ActionButtonProps {
@@ -135,8 +189,9 @@ interface ActionButtonProps {
 }
 
 function ActionButton({ action, result, onExecute }: ActionButtonProps): React.ReactElement {
-    const isRunQuery = action.type === 'run_query';
-    const label = isRunQuery ? 'Run this query' : 'Apply to editor';
+    const isDebug = action.type === 'debug_pipeline';
+    const isRunQuery = action.type === 'run_query' || action.type === 'auto_query';
+    const label = isDebug ? 'Debug pipeline' : isRunQuery ? 'Run this query' : 'Apply to editor';
     const isDone = result?.status === 'success';
     const [copied, setCopied] = useState(false);
 
@@ -169,7 +224,8 @@ function ActionButton({ action, result, onExecute }: ActionButtonProps): React.R
                     {isRunQuery ? 'Done' : 'Applied'}
                 </span>
             )}
-            {result && isRunQuery && <ChatActionResult result={result} />}
+            {result && isRunQuery && !(result.debugSteps) && <ChatActionResult result={result} />}
+            {result && result.debugSteps && <DebugPipelineResult steps={result.debugSteps} />}
         </div>
     );
 }
