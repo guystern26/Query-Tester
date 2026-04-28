@@ -194,7 +194,7 @@ export function ScheduleModal({ open, onClose, editingTest, preselectedTestId }:
                 )}
 
                 {/* Interval picker */}
-                <IntervalPicker value={intervalKey} onChange={handleIntervalChange} />
+                <IntervalPicker value={intervalKey} cronValue={cron} onChange={handleIntervalChange} />
 
                 {/* Enabled toggle */}
                 <label className="flex items-center justify-between">

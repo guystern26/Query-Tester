@@ -284,8 +284,16 @@ def _run_single_test(kv, session_key, scheduled):
         try:
             saved_test = kv.get_by_id(COLLECTION_SAVED_TESTS, test_id)
         except Exception:
-            logger.error("Saved test %s not found for scheduled test %s",
+            logger.error("Saved test %s not found for scheduled test %s — disabling schedule.",
                          test_id, sched_id)
+            _update_record(kv, sched_id, {
+                "enabled": "0",
+                "queueStatus": "idle",
+                "queuedAt": "",
+                "runningOnHost": "",
+                "lastRunAt": _now_iso(),
+                "lastRunStatus": "error",
+            })
             return
 
         definition = saved_test.get("definition", {})
