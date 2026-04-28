@@ -178,9 +178,16 @@ class TestNoIndex:
 
 
 class TestTstats:
-    def test_noop(self):
+    def test_noop_no_ri(self):
+        """No RI set — tstats query unchanged."""
         _run("| tstats count where index=main by host", _inputs(""),
              "tstats", "| tstats count where index=main by host")
+
+    def test_ri_replaces_index(self):
+        """RI set — tstats where index= gets replaced."""
+        _run("| tstats count where index=main by host",
+             _inputs("index=main"), "tstats",
+             "| tstats count where {} by host".format(R))
 
 
 # ── Complex / mixed ───────────────────────────────────────────────────

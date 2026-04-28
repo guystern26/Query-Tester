@@ -107,6 +107,11 @@ def inject(
 
 
 def _inject_noop(spl: str, run_id: str, inputs: List[ParsedInput]) -> str:
+    # Even for tstats, try RI replacement — the user may have set index=X as the RI
+    replacement = _build_replacement(run_id)
+    result = _apply_row_identifiers(spl, inputs, replacement)
+    if result is not None:
+        return result
     return spl
 
 
