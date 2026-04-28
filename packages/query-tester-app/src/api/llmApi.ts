@@ -106,10 +106,33 @@ export async function extractDataSources(spl: string): Promise<ExtractedDataSour
         throw new Error('Expected a JSON object from LLM, got: ' + typeof parsed);
     }
 
-    return Object.entries(parsed).map(([rowIdentifier, fields]) => ({
-        rowIdentifier,
-        fields: Array.isArray(fields) ? fields.map(String) : [],
-    }));
+    var sources = Object.entries(parsed)
+        .filter(function (e) { return e[0] !== '_ambiguous' && e[0] !== '_unresolvable'; })
+        .map(function (e) {
+            return {
+                rowIdentifier: e[0],
+                fields: Array.isArray(e[1]) ? e[1].map(String) : [],
+            };
+        });
+
+    // Add a "full base search" variant: everything before the first pipe.
+    // This gives users the option to inject with all base filters included.
+    var firstPipe = spl.indexOf('|');
+    var baseLine = (firstPipe >= 0 ? spl.slice(0, firstPipe) : spl).trim();
+    if (baseLine) {
+        var alreadyExists = sources.some(function (s) {
+            return s.rowIdentifier.trim().toLowerCase() === baseLine.toLowerCase();
+        });
+        if (!alreadyExists && sources.length > 0) {
+            // Use the same fields as the first source (the base data source)
+            sources.splice(1, 0, {
+                rowIdentifier: baseLine,
+                fields: sources[0].fields.slice(),
+            });
+        }
+    }
+
+    return sources;
 }
 
 /**

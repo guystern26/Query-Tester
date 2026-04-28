@@ -2,7 +2,7 @@
  * WizardLayout — orchestrates stepper, query sidebar, and active step content.
  * Navigation lives in ResultsBar (bottom bar).
  */
-import React, { useCallback, useMemo, useState, useEffect } from 'react';
+import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import { useTestStore } from 'core/store/testStore';
 import { selectActiveTest, selectIsRunning, inputHasData } from 'core/store/selectors';
 import { AppSelector } from '../../components/AppSelector';
@@ -110,12 +110,41 @@ export function WizardLayout({ localName, onNameChange, app, onAppChange, isIde 
     var currentStepId = stepDefs[clampedStep] ? stepDefs[clampedStep].id : 'query';
     var showSidebar = clampedStep > 0;
 
+    // Slide + fade transition on step change
     var _s = useState(true);
     var visible = _s[0];
     var setVisible = _s[1];
+    var _prev = useRef(clampedStep);
+    var _dir = useRef(1);
+    // Chevron attention pulse — fires when canGoNext flips to true
+    var _pulseNext = useState(0);
+    var pulseNextKey = _pulseNext[0];
+    var setPulseNextKey = _pulseNext[1];
+    var _prevCanNext = useRef(canGoNext);
     useEffect(function () {
+        if (canGoNext && !_prevCanNext.current) {
+            setPulseNextKey(function (k) { return k + 1; });
+        }
+        _prevCanNext.current = canGoNext;
+    }, [canGoNext]);
+
+    // Back chevron pulse — fires when step advances (back becomes available)
+    var _pulseBack = useState(0);
+    var pulseBackKey = _pulseBack[0];
+    var setPulseBackKey = _pulseBack[1];
+    var _prevFirst = useRef(isFirst);
+    useEffect(function () {
+        if (!isFirst && _prevFirst.current) {
+            setPulseBackKey(function (k) { return k + 1; });
+        }
+        _prevFirst.current = isFirst;
+    }, [isFirst]);
+
+    useEffect(function () {
+        _dir.current = clampedStep >= _prev.current ? 1 : -1;
+        _prev.current = clampedStep;
         setVisible(false);
-        var t = setTimeout(function () { setVisible(true); }, 30);
+        var t = setTimeout(function () { setVisible(true); }, 80);
         return function () { clearTimeout(t); };
     }, [clampedStep]);
 
@@ -165,14 +194,17 @@ export function WizardLayout({ localName, onNameChange, app, onAppChange, isIde 
             <div className="flex flex-1 min-h-0 items-stretch">
                 {/* Left chevron — Back */}
                 <button
+                    key={'back-btn-' + pulseBackKey}
                     type="button"
                     data-tutorial="wizard-nav"
                     onClick={handleBack}
                     disabled={isFirst}
                     title={!isFirst && stepDefs[clampedStep - 1] ? stepDefs[clampedStep - 1].label : ''}
-                    className="w-6 shrink-0 flex items-center justify-center text-slate-600 hover:text-slate-300 transition-colors cursor-pointer disabled:opacity-0 disabled:cursor-default mr-1"
+                    className="w-7 shrink-0 flex items-center justify-center rounded-l-lg border border-transparent text-slate-600 transition-all cursor-pointer hover:text-slate-300 hover:border-slate-700/50 hover:bg-navy-800/60 disabled:opacity-0 disabled:cursor-default disabled:hover:bg-transparent disabled:hover:border-transparent"
+                    style={pulseBackKey > 0 && !isFirst ? { animation: 'navCardStretchLeft 3s ease-out' } : undefined}
                 >
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <svg key={'back-' + pulseBackKey} className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}
+                        style={pulseBackKey > 0 && !isFirst ? { animation: 'chevronAttentionLeft 3s ease-out' } : undefined}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
                     </svg>
                 </button>
@@ -192,7 +224,11 @@ export function WizardLayout({ localName, onNameChange, app, onAppChange, isIde 
                 <div
                     className={'flex-1 min-w-0 bg-navy-800 border border-slate-700/20 px-5 py-3 shadow-lg shadow-black/20 overflow-y-auto flex flex-col gap-2 '
                         + (showSidebar ? 'rounded-r-xl' : 'rounded-xl')}
-                    style={{ opacity: visible ? 1 : 0, transition: 'opacity 150ms ease-in-out' }}
+                    style={{
+                        opacity: visible ? 1 : 0,
+                        transform: visible ? 'translateX(0)' : 'translateX(' + (_dir.current * 20) + 'px)',
+                        transition: 'opacity 320ms ease-out, transform 320ms ease-out',
+                    }}
                 >
                     {currentStepId === 'query' ? <QuerySection /> : null}
                     {currentStepId === 'data' ? <ScenarioPanel /> : null}
@@ -202,27 +238,33 @@ export function WizardLayout({ localName, onNameChange, app, onAppChange, isIde 
                 {/* Right chevron — Next or Run */}
                 {isLast ? (
                     <button
+                        key={'run-btn-' + pulseNextKey}
                         type="button"
                         data-tutorial="wizard-nav-next"
                         onClick={handleRun}
                         disabled={isRunning}
                         title="Run Test"
-                        className="w-8 shrink-0 flex items-center justify-center text-green-400/70 hover:text-green-400 bg-green-500/5 hover:bg-green-500/10 rounded-r-lg transition-all cursor-pointer disabled:opacity-40 disabled:cursor-default"
+                        className="w-7 shrink-0 flex items-center justify-center rounded-r-lg border border-transparent text-green-400/70 transition-all cursor-pointer hover:text-green-400 hover:border-green-500/30 hover:bg-green-500/10 disabled:opacity-40 disabled:cursor-default"
+                        style={pulseNextKey > 0 ? { animation: 'navCardStretch 3s ease-out' } : undefined}
                     >
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24">
+                        <svg key={'run-' + pulseNextKey} className="w-4 h-4" fill="none" viewBox="0 0 24 24"
+                            style={pulseNextKey > 0 ? { animation: 'chevronAttention 3s ease-out' } : undefined}>
                             <polygon points="5 3 19 12 5 21 5 3" fill="currentColor" />
                         </svg>
                     </button>
                 ) : (
                     <button
+                        key={'next-btn-' + pulseNextKey}
                         type="button"
                         data-tutorial="wizard-nav-next"
                         onClick={handleNext}
                         disabled={!canGoNext}
                         title={stepDefs[clampedStep + 1] ? 'Next: ' + stepDefs[clampedStep + 1].label : 'Next'}
-                        className="w-6 shrink-0 flex items-center justify-center text-slate-600 hover:text-slate-300 transition-colors cursor-pointer disabled:opacity-0 disabled:cursor-default ml-1"
+                        className="w-7 shrink-0 flex items-center justify-center rounded-r-lg border border-transparent text-slate-600 transition-all cursor-pointer hover:text-slate-300 hover:border-slate-700/50 hover:bg-navy-800/60 disabled:opacity-0 disabled:cursor-default disabled:hover:bg-transparent disabled:hover:border-transparent"
+                        style={pulseNextKey > 0 && canGoNext ? { animation: 'navCardStretch 3s ease-out' } : undefined}
                     >
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <svg key={'next-' + pulseNextKey} className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}
+                            style={pulseNextKey > 0 && canGoNext ? { animation: 'chevronAttention 3s ease-out' } : undefined}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                         </svg>
                     </button>

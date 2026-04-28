@@ -90,6 +90,48 @@
   }
 }
 
+@keyframes chevronAttention {
+  0% { opacity: 0.5; transform: translateX(0); color: #64748b; }
+  8% { opacity: 1; transform: translateX(8px); color: #93C5FD; }
+  16% { opacity: 1; transform: translateX(-3px); color: #93C5FD; }
+  24% { opacity: 1; transform: translateX(6px); color: #93C5FD; }
+  32% { opacity: 1; transform: translateX(-2px); color: #93C5FD; }
+  40% { opacity: 1; transform: translateX(4px); color: #7db8f0; }
+  50% { opacity: 0.9; transform: translateX(0); color: #7db8f0; }
+  100% { opacity: 0.5; transform: translateX(0); color: #64748b; }
+}
+
+@keyframes chevronAttentionLeft {
+  0% { opacity: 0.5; transform: translateX(0); color: #64748b; }
+  8% { opacity: 1; transform: translateX(-8px); color: #93C5FD; }
+  16% { opacity: 1; transform: translateX(3px); color: #93C5FD; }
+  24% { opacity: 1; transform: translateX(-6px); color: #93C5FD; }
+  32% { opacity: 1; transform: translateX(2px); color: #93C5FD; }
+  40% { opacity: 1; transform: translateX(-4px); color: #7db8f0; }
+  50% { opacity: 0.9; transform: translateX(0); color: #7db8f0; }
+  100% { opacity: 0.5; transform: translateX(0); color: #64748b; }
+}
+
+@keyframes navCardStretch {
+  0% { padding-right: 0; border-color: transparent; }
+  8% { padding-right: 10px; border-color: rgba(147, 197, 253, 0.3); background-color: rgba(30, 41, 59, 0.6); }
+  16% { padding-right: 2px; }
+  24% { padding-right: 8px; border-color: rgba(147, 197, 253, 0.2); }
+  40% { padding-right: 3px; }
+  50% { padding-right: 0; border-color: transparent; background-color: transparent; }
+  100% { padding-right: 0; border-color: transparent; background-color: transparent; }
+}
+
+@keyframes navCardStretchLeft {
+  0% { padding-left: 0; border-color: transparent; }
+  8% { padding-left: 10px; border-color: rgba(147, 197, 253, 0.3); background-color: rgba(30, 41, 59, 0.6); }
+  16% { padding-left: 2px; }
+  24% { padding-left: 8px; border-color: rgba(147, 197, 253, 0.2); }
+  40% { padding-left: 3px; }
+  50% { padding-left: 0; border-color: transparent; background-color: transparent; }
+  100% { padding-left: 0; border-color: transparent; background-color: transparent; }
+}
+
 /* ── Scrollbar ─────────────────────────────────────────────── */
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
