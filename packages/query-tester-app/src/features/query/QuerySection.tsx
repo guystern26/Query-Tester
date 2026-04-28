@@ -162,7 +162,7 @@ export function QuerySection({ isIde }: QuerySectionProps): React.ReactElement {
 
       <div className="flex gap-3 items-start">
         <div ref={editorRef} className="relative flex-1 min-w-0" onFocus={handleEditorFocus} onBlur={handleEditorBlur}>
-          <SearchInput value={localSpl} onChange={handleSplChange} syntax={splSyntax} placeholder="index=main sourcetype=access_combined | stats count by src_ip" minLines={6} maxLines={20} showLineNumbers />
+          <SearchInput value={localSpl} onChange={handleSplChange} syntax={splSyntax} placeholder="index=main sourcetype=access_combined | stats count by src_ip" minLines={10} maxLines={24} showLineNumbers />
           <span className="absolute right-3 bottom-2 text-[11px] text-slate-500 pointer-events-none">{localSpl.length} chars</span>
         </div>
 

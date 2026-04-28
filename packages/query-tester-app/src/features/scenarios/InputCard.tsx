@@ -89,7 +89,7 @@ function InputCardInner({ testId, scenarioId, input, index, isOpen = true, onTog
     return (
       <>
         <div
-          className={`flex items-center gap-3 px-4 py-2.5 bg-navy-900 rounded-lg border border-slate-700 border-l-2 ${accentBorder || 'border-l-slate-600'} cursor-pointer hover:border-slate-600 transition-all duration-200 select-none`}
+          className={`flex items-center gap-2 px-3 py-1.5 bg-navy-900 rounded-lg border border-slate-700 border-l-2 ${accentBorder || 'border-l-slate-600'} cursor-pointer hover:border-slate-600 transition-all duration-200 select-none`}
           onClick={onToggle}
         >
           <ChevronIcon open={false} />
@@ -115,10 +115,10 @@ function InputCardInner({ testId, scenarioId, input, index, isOpen = true, onTog
   return (
     <>
       <Card className={accentBorder ? `border-l-2 ${accentBorder}` : ''}>
-        <div className="flex justify-between items-center mb-3">
+        <div className="flex justify-between items-center mb-2">
           <div className="flex items-center gap-2 cursor-pointer select-none" onClick={onToggle}>
             <ChevronIcon open={true} />
-            <span className="font-semibold text-[15px] text-slate-100">Input {num}</span>
+            <span className="font-semibold text-[13px] text-slate-100">Input {num}</span>
           </div>
           <button
             type="button"

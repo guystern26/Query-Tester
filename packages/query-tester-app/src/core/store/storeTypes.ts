@@ -13,9 +13,9 @@ import type {
 } from '../types/config';
 import type { IdeSliceState } from './slices/ideSlice';
 import type { ChatSliceState } from './slices/chatSlice';
-import type { PanelSliceState, PanelViewMode, PanelId } from './slices/panelSlice';
+import type { WizardSliceState } from './slices/wizardSlice';
 
-export interface TestStoreState extends IdeSliceState, ChatSliceState, PanelSliceState {
+export interface TestStoreState extends IdeSliceState, ChatSliceState, WizardSliceState {
     tests: TestDefinition[];
     activeTestId: EntityId | null;
     isRunning: boolean;
@@ -174,10 +174,12 @@ export interface TestStoreState extends IdeSliceState, ChatSliceState, PanelSlic
     fetchSuggestValidationFields: (testId: EntityId, spl: string) => Promise<{ fields: string[]; newCount: number }>;
     fetchSampleValues: (testId: EntityId, scenarioId: EntityId, inputId: EntityId, rowIdentifier: string, fields: string[], app: string, timeRange?: TimeRange) => Promise<void>;
 
-    // --- Panel View ---
-    setPanelViewMode: (mode: PanelViewMode) => void;
-    setActivePanelIndex: (index: number) => void;
-    togglePanelCollapsed: (panel: PanelId) => void;
+    // --- Wizard ---
+    setActiveStep: (step: number) => void;
+    toggleQuerySidebar: () => void;
+    setQuerySidebarWidth: (width: number) => void;
+    setLastExtractedSpl: (spl: string) => void;
+    resetWizard: () => void;
 
     // --- Query Data ---
     updateQueryDataSpl: (testId: EntityId, scenarioId: EntityId, inputId: EntityId, spl: string) => void;

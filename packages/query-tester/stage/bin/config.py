@@ -12,7 +12,7 @@ from __future__ import annotations
 
 SPLUNK_HOST = "localhost"
 SPLUNK_PORT = 8089            # splunkd management port
-SPLUNK_SCHEME = "http"
+SPLUNK_SCHEME = "https"
 SPLUNK_USERNAME = "admin"
 SPLUNK_PASSWORD = "Password1!"
 

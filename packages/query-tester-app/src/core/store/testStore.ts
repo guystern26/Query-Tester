@@ -22,7 +22,7 @@ import { configSlice, configInitialState, commandPolicyInitialState } from './sl
 import { llmActionsSlice } from './slices/llmActionsSlice';
 import { ideSlice, ideInitialState } from './slices/ideSlice';
 import { chatSlice, chatInitialState } from './slices/chatSlice';
-import { panelSlice, panelInitialState } from './slices/panelSlice';
+import { wizardSlice, wizardInitialState } from './slices/wizardSlice';
 import { consumeSkip } from './changeDetectionFlag';
 
 export type { TestStoreState } from './storeTypes';
@@ -69,8 +69,8 @@ export const useTestStore = create<TestStoreState>()(
         ...chatInitialState,
         ...chatSlice(set, get),
 
-        ...panelInitialState,
-        ...panelSlice(set),
+        ...wizardInitialState,
+        ...wizardSlice(set),
 
         setupRequired: false,
     }))

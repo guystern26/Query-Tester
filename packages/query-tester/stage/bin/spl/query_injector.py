@@ -22,7 +22,13 @@ INPUTLOOKUP_PATTERN = re.compile(
 _RE_INPUTLOOKUP = re.compile(r"(?:^|\|)\s*inputlookup\b", re.IGNORECASE)
 _RE_TSTATS = re.compile(r"(?:^|\|)\s*tstats\b", re.IGNORECASE)
 _RE_LOOKUP = re.compile(r"(?:^|\|)\s*lookup\s+\w", re.IGNORECASE)
+_RE_REST = re.compile(r"(?:^|\|)\s*rest\b", re.IGNORECASE)
 _RE_INDEX = re.compile(r"\bindex\s*=", re.IGNORECASE)
+
+# Matches the full '| rest ...' clause up to the next pipe or end of string.
+# Uses a non-greedy match and stops before trailing whitespace + pipe.
+REST_PATTERN = re.compile(r"(?i)(?:\|\s*)?rest\s+[^|]+?(?=\s*\||$)")
+
 
 
 def _outer_segment(spl: str) -> str:
@@ -64,7 +70,7 @@ def detect_strategy(spl: str) -> str:
 
     Only inspects the outer segment (before first '[') so that inputlookup
     inside a subsearch does not override the primary strategy.
-    Order: inputlookup, tstats, lookup, standard, no_index.
+    Order: inputlookup, tstats, rest, lookup, standard, no_index.
     """
     spl_clean = (spl or "").strip()
     outer = _outer_segment(spl_clean)
@@ -72,6 +78,8 @@ def detect_strategy(spl: str) -> str:
         return "inputlookup"
     if _RE_TSTATS.search(spl_clean):
         return "tstats"
+    if _RE_REST.search(outer):
+        return "rest"
     if _RE_LOOKUP.search(spl_clean):
         return "lookup"
     if _RE_INDEX.search(outer):
@@ -142,6 +150,23 @@ def _inject_inputlookup(spl: str, run_id: str, inputs: List[ParsedInput]) -> str
     match = INPUTLOOKUP_PATTERN.search(outer)
     if not match:
         logger.warning("inputlookup strategy but pattern not found — returning SPL unchanged.")
+        return spl
+    return spl[:match.start()] + replacement + spl[match.end():]
+
+
+def _inject_rest(spl: str, run_id: str, inputs: List[ParsedInput]) -> str:
+    """Replace '| rest <args>' with temp index reference.
+    The rest command queries Splunk REST endpoints, not indexes.
+    Replace the entire rest clause (up to next pipe) with the temp index.
+    """
+    replacement = _build_replacement(run_id)
+    result = _apply_row_identifiers(spl, inputs, replacement)
+    if result is not None:
+        return result
+    outer = _outer_segment(spl)
+    match = REST_PATTERN.search(outer)
+    if not match:
+        logger.warning("rest strategy but pattern not found — returning SPL unchanged.")
         return spl
     return spl[:match.start()] + replacement + spl[match.end():]
 
@@ -244,6 +269,7 @@ STRATEGY_HANDLERS: Dict[str, Callable[[str, str, List[ParsedInput]], str]] = {
     "standard": _inject_standard,
     "lookup": _inject_lookup,
     "inputlookup": _inject_inputlookup,
+    "rest": _inject_rest,
     "tstats": _inject_noop,
     "no_index": _inject_no_index,
 }

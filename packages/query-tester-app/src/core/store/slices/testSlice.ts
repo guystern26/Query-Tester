@@ -73,6 +73,9 @@ export function testSlice(set: SetState, _get: GetState) {
       set((draft) => {
         if (draft.activeTestId !== testId) {
           draft.testResponse = null;
+          draft.activeStep = 0;
+          draft.highestStepReached = 0;
+          draft.lastExtractedSpl = '';
         }
         draft.activeTestId = testId;
       }),

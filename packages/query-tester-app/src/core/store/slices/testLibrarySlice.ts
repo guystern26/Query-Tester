@@ -53,6 +53,9 @@ function applyTestToBuilder(draft: LibraryStoreState, full: SavedTestFull, saved
     draft.savedTestId = savedId;
     draft.savedTestVersion = full.version ?? null;
     draft.hasUnsavedChanges = false;
+    draft.activeStep = 0;
+    draft.highestStepReached = 0;
+    draft.lastExtractedSpl = '';
 }
 
 export const testLibraryInitialState: TestLibraryState = {

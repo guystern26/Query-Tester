@@ -78,20 +78,23 @@ export const TUTORIAL_VALIDATION_STEPS: TutorialStep[] = [
         id: 'run-button',
         title: 'Run your test',
         content:
-            'Hit Run to execute your test. The backend indexes your test events, runs the query, ' +
-            'validates the results, and cleans up — all automatically.',
-        selector: '[data-tutorial="run-button"], .fixed.bottom-0 .h-12 button',
-        panel: 'results',
+            'On the Validation step, the right chevron becomes a green play button. Click it ' +
+            'to run the test. You can also use the Run button in the bottom results bar. ' +
+            'The backend indexes your test events, runs the query, validates the results, and ' +
+            'cleans up — all automatically.',
+        selector: '[data-tutorial="wizard-nav-next"]',
+        panel: 'validation',
+        placement: 'left',
     },
     {
         id: 'results-bar',
         title: 'Results appear here',
         content:
             'After running, this bar shows pass/fail status for each scenario. Green means all ' +
-            'conditions passed, red means at least one failed. Click to expand a scenario and see ' +
+            'conditions passed, red means at least one failed. Click to expand and see ' +
             'the full result card with actual values compared against your conditions.',
         selector: '[data-tutorial="results-bar"], .fixed.bottom-0.left-0.right-0',
-        panel: 'results',
+        panel: 'validation',
     },
     {
         id: 'save-test-btn',

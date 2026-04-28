@@ -4,7 +4,6 @@ import { selectActiveTest } from 'core/store/selectors';
 import { MAX_SCENARIOS_PER_TEST, MAX_INPUTS_PER_SCENARIO } from 'core/constants/limits';
 import { Button, Modal } from '../../common';
 import { InputCard } from './InputCard';
-import { ExtractFieldsButton } from './ExtractFieldsButton';
 import { ScenarioTabRow, hasData } from './ScenarioTabRow';
 import { getScenarioColor } from './scenarioColors';
 import { useScenarioPanel } from './useScenarioPanel';
@@ -55,14 +54,6 @@ export function ScenarioPanel() {
 
     return (
         <>
-            {/* Extract Fields — above scenario tabs */}
-            {sel && sel.inputs.length > 0 && (
-                <div className="flex items-center gap-2 mb-3">
-                    <ExtractFieldsButton testId={test.id} scenarioId={sel.id} />
-                    <span className="text-[11px] text-slate-500">AI extracts data sources &amp; fields from your SPL</span>
-                </div>
-            )}
-
             <ScenarioTabRow
                 scenarios={scenarios}
                 selectedId={selId}
@@ -74,14 +65,14 @@ export function ScenarioPanel() {
 
             {sel && (
                 <>
-                    <div className="flex gap-3">
+                    <div className="flex gap-3 items-center">
                         <input
                             type="text"
                             value={sel.name}
                             onChange={(e) => updateScenarioName(test.id, sel.id, e.target.value)}
                             maxLength={80}
                             placeholder="Scenario name..."
-                            className="flex-1 min-w-0 bg-transparent border-0 border-b border-slate-700 rounded-none px-0 py-1.5 text-[13px] font-medium text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-300 transition-colors duration-200"
+                            className="flex-1 min-w-0 bg-transparent border-0 border-b border-slate-700 rounded-none px-0 py-0.5 text-[12px] font-medium text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-300 transition-colors duration-200"
                         />
                         <input
                             type="text"
@@ -89,7 +80,7 @@ export function ScenarioPanel() {
                             onChange={(e) => updateScenarioDescription(test.id, sel.id, e.target.value)}
                             maxLength={200}
                             placeholder="Description..."
-                            className="flex-[2] min-w-0 bg-transparent border-0 border-b border-slate-700 rounded-none px-0 py-1.5 text-[13px] text-slate-400 placeholder-slate-500 focus:outline-none focus:border-blue-300 focus:text-slate-200 transition-colors duration-200"
+                            className="flex-[2] min-w-0 bg-transparent border-0 border-b border-slate-700 rounded-none px-0 py-0.5 text-[12px] text-slate-400 placeholder-slate-500 focus:outline-none focus:border-blue-300 focus:text-slate-200 transition-colors duration-200"
                         />
                     </div>
 

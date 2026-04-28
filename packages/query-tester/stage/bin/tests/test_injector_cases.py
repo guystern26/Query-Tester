@@ -190,6 +190,30 @@ class TestTstats:
              "| tstats count where {} by host".format(R))
 
 
+# ── Rest command ──────────────────────────────────────────────────────
+
+class TestRest:
+    def test_rest_replaces_clause(self):
+        """rest command replaced with temp index, pipes preserved."""
+        _run("| rest timeout=600 splunk_server=local /servicesNS/-/-/saved/searches"
+             " | search disabled=0 | fields title",
+             _inputs(""), "rest",
+             "{} | search disabled=0 | fields title".format(R))
+
+    def test_rest_no_leading_pipe(self):
+        """rest without leading pipe."""
+        _run("rest /services/server/info | fields server_name",
+             _inputs(""), "rest",
+             "{} | fields server_name".format(R))
+
+    def test_rest_with_ri(self):
+        """RI set — find-and-replace takes priority."""
+        spl = "| rest /servicesNS/-/-/saved/searches | search orphan=1"
+        _run(spl,
+             _inputs("| rest /servicesNS/-/-/saved/searches"), "rest",
+             "{} | search orphan=1".format(R))
+
+
 # ── Complex / mixed ───────────────────────────────────────────────────
 
 class TestComplex:

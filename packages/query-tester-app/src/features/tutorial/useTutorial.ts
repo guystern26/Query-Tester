@@ -10,7 +10,6 @@ import { TUTORIAL_STEPS } from './tutorialSteps';
 import type { TutorialStep } from './tutorialSteps';
 import { loadTutorialTest } from './tutorialSeeder';
 import { useTestStore } from 'core/store/testStore';
-import type { PanelId } from 'core/store/slices/panelSlice';
 
 export interface UseTutorialReturn {
     /** Whether the tutorial overlay should be shown */
@@ -40,24 +39,15 @@ export function useTutorial(): UseTutorialReturn {
     const [stepIndex, setStepIndex] = useState(0);
 
     const currentStep = isActive ? TUTORIAL_STEPS[stepIndex] || null : null;
-    const collapsed = useTestStore((s) => s.collapsedPanels);
-    const toggleCollapsed = useTestStore((s) => s.togglePanelCollapsed);
-    const setPanelViewMode = useTestStore((s) => s.setPanelViewMode);
+    const setActiveStep = useTestStore(function (s) { return s.setActiveStep; });
 
-    // Progressive panel reveal: expand panels as the tutorial reaches them
-    useEffect(() => {
+    // Progressive step reveal: advance wizard step as tutorial progresses
+    useEffect(function () {
         if (!isActive || !currentStep) return;
-        const p = currentStep.panel;
-        // On first step, switch to "all" mode and collapse data + validation
-        if (stepIndex === 0) {
-            setPanelViewMode('all');
-            if (!collapsed.data) toggleCollapsed('data');
-            if (!collapsed.validation) toggleCollapsed('validation');
-        }
-        // When tutorial reaches data steps, expand data panel
-        if (p === 'data' && collapsed.data) toggleCollapsed('data');
-        // When tutorial reaches validation steps, expand validation panel
-        if (p === 'validation' && collapsed.validation) toggleCollapsed('validation');
+        var p = currentStep.panel;
+        if (p === 'setup' || p === 'query') { setActiveStep(0); }
+        if (p === 'data') { setActiveStep(1); }
+        if (p === 'validation' || p === 'results') { setActiveStep(2); }
     }, [stepIndex, isActive]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const next = useCallback(() => {
