@@ -242,14 +242,16 @@ def _run_single_test(kv, session_key, scheduled):
     """Run a single scheduled test and record the result."""
     sched_id = scheduled.get("_key") or scheduled.get("id", "")
     test_id = scheduled.get("testId", "")
+    test_name = scheduled.get("testName", "")
+    # Log tag for consistent structured fields across all messages
+    tag = "schedId=%s testId=%s testName=%s host=%s" % (sched_id, test_id, test_name, LOCAL_HOSTNAME)
 
     # Layer 1: Claim immediately — write our hostname before the delay
     _update_record(kv, sched_id, {"runningOnHost": LOCAL_HOSTNAME})
 
     # Layer 2: Random delay (10-30s) — gives KVStore time to replicate the claim
     delay = random.randint(SHC_DELAY_MIN, SHC_DELAY_MAX)
-    logger.info("SHC stagger: waiting %ds before running %s (claimed by %s)",
-                delay, sched_id, LOCAL_HOSTNAME)
+    logger.info("SHC stagger: waiting %ds — %s", delay, tag)
     time.sleep(delay)
 
     # Layer 3: Re-read after delay — check if we're still the owner + ran recently
@@ -258,21 +260,20 @@ def _run_single_test(kv, session_key, scheduled):
         if isinstance(fresh, list):
             fresh = fresh[0] if fresh else {}
         if _ran_recently(fresh):
-            logger.info("Skipping %s — already ran recently (SHC dedup).", sched_id)
+            logger.info("Skipped (ran recently) — %s", tag)
             _update_record(kv, sched_id, {"queueStatus": "idle", "queuedAt": "", "runningOnHost": ""})
             return
         # Another SH overwrote our claim during the delay — they won
         owner = fresh.get("runningOnHost", "")
         if owner and owner != LOCAL_HOSTNAME:
-            logger.info("Skipping %s — lost claim to %s.", sched_id, owner)
+            logger.info("Skipped (lost claim to %s) — %s", owner, tag)
             return
     except Exception:
         pass  # if re-read fails, proceed with the run
 
     start_ms = int(time.time() * 1000)
 
-    logger.info("Running scheduled test %s (testId=%s) on host %s",
-                sched_id, test_id, LOCAL_HOSTNAME)
+    logger.info("Running — %s", tag)
 
     status = "error"
     result = {}  # type: Dict[str, Any]
@@ -357,8 +358,7 @@ def _run_single_test(kv, session_key, scheduled):
         owner = final.get("runningOnHost", "")
         if owner and owner != LOCAL_HOSTNAME:
             is_owner = False
-            logger.info("Not the owner of %s (owner=%s, we=%s) — skipping post-run actions.",
-                        sched_id, owner, LOCAL_HOSTNAME)
+            logger.info("Not the owner (owner=%s) — skipping post-run — %s", owner, tag)
     except Exception:
         pass  # if re-read fails, assume we're the owner
 
@@ -378,8 +378,8 @@ def _run_single_test(kv, session_key, scheduled):
         "runningOnHost": "",
     })
 
-    logger.info("Scheduled test %s completed: status=%s, duration=%dms, owner=%s",
-                sched_id, status, duration_ms, is_owner)
+    logger.info("Completed: status=%s duration=%dms owner=%s — %s",
+                status, duration_ms, is_owner, tag)
 
     # Send failure emails — only if we're the owner
     if not is_owner:
