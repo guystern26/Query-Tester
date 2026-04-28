@@ -159,9 +159,14 @@ class SavedTestsHandler(PersistentServerConnectionApplication):
         if forbidden:
             return forbidden
 
-        scheduled = kv.query(COLLECTION_SCHEDULED_TESTS, {"testId": record_id})
+        try:
+            scheduled = kv.query(COLLECTION_SCHEDULED_TESTS, {"testId": record_id})
+        except Exception:
+            scheduled = []
         for sched in scheduled:
-            sched_id = sched.get("id", "")
+            sched_id = sched.get("_key") or sched.get("id", "")
+            if not sched_id:
+                continue
             try:
                 kv.delete(COLLECTION_SCHEDULED_TESTS, sched_id)
                 delete_saved_search(session_key, sched_id)
