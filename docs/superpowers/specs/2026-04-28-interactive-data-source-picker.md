@@ -222,7 +222,38 @@ For `inputlookup` and `rest`, the entire command is one clickable block. The use
 
 ---
 
-## 12. Edge Cases
+## 12. Phase 1 Fixes (from user testing)
+
+These must be addressed before Phase 2:
+
+### Fix 1: Use existing empty input instead of creating new one
+When clicking a data source in the sidebar, if the current scenario already has an empty Input 1 (no row identifier, no data), **fill it** instead of adding a new input. Only create a new input if all existing inputs already have data.
+
+### Fix 2: Recognize non-index commands as data sources
+The interactive sidebar must highlight ALL supported injection strategies, not just `index=`:
+- `| inputlookup <file>` — highlight the entire command as one clickable block
+- `| rest <endpoint>` — highlight entire rest clause
+- `` `cache(lookup, ...)` `` — highlight cache macro calls
+- `| tstats ... where index=X` — highlight the index in the where clause
+- `| lookup <table>` — highlight the lookup table name
+
+The `useSourceSpans` hook currently only matches text from LLM extraction. It should ALSO do a regex scan for these patterns as a fallback (in case LLM misses them or no LLM is configured).
+
+### Fix 3: Make clickable sources more obvious
+The current subtle underline is not obvious enough. Improve:
+- Add a small hover tooltip: "Click to inject test data here"
+- On the Data step, show a brief one-time pulse animation on all clickable sources when the step first loads (similar to chevron attention animation)
+- Consider a small "click" cursor icon or a dotted border instead of just an underline
+
+### Fix 4: Data source marking on Query step
+Users want to see and interact with data sources on the Query step too — not just the Data step. Options:
+- Show data sources as highlighted spans in the query editor (read-only markers, like the existing injection markers)
+- After "Analyze Query" runs, mark the detected sources in the editor gutter or as inline decorations
+- This is a preview — clicking them on the Query step doesn't create inputs (that happens on Data step), but it shows users "these are the parts that will be replaced"
+
+---
+
+## 13. Edge Cases
 
 - **No LLM configured:** Sidebar is not interactive. Old DataSourceSelector text field appears in InputCard as fallback. The editable badge still works — users can type manually.
 - **LLM returns no sources:** Sidebar shows a small message below the query: "No data sources detected — select text manually." The drag-select flow still works.
