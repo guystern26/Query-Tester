@@ -243,8 +243,11 @@ def _run_single_test(kv, session_key, scheduled):
     sched_id = scheduled.get("_key") or scheduled.get("id", "")
     test_id = scheduled.get("testId", "")
     test_name = scheduled.get("testName", "")
+    # runCycle: UTC minute timestamp — same across all SHs for the same cron trigger
+    run_cycle = time.strftime("%Y%m%d_%H%M", time.gmtime())
     # Log tag for consistent structured fields across all messages
-    tag = "schedId=%s testId=%s testName=%s host=%s" % (sched_id, test_id, test_name, LOCAL_HOSTNAME)
+    tag = "runCycle=%s schedId=%s testId=%s testName=%s host=%s" % (
+        run_cycle, sched_id, test_id, test_name, LOCAL_HOSTNAME)
 
     # Layer 1: Claim immediately — write our hostname before the delay
     _update_record(kv, sched_id, {"runningOnHost": LOCAL_HOSTNAME})
