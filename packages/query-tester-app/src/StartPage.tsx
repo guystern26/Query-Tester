@@ -35,6 +35,12 @@ export function StartPage({ mode = 'builder', onNavigateLibrary, loadTestId }: S
     const updateApp = useTestStore((s) => s.updateApp);
     const updateTestType = useTestStore((s) => s.updateTestType);
     const { isLoadingTest, loadError } = useLoadTest(loadTestId);
+    const setActiveStep = useTestStore(function (s) { return s.setActiveStep; });
+
+    // Always reset wizard to Query step when entering the builder
+    useEffect(function () {
+        if (!isIde) setActiveStep(0);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         if (isIde && activeTestId && activeTest?.testType !== 'query_only') {
