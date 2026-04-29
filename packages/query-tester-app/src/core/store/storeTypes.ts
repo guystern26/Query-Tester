@@ -180,6 +180,7 @@ export interface TestStoreState extends IdeSliceState, ChatSliceState, WizardSli
     toggleQuerySidebar: () => void;
     setQuerySidebarWidth: (width: number) => void;
     setLastExtractedSpl: (spl: string) => void;
+    setActiveScenarioId: (id: string | null) => void;
     resetWizard: () => void;
     setConfirmedSources: (sources: Array<{ rowIdentifier: string; fields: string[]; colorIndex: number }>) => void;
     addConfirmedSource: (rowIdentifier: string, fields: string[]) => void;

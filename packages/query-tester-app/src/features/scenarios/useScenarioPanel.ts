@@ -4,6 +4,7 @@
  */
 import { useState, useEffect, useRef } from 'react';
 import type { Scenario } from 'core/types';
+import { useTestStore } from 'core/store/testStore';
 
 interface UseScenarioPanelResult {
     selId: string | null;
@@ -13,10 +14,17 @@ interface UseScenarioPanelResult {
 }
 
 export function useScenarioPanel(scenarios: Scenario[]): UseScenarioPanelResult {
-    const [selId, setSelId] = useState<string | null>(null);
+    const [selId, setSelIdLocal] = useState<string | null>(null);
+    const setActiveScenarioId = useTestStore((s) => s.setActiveScenarioId);
     const [openInputId, setOpenInputId] = useState<string | null>(null);
     const prevLen = useRef(scenarios.length);
     const prevInputLen = useRef(0);
+
+    // Sync local selId to the store so sidebar can read it
+    const setSelId = (id: string | null) => {
+        setSelIdLocal(id);
+        setActiveScenarioId(id);
+    };
 
     // Ensure selId stays in sync with available scenarios
     useEffect(() => {

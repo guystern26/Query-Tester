@@ -25,6 +25,7 @@ export interface WizardSliceState {
     querySidebarCollapsed: boolean;
     querySidebarWidth: number;
     lastExtractedSpl: string;
+    activeScenarioId: string | null;
     confirmedSources: Array<{
         rowIdentifier: string;
         fields: string[];
@@ -38,6 +39,7 @@ export var wizardInitialState: WizardSliceState = {
     querySidebarCollapsed: loadCollapsed(),
     querySidebarWidth: loadWidth(),
     lastExtractedSpl: '',
+    activeScenarioId: null,
     confirmedSources: [],
 };
 
@@ -68,11 +70,15 @@ export function wizardSlice(set: SetState) {
         setLastExtractedSpl: function (spl: string): void {
             set(function (d) { d.lastExtractedSpl = spl; });
         },
+        setActiveScenarioId: function (id: string | null): void {
+            set(function (d) { d.activeScenarioId = id; });
+        },
         resetWizard: function (): void {
             set(function (d) {
                 d.activeStep = 0;
                 d.highestStepReached = 0;
                 d.lastExtractedSpl = '';
+                d.activeScenarioId = null;
                 d.confirmedSources = [];
             });
         },

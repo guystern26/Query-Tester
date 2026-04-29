@@ -57,11 +57,15 @@ export function validateBeforeRun(
 
   // Scenario / input validations only apply to standard mode
   if (test.testType !== 'query_only') {
-    for (const scenario of test.scenarios) {
-      for (const input of scenario.inputs) {
-        if (hasMissingRowIdentifier(input)) {
-          errors.push('Every input must have a row identifier.');
-          break;
+    for (let si = 0; si < test.scenarios.length; si++) {
+      const scenario = test.scenarios[si];
+      for (let ii = 0; ii < scenario.inputs.length; ii++) {
+        if (hasMissingRowIdentifier(scenario.inputs[ii])) {
+          const scenarioLabel = scenario.name.trim() || ('Scenario ' + (si + 1));
+          errors.push(
+            'In "' + scenarioLabel + '" Input ' + (ii + 1) +
+            ', no data source was entered. Pick one from the sidebar or type it manually.'
+          );
         }
       }
     }

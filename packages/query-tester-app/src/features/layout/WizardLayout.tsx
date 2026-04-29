@@ -40,6 +40,7 @@ export function WizardLayout({ localName, onNameChange, app, onAppChange, isIde 
     var setSidebarWidth = useTestStore(function (s) { return s.setQuerySidebarWidth; });
     var highestReached = useTestStore(function (s) { return s.highestStepReached; });
     var addInputFromSource = useTestStore(function (s) { return s.addInputFromSource; });
+    var activeScenarioId = useTestStore(function (s) { return s.activeScenarioId; });
 
     var testType = (test && test.testType) || 'standard';
     var isQueryOnly = testType === 'query_only';
@@ -110,9 +111,11 @@ export function WizardLayout({ localName, onNameChange, app, onAppChange, isIde 
 
     var handleSourceClick = useCallback(function (rowIdentifier: string, fields: string[]) {
         if (!test) return;
-        var s0 = test.scenarios[0];
-        if (s0) addInputFromSource(test.id, s0.id, rowIdentifier, fields);
-    }, [test, addInputFromSource]);
+        var scenario = activeScenarioId
+            ? test.scenarios.find(function (s) { return s.id === activeScenarioId; })
+            : test.scenarios[0];
+        if (scenario) addInputFromSource(test.id, scenario.id, rowIdentifier, fields);
+    }, [test, addInputFromSource, activeScenarioId]);
 
     var showSidebar = currentStepId === 'data' || currentStepId === 'validation';
 

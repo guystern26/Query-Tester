@@ -109,20 +109,7 @@ export function renderInteractiveSpl(
         const fields = sp.fields;
         const hoverHandler = (e: React.MouseEvent) => onHover(e, sp, isUsed);
 
-        const clickHandler = isUsed
-            ? () => {
-                const cards = document.querySelectorAll('[data-row-identifier]');
-                for (let k = 0; k < cards.length; k++) {
-                    const card = cards[k] as HTMLElement;
-                    if (card.getAttribute('data-row-identifier') === ri) {
-                        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        card.style.boxShadow = '0 0 0 2px ' + color;
-                        setTimeout(() => { card.style.boxShadow = ''; }, 1500);
-                        break;
-                    }
-                }
-            }
-            : () => onClick(ri, fields);
+        const clickHandler = () => onClick(ri, fields);
 
         parts.push(buildSourceSpanElement(
             'src-' + i, text, color, isUsed, clickHandler, hoverHandler, onLeave,

@@ -130,13 +130,8 @@ export function DataSourceSelector({ testId, scenarioId, inputId, value, matchCo
               <button
                 key={i}
                 type="button"
-                disabled={isUsed}
                 onClick={() => handleSelect(src)}
-                className={`w-full text-left px-3 py-2 text-sm transition-colors ${
-                  isUsed
-                    ? 'text-slate-600 cursor-not-allowed bg-navy-950/50'
-                    : 'text-slate-200 hover:bg-navy-800 cursor-pointer'
-                }`}
+                className="w-full text-left px-3 py-2 text-sm transition-colors text-slate-200 hover:bg-navy-800 cursor-pointer"
               >
                 <div className="font-medium truncate">{src.rowIdentifier}</div>
                 {src.fields.length > 0 && (
@@ -144,7 +139,7 @@ export function DataSourceSelector({ testId, scenarioId, inputId, value, matchCo
                     {src.fields.join(', ')}
                   </div>
                 )}
-                {isUsed && <span className="text-[10px] text-slate-600 italic">already used</span>}
+                {isUsed && <span className="text-[10px] text-slate-500 italic">already in use</span>}
               </button>
             );
           })}

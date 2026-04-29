@@ -17,17 +17,19 @@ interface InteractiveSidebarProps {
     onSourceClick: (rowIdentifier: string, fields: string[]) => void;
 }
 
-/** Returns lowercase row identifiers from all inputs in the active scenario */
+/** Returns lowercase row identifiers from the currently selected scenario only */
 function useUsedIdentifiers(): string[] {
     const test = useTestStore(selectActiveTest);
+    const activeScenarioId = useTestStore(function (s) { return s.activeScenarioId; });
     if (!test) return [];
+    const scenario = activeScenarioId
+        ? test.scenarios.find(function (s) { return s.id === activeScenarioId; })
+        : test.scenarios[0];
+    if (!scenario) return [];
     const used: string[] = [];
-    for (let si = 0; si < test.scenarios.length; si++) {
-        const inputs = test.scenarios[si].inputs;
-        for (let ii = 0; ii < inputs.length; ii++) {
-            const ri = inputs[ii].rowIdentifier.trim();
-            if (ri) used.push(ri.toLowerCase());
-        }
+    for (let ii = 0; ii < scenario.inputs.length; ii++) {
+        const ri = scenario.inputs[ii].rowIdentifier.trim();
+        if (ri) used.push(ri.toLowerCase());
     }
     return used;
 }
