@@ -27,9 +27,13 @@ def index_events(
     run_id,       # type: str
     session_key,  # type: str
     hec_ctx=None, # type: Optional[Dict[str, Any]]
+    input_idx=None,  # type: Optional[int]
 ):
     # type: (...) -> None
     """Index all events into the temp index via HEC, tagged with run_id.
+
+    *input_idx* — when provided, adds an ``input_N`` field so events from
+    different inputs can be distinguished during query injection.
 
     *hec_ctx* is a pre-resolved context dict from ``resolve_hec_context()``.
     When provided, skips runtime config lookup, URL formatting, and SSL
@@ -62,6 +66,7 @@ def index_events(
             hec_url=ctx["hec_url"], hec_timeout=ctx["hec_timeout"],
             ssl_ctx=ctx["ssl_ctx"], index=ctx["index"],
             sourcetype=ctx["sourcetype"],
+            input_idx=input_idx,
         )
         logger.info(
             "Indexed batch %d-%d (%d events) for run_id=%s",
@@ -101,6 +106,7 @@ def _send_hec_batch(
     ssl_ctx,      # type: Any
     index,        # type: str
     sourcetype,   # type: str
+    input_idx=None,  # type: Optional[int]
 ):
     # type: (...) -> None
     """Send a batch of events to HEC in a single POST request."""
@@ -108,11 +114,14 @@ def _send_hec_batch(
     for event in events:
         # Convert None values to empty strings so json.dumps doesn't produce "null"
         sanitized = {k: ("" if v is None else v) for k, v in event.items()}
+        fields = {_run_id_field(run_id): run_id}
+        if input_idx is not None:
+            fields["input_{0}".format(input_idx)] = str(input_idx)
         envelope = {
             "event": sanitized,
             "index": index,
             "sourcetype": sourcetype,
-            "fields": {_run_id_field(run_id): run_id},
+            "fields": fields,
         }
         lines.append(json.dumps(envelope, ensure_ascii=False))
 

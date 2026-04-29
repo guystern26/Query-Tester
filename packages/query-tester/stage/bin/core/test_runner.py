@@ -131,9 +131,10 @@ class TestRunner:
         run_id: str, strategy: str, injected_spl: str,
     ) -> ScenarioResult:
         """Build events from all inputs, index them, and execute the injected SPL."""
-        all_events = []  # type: List[Dict[str, Any]]
+        multi_input = len(scenario.inputs) > 1
+        per_input_events = []  # type: List[tuple]
         scenario_warnings = []  # type: List[str]
-        for inp in scenario.inputs:
+        for idx, inp in enumerate(scenario.inputs):
             if inp.input_mode == "query_data" and inp.query_data_config is not None:
                 # Run sub-query to fetch events as test data
                 qd = inp.query_data_config
@@ -150,16 +151,26 @@ class TestRunner:
                     len(sub_events),
                     scenario.name,
                 )
-                all_events.extend(sub_events)
+                per_input_events.append((idx, sub_events))
             else:
-                all_events.extend(build_events(inp))
+                per_input_events.append((idx, build_events(inp)))
 
+        all_events = []  # type: List[Dict[str, Any]]
         if payload.test_type != "query_only" and strategy not in ("tstats",):
-            if all_events:
-                if self._hec_ctx is None:
-                    self._hec_ctx = resolve_hec_context(self._session_key)
-                index_events(all_events, run_id, self._session_key,
-                             hec_ctx=self._hec_ctx)
+            if self._hec_ctx is None:
+                self._hec_ctx = resolve_hec_context(self._session_key)
+            indexed_any = False
+            for idx, events in per_input_events:
+                if not events:
+                    continue
+                all_events.extend(events)
+                # When multiple inputs exist, tag each with input_idx
+                # so the injector can discriminate them in the query
+                input_idx = idx if multi_input else None
+                index_events(events, run_id, self._session_key,
+                             hec_ctx=self._hec_ctx, input_idx=input_idx)
+                indexed_any = True
+            if indexed_any:
                 logger.info("Waiting %ds for indexed data to become searchable.",
                             INDEX_SETTLE_SECS)
                 time.sleep(INDEX_SETTLE_SECS)

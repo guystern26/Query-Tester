@@ -1,19 +1,23 @@
 /**
  * QuerySidebar — resizable, collapsible sidebar showing SPL + metadata.
  * Visible on Data and Validation steps.
+ * On the Data step: shows interactive source spans (click to add input).
+ * "edit" button toggles inline Ace editor for quick SPL tweaks.
  */
-import React, { useRef, useCallback, useEffect, useMemo } from 'react';
+import React, { useRef, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTestStore } from 'core/store/testStore';
 import { selectActiveTest } from 'core/store/selectors';
 import { useInjectionRanges } from '../../hooks/useInjectionRanges';
 import { renderHighlightedSpl } from './splHighlight';
+import { InteractiveSidebar } from './InteractiveSidebar';
 
 interface QuerySidebarProps {
     collapsed: boolean;
     width: number;
     onToggle: () => void;
     onResize: (width: number) => void;
-    onEditClick: () => void;
+    interactive?: boolean;
+    onSourceClick?: (rowIdentifier: string, fields: string[]) => void;
 }
 
 function CollapsedSidebar({ onToggle, spl }: { onToggle: () => void; spl: string }): React.ReactElement {
@@ -39,12 +43,19 @@ function CollapsedSidebar({ onToggle, spl }: { onToggle: () => void; spl: string
     );
 }
 
-export function QuerySidebar({ collapsed, width, onToggle, onResize, onEditClick }: QuerySidebarProps): React.ReactElement {
+export function QuerySidebar({ collapsed, width, onToggle, onResize, interactive, onSourceClick }: QuerySidebarProps): React.ReactElement {
     var test = useTestStore(selectActiveTest);
+    var updateSpl = useTestStore(function (s) { return s.updateSpl; });
     var spl = (test && test.query && test.query.spl) || '';
     var origin = (test && test.query && test.query.savedSearchOrigin) || '';
     var timeRange = (test && test.query) ? test.query.timeRange : null;
     var { ranges } = useInjectionRanges();
+    var _editing = useState(false);
+    var editing = _editing[0];
+    var setEditing = _editing[1];
+    var _editSpl = useState('');
+    var editSpl = _editSpl[0];
+    var setEditSpl = _editSpl[1];
 
     var fieldNames = useMemo(function (): string[] {
         if (!test || !test.fieldExtraction || !test.fieldExtraction.sources) return [];
@@ -64,7 +75,6 @@ export function QuerySidebar({ collapsed, width, onToggle, onResize, onEditClick
     }, [test]);
 
     var dragRef = useRef<{ startX: number; startW: number } | null>(null);
-
     var COLLAPSE_THRESHOLD = 120;
 
     var handleMouseDown = useCallback(function (e: React.MouseEvent) {
@@ -101,6 +111,46 @@ export function QuerySidebar({ collapsed, width, onToggle, onResize, onEditClick
         };
     }, [onResize, onToggle]);
 
+    var handleEditClick = useCallback(function () {
+        if (editing) {
+            // Save and exit edit mode
+            if (test && editSpl !== spl) {
+                updateSpl(test.id, editSpl);
+            }
+            setEditing(false);
+        } else {
+            // Enter edit mode
+            setEditSpl(spl);
+            setEditing(true);
+        }
+    }, [editing, test, editSpl, spl, updateSpl]);
+
+    var handleEditKeyDown = useCallback(function (e: React.KeyboardEvent<HTMLTextAreaElement>) {
+        if (e.key === 'Escape') {
+            setEditing(false);
+            return;
+        }
+        // Auto-newline on pipe: typing | inserts \n| instead
+        if (e.key === '|') {
+            e.preventDefault();
+            var ta = e.currentTarget;
+            var start = ta.selectionStart;
+            var end = ta.selectionEnd;
+            var before = editSpl.slice(0, start);
+            var after = editSpl.slice(end);
+            // Trim trailing spaces before the pipe
+            var trimmed = before.replace(/[ \t]+$/, '');
+            var next = trimmed + '\n| ' + after;
+            setEditSpl(next);
+            // Set cursor after "| "
+            var cursorPos = trimmed.length + 3;
+            requestAnimationFrame(function () {
+                ta.selectionStart = cursorPos;
+                ta.selectionEnd = cursorPos;
+            });
+        }
+    }, [editSpl]);
+
     var trLabel = '';
     if (timeRange) {
         trLabel = timeRange.label || ((timeRange.earliest || '') + ' to ' + (timeRange.latest || ''));
@@ -120,9 +170,9 @@ export function QuerySidebar({ collapsed, width, onToggle, onResize, onEditClick
                 <div className="px-3 py-2.5 border-b border-slate-700/30 flex items-center justify-between shrink-0">
                     <span className="text-[13px] font-bold text-slate-200">Query</span>
                     <div className="flex items-center gap-2">
-                        <button type="button" onClick={onEditClick}
-                            className="text-[11px] text-blue-300 hover:text-blue-200 cursor-pointer transition-colors">
-                            edit
+                        <button type="button" onClick={handleEditClick}
+                            className={'text-[11px] cursor-pointer transition-colors ' + (editing ? 'text-green-400 hover:text-green-300 font-semibold' : 'text-blue-300 hover:text-blue-200')}>
+                            {editing ? 'done' : 'edit'}
                         </button>
                         <button type="button" onClick={onToggle}
                             className="bg-slate-700 text-slate-400 w-6 h-6 rounded flex items-center justify-center text-sm hover:text-slate-200 cursor-pointer transition-colors"
@@ -133,38 +183,53 @@ export function QuerySidebar({ collapsed, width, onToggle, onResize, onEditClick
                 </div>
 
                 <div className="px-3 py-3 flex-1 overflow-y-auto min-h-0">
-                    <pre className="font-mono text-[12px] text-slate-300 leading-relaxed whitespace-pre-wrap break-words">
-                        {renderHighlightedSpl(spl, ranges)}
-                    </pre>
+                    {editing ? (
+                        <textarea
+                            value={editSpl}
+                            onChange={function (e) { setEditSpl(e.target.value); }}
+                            onKeyDown={handleEditKeyDown}
+                            autoFocus
+                            spellCheck={false}
+                            className="w-full h-full min-h-[120px] bg-navy-900 border border-slate-600 rounded-md p-2 font-mono text-[12px] text-slate-200 leading-relaxed resize-none focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-300/20"
+                        />
+                    ) : interactive && onSourceClick ? (
+                        <InteractiveSidebar spl={spl} onSourceClick={onSourceClick} />
+                    ) : (
+                        <pre className="font-mono text-[12px] text-slate-300 leading-relaxed whitespace-pre-wrap break-words">
+                            {renderHighlightedSpl(spl, ranges)}
+                        </pre>
+                    )}
 
-                    <div className="mt-4 pt-3 border-t border-slate-700/30 flex flex-col gap-3">
-                        {origin ? (
-                            <div>
-                                <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Saved Search</div>
-                                <div className="text-[12px] text-slate-400">{origin}</div>
-                            </div>
-                        ) : null}
-                        {trLabel ? (
-                            <div>
-                                <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Time Range</div>
-                                <div className="text-[12px] text-slate-400">{trLabel}</div>
-                            </div>
-                        ) : null}
-                        {fieldNames.length > 0 ? (
-                            <div>
-                                <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Fields</div>
-                                <div className="flex flex-wrap gap-1">
-                                    {fieldNames.map(function (f) {
-                                        return (
-                                            <span key={f} className="bg-navy-900 border border-slate-700 rounded px-1.5 py-0.5 text-[11px] text-blue-300 font-mono">
-                                                {f}
-                                            </span>
-                                        );
-                                    })}
+                    {!editing && (
+                        <div className="mt-4 pt-3 border-t border-slate-700/30 flex flex-col gap-3">
+                            {origin ? (
+                                <div>
+                                    <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Saved Search</div>
+                                    <div className="text-[12px] text-slate-400">{origin}</div>
                                 </div>
-                            </div>
-                        ) : null}
-                    </div>
+                            ) : null}
+                            {trLabel ? (
+                                <div>
+                                    <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Time Range</div>
+                                    <div className="text-[12px] text-slate-400">{trLabel}</div>
+                                </div>
+                            ) : null}
+                            {fieldNames.length > 0 ? (
+                                <div>
+                                    <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Fields</div>
+                                    <div className="flex flex-wrap gap-1">
+                                        {fieldNames.map(function (f) {
+                                            return (
+                                                <span key={f} className="bg-navy-900 border border-slate-700 rounded px-1.5 py-0.5 text-[11px] text-blue-300 font-mono">
+                                                    {f}
+                                                </span>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            ) : null}
+                        </div>
+                    )}
                 </div>
             </div>
 

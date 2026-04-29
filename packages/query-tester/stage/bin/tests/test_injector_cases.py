@@ -16,6 +16,8 @@ from core.models import ParsedInput
 
 RID = "a1b2c3"
 R = "index=temp_query_tester run_id_a1b2c3=a1b2c3"
+R0 = "index=temp_query_tester run_id_a1b2c3=a1b2c3 input_0=0"
+R1 = "index=temp_query_tester run_id_a1b2c3=a1b2c3 input_1=1"
 LK = "temp_lookup_a1b2c3"
 
 
@@ -96,7 +98,7 @@ class TestSubsearch:
     def test_two_ris(self):
         _run("index=main sourcetype=a | append [search index=guy sourcetype=b]",
              _inputs("index=main sourcetype=a", "index=guy sourcetype=b"),
-             "standard", "{} | append [search {}]".format(R, R))
+             "standard", "{} | append [search {}]".format(R0, R1))
 
     def test_same_index_three_places(self):
         _run("index=main | append [search index=main] | join [search index=main]",
@@ -217,12 +219,14 @@ class TestRest:
 # ── Complex / mixed ───────────────────────────────────────────────────
 
 class TestComplex:
-    def test_index_il_subsearch_ri_clears_first_row(self):
+    def test_index_il_subsearch_ri_leaves_unmatched_inputlookup(self):
+        # When an explicit RI is set, only that RI is replaced.
+        # Unrelated inputlookup commands in subsearches are left untouched.
         _run("index=firewall sourcetype=cisco_asa action=blocked "
              "| append [| inputlookup threat_intel.csv] | stats count by src_ip",
              _inputs("index=firewall sourcetype=cisco_asa action=blocked"),
              "standard",
-             "{} | append [{}] | stats count by src_ip".format(R, R))
+             "{} | append [| inputlookup threat_intel.csv] | stats count by src_ip".format(R))
 
     def test_index_with_or_subsearch(self):
         _run("index=main (status=500 OR status=503) "
@@ -235,7 +239,7 @@ class TestComplex:
         _run("index=main sourcetype=web "
              "| append [search index=main sourcetype=syslog]",
              _inputs("index=main sourcetype=web", "index=main sourcetype=syslog"),
-             "standard", "{} | append [search {}]".format(R, R))
+             "standard", "{} | append [search {}]".format(R0, R1))
 
     def test_join_subsearch_same_index(self):
         _run("index=security | join type=left user "

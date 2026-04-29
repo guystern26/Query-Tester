@@ -72,14 +72,14 @@ export function DataSourceSelector({ testId, scenarioId, inputId, value, matchCo
   return (
     <div ref={wrapRef} className="relative w-full mb-4">
       <div className="mb-1.5">
-        <span className="text-[11px] text-slate-500 uppercase tracking-wider font-semibold">Inject Into</span>
+        <span className="text-[11px] text-slate-500 uppercase tracking-wider font-semibold">Data source in query</span>
       </div>
       <div className="flex">
         <input
           type="text"
           value={value}
           onChange={(e) => updateRowIdentifier(testId, scenarioId, inputId, e.target.value)}
-          placeholder="e.g., index=main sourcetype=access_combined"
+          placeholder="Pick from sidebar or type: index=main sourcetype=..."
           className={`flex-1 min-w-0 px-3 py-2 text-sm bg-navy-950 border border-slate-700 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-300/20 transition-all duration-200 ${
             hasSources ? 'rounded-l-lg border-r-0' : 'rounded-lg'
           }`}
@@ -101,10 +101,9 @@ export function DataSourceSelector({ testId, scenarioId, inputId, value, matchCo
       </div>
 
       <p className="mt-1.5 text-[11px] text-slate-500 leading-snug">
-        This text will be <strong className="text-slate-400">found and replaced</strong> in
-        your query with a temp index containing your test events.
-        Enter only the data source filter (e.g. <code className="text-slate-400">index=main sourcetype=...</code>),
-        not the pipe or brackets before it.
+        Click a highlighted source in the <strong className="text-slate-400">sidebar</strong> to fill this,
+        or type the data source clause from your query (e.g. <code className="text-slate-400">index=main sourcetype=...</code>).
+        It will be replaced with a temp index containing your test events.
       </p>
       {hasIdentifiers && value.trim() && (
         <div className="flex items-center gap-1.5 mt-1.5">

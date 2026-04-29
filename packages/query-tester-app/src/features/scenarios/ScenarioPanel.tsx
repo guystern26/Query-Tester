@@ -7,6 +7,7 @@ import { InputCard } from './InputCard';
 import { ScenarioTabRow, hasData } from './ScenarioTabRow';
 import { getScenarioColor } from './scenarioColors';
 import { useScenarioPanel } from './useScenarioPanel';
+import { InjectionPreview } from './InjectionPreview';
 
 export function ScenarioPanel() {
     const test = useTestStore(selectActiveTest);
@@ -85,15 +86,19 @@ export function ScenarioPanel() {
                     </div>
 
                     {sel.inputs.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12 text-center">
-                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-slate-600 mb-3">
-                                <ellipse cx="12" cy="5" rx="9" ry="3" />
-                                <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
-                                <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
-                            </svg>
-                            <p className="text-sm text-slate-400 mb-1">No inputs yet</p>
-                            <p className="text-xs text-slate-500 mb-4">Add your first input to define test data</p>
-                            <Button variant="primary" size="sm" onClick={() => addInput(test.id, sel.id)}>+ Add Input</Button>
+                        <div className="flex flex-col items-center justify-center py-8 text-center">
+                            <div className="flex items-center gap-3 mb-4">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-300 shrink-0" style={{ animation: 'sidebarPointLeft 2s ease-in-out infinite' }}>
+                                    <path d="M19 12H5" />
+                                    <path d="M12 19l-7-7 7-7" />
+                                </svg>
+                                <p className="text-sm text-blue-300 font-medium">Click a highlighted source in the sidebar</p>
+                            </div>
+                            <p className="text-xs text-slate-500 mb-4">Sources are highlighted in your query on the left. Click one to add it as a data input.</p>
+                            <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                                <span>or</span>
+                                <button className="text-blue-300 hover:text-blue-200 underline underline-offset-2 cursor-pointer transition-colors" onClick={() => addInput(test.id, sel.id)}>add an input manually</button>
+                            </div>
                         </div>
                     ) : (
                         <>
@@ -120,6 +125,7 @@ export function ScenarioPanel() {
                                     />
                                 ))}
                             </div>
+                            <InjectionPreview scenarioId={sel.id} />
                             <button
                                 className="w-full py-2.5 mt-3 border border-dashed border-slate-700 rounded-lg text-sm text-slate-400 hover:text-blue-300 hover:border-blue-300 transition-all duration-200 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                                 onClick={() => addInput(test.id, sel.id)}

@@ -166,6 +166,7 @@ export interface TestStoreState extends IdeSliceState, ChatSliceState, WizardSli
     setupRequired: boolean;
     setFieldExtraction: (testId: EntityId, sources: ExtractedDataSource[]) => void;
     selectDataSource: (testId: EntityId, scenarioId: EntityId, inputId: EntityId, source: ExtractedDataSource) => void;
+    addInputFromSource: (testId: EntityId, scenarioId: EntityId, rowIdentifier: string, fields: string[]) => void;
     applyFieldSampleValues: (testId: EntityId, scenarioId: EntityId, inputId: EntityId, sampleRow: Record<string, string>) => void;
     applySuggestedValidationFields: (testId: EntityId, fields: string[]) => void;
     fetchSavedSearchSpl: (testId: EntityId, app: string, savedSearchName: string) => Promise<void>;
@@ -180,6 +181,10 @@ export interface TestStoreState extends IdeSliceState, ChatSliceState, WizardSli
     setQuerySidebarWidth: (width: number) => void;
     setLastExtractedSpl: (spl: string) => void;
     resetWizard: () => void;
+    setConfirmedSources: (sources: Array<{ rowIdentifier: string; fields: string[]; colorIndex: number }>) => void;
+    addConfirmedSource: (rowIdentifier: string, fields: string[]) => void;
+    removeConfirmedSource: (rowIdentifier: string) => void;
+    clearConfirmedSources: () => void;
 
     // --- Query Data ---
     updateQueryDataSpl: (testId: EntityId, scenarioId: EntityId, inputId: EntityId, spl: string) => void;

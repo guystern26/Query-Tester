@@ -6,7 +6,10 @@ import { FieldValueEditor } from '../../components/inputs/FieldValueEditor';
 import { JsonInputView } from '../../components/inputs/JsonInputView';
 import { QueryDataView } from '../../components/inputs/QueryDataView';
 import { DataSourceSelector } from './DataSourceSelector';
+import { SourceBadge } from './SourceBadge';
 import { useInjectionMarkers } from '../../hooks/useInjectionMarkers';
+import { countMatches } from '../../hooks/useSourceSpans';
+import { selectActiveTest } from 'core/store/selectors';
 import { EventGeneratorToggle } from './EventGeneratorToggle';
 import { NoEventsIcon, ChevronIcon, MODE_LABELS, INPUT_MODES } from './inputIcons';
 
@@ -34,6 +37,9 @@ function InputCardInner({ testId, scenarioId, input, index, isOpen = true, onTog
   const [deleteOpen, setDeleteOpen] = useState(false);
   const num = index ?? 1;
   const { matchCount, hasIdentifiers } = useInjectionMarkers();
+  const test = useTestStore(selectActiveTest);
+  const spl = (test && test.query && test.query.spl) || '';
+  const perInputMatchCount = input.rowIdentifier.trim() ? countMatches(spl, input.rowIdentifier.trim()) : 0;
 
   const setMode = (mode: InputMode) => {
     setInputMode(testId, scenarioId, input.id, mode);
@@ -130,7 +136,18 @@ function InputCardInner({ testId, scenarioId, input, index, isOpen = true, onTog
           </button>
         </div>
 
-        <DataSourceSelector testId={testId} scenarioId={scenarioId} inputId={input.id} value={input.rowIdentifier} matchCount={matchCount} hasIdentifiers={hasIdentifiers} />
+        {input.rowIdentifier.trim() ? (
+          <SourceBadge
+            testId={testId}
+            scenarioId={scenarioId}
+            inputId={input.id}
+            value={input.rowIdentifier}
+            colorIndex={num - 1}
+            matchCount={perInputMatchCount}
+          />
+        ) : (
+          <DataSourceSelector testId={testId} scenarioId={scenarioId} inputId={input.id} value={input.rowIdentifier} matchCount={matchCount} hasIdentifiers={hasIdentifiers} />
+        )}
 
         <div className="flex gap-0.5 mb-4">
           {INPUT_MODES.map(({ key, label, Icon }) => {

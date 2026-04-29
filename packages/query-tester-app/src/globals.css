@@ -132,6 +132,18 @@
   100% { padding-left: 0; border-color: transparent; background-color: transparent; }
 }
 
+@keyframes sourceHighlight {
+  0% { background-color: transparent; }
+  30% { background-color: rgba(147, 197, 253, 0.15); }
+  60% { background-color: rgba(147, 197, 253, 0.08); }
+  100% { background-color: transparent; }
+}
+
+@keyframes sidebarPointLeft {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(-6px); }
+}
+
 /* ── Scrollbar ─────────────────────────────────────────────── */
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }

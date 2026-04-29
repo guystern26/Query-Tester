@@ -39,6 +39,7 @@ export function WizardLayout({ localName, onNameChange, app, onAppChange, isIde 
     var toggleSidebar = useTestStore(function (s) { return s.toggleQuerySidebar; });
     var setSidebarWidth = useTestStore(function (s) { return s.setQuerySidebarWidth; });
     var highestReached = useTestStore(function (s) { return s.highestStepReached; });
+    var addInputFromSource = useTestStore(function (s) { return s.addInputFromSource; });
 
     var testType = (test && test.testType) || 'standard';
     var isQueryOnly = testType === 'query_only';
@@ -68,9 +69,11 @@ export function WizardLayout({ localName, onNameChange, app, onAppChange, isIde 
     if (clampedStep >= stepDefs.length) clampedStep = stepDefs.length - 1;
     if (clampedStep < 0) clampedStep = 0;
 
+    var currentStepId = stepDefs[clampedStep] ? stepDefs[clampedStep].id : 'query';
+
     var canGoNext = clampedStep === 0
         ? hasQuery
-        : (!isQueryOnly && clampedStep === 1)
+        : (currentStepId === 'data')
             ? dataDone
             : false;
     var isFirst = clampedStep === 0;
@@ -83,7 +86,9 @@ export function WizardLayout({ localName, onNameChange, app, onAppChange, isIde 
             if (formatted !== currentSpl) updateSpl(test.id, formatted);
             if (!isQueryOnly && formatted.trim() && formatted !== lastExtractedSpl) {
                 var s0 = test.scenarios[0];
-                if (s0) extractDS(test.id, s0.id, formatted).catch(function () {});
+                if (s0) {
+                    extractDS(test.id, s0.id, formatted).catch(function () {});
+                }
                 setLastExtractedSpl(formatted);
             }
         }
@@ -103,12 +108,13 @@ export function WizardLayout({ localName, onNameChange, app, onAppChange, isIde 
         if (index <= highestReached) setActiveStep(index);
     }, [highestReached, setActiveStep]);
 
-    var handleEditClick = useCallback(function () {
-        setActiveStep(0);
-    }, [setActiveStep]);
+    var handleSourceClick = useCallback(function (rowIdentifier: string, fields: string[]) {
+        if (!test) return;
+        var s0 = test.scenarios[0];
+        if (s0) addInputFromSource(test.id, s0.id, rowIdentifier, fields);
+    }, [test, addInputFromSource]);
 
-    var currentStepId = stepDefs[clampedStep] ? stepDefs[clampedStep].id : 'query';
-    var showSidebar = clampedStep > 0;
+    var showSidebar = currentStepId === 'data' || currentStepId === 'validation';
 
     // Slide + fade transition on step change
     var _s = useState(true);
@@ -216,7 +222,8 @@ export function WizardLayout({ localName, onNameChange, app, onAppChange, isIde 
                         width={sidebarWidth}
                         onToggle={toggleSidebar}
                         onResize={setSidebarWidth}
-                        onEditClick={handleEditClick}
+                        interactive={currentStepId === 'data'}
+                        onSourceClick={handleSourceClick}
                     />
                 ) : null}
 

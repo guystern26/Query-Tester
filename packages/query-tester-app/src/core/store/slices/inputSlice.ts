@@ -167,6 +167,51 @@ export function inputSlice(set: SetState) {
         }
       }),
 
+    addInputFromSource: (testId: EntityId, scenarioId: EntityId, rowIdentifier: string, fields: string[]) =>
+      set((draft) => {
+        const scenario = findScenario(findTest(draft.tests, testId), scenarioId);
+        if (!scenario) return;
+
+        // Find an existing empty input to fill instead of creating a new one
+        const emptyInput = scenario.inputs.find((inp) => {
+            if (inp.rowIdentifier.trim() !== '') return false;
+            if (inp.events.length > 1) return false;
+            if (inp.events.length === 1) {
+                const hasData = inp.events[0].fieldValues.some(
+                    (fv) => fv.field.trim() !== '' || fv.value.trim() !== ''
+                );
+                if (hasData) return false;
+            }
+            return true;
+        });
+
+        if (emptyInput) {
+            emptyInput.rowIdentifier = rowIdentifier;
+            emptyInput.inputMode = 'fields';
+            if (fields.length > 0) {
+                if (emptyInput.events.length === 0) {
+                    emptyInput.events = [{ id: genId(), fieldValues: [] }];
+                }
+                emptyInput.events[0].fieldValues = fields.map((f) => ({
+                    id: genId(), field: f, value: '',
+                }));
+            }
+            return;
+        }
+
+        if (scenario.inputs.length >= MAX_INPUTS_PER_SCENARIO) return;
+        const newInput = createDefaultInput();
+        newInput.rowIdentifier = rowIdentifier;
+        newInput.inputMode = 'fields';
+        // Pre-populate first event with field names from extraction
+        if (fields.length > 0 && newInput.events.length > 0) {
+            newInput.events[0].fieldValues = fields.map((f) => ({
+                id: genId(), field: f, value: '',
+            }));
+        }
+        scenario.inputs.push(newInput);
+      }),
+
     applyFieldSampleValues: (testId: EntityId, scenarioId: EntityId, inputId: EntityId, sampleRow: Record<string, string>) =>
       set((draft) => {
         const t = findTest(draft.tests, testId);

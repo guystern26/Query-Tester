@@ -1,5 +1,6 @@
 /**
- * useInjectionMarkers — Ace editor markers from injection ranges.
+ * useInjectionMarkers — Ace editor markers from injection ranges
+ * and data source extraction results.
  * Delegates matching logic to useInjectionRanges.
  */
 import { useMemo } from 'react';
@@ -37,5 +38,50 @@ export function useInjectionMarkers(): InjectionMatchResult {
         return result;
     }, [spl, ranges]);
 
-    return { markers: markers, matchCount: matchCount, hasIdentifiers: hasIdentifiers };
+    var sourceMarkers = useMemo(function (): SplWarning[] {
+        if (!test || !test.fieldExtraction || !test.fieldExtraction.sources) return [];
+        if (!spl) return [];
+        var result: SplWarning[] = [];
+        var sources = test.fieldExtraction.sources;
+        for (var i = 0; i < sources.length; i++) {
+            var src = sources[i];
+            if (!src.rowIdentifier) continue;
+            var lower = spl.toLowerCase();
+            var target = src.rowIdentifier.toLowerCase();
+            var pos = 0;
+            while (pos < lower.length) {
+                var idx = lower.indexOf(target, pos);
+                if (idx === -1) break;
+                result.push({
+                    start: idx,
+                    end: idx + src.rowIdentifier.length,
+                    token: spl.slice(idx, idx + src.rowIdentifier.length),
+                    message: 'Data source: ' + src.fields.join(', '),
+                    severity: 'datasource' as 'datasource',
+                    isBlocked: false,
+                });
+                pos = idx + 1;
+            }
+        }
+        return result;
+    }, [test, spl]);
+
+    var allMarkers = useMemo(function (): SplWarning[] {
+        // Injection markers take priority — filter out source markers that overlap
+        var combined = markers.slice();
+        for (var i = 0; i < sourceMarkers.length; i++) {
+            var sm = sourceMarkers[i];
+            var overlaps = false;
+            for (var j = 0; j < markers.length; j++) {
+                if (sm.start < markers[j].end && sm.end > markers[j].start) {
+                    overlaps = true;
+                    break;
+                }
+            }
+            if (!overlaps) combined.push(sm);
+        }
+        return combined;
+    }, [markers, sourceMarkers]);
+
+    return { markers: allMarkers, matchCount: matchCount, hasIdentifiers: hasIdentifiers };
 }

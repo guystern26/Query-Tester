@@ -42,27 +42,50 @@ def _run_id_field(run_id: str) -> str:
     return "run_id_{0}".format(run_id)
 
 
-def _build_replacement(run_id: str) -> str:
-    return "index={0} {1}={2}".format(TEMP_INDEX, _run_id_field(run_id), run_id)
+def _build_replacement(run_id: str, input_idx: Optional[int] = None) -> str:
+    base = "index={0} {1}={2}".format(TEMP_INDEX, _run_id_field(run_id), run_id)
+    if input_idx is not None:
+        base += " input_{0}={0}".format(input_idx)
+    return base
 
 
 def _apply_row_identifiers(
     spl: str, inputs: List[ParsedInput], replacement: str,
 ) -> Optional[str]:
     """Apply all input row identifiers, replacing every match globally.
+    Each input gets its own replacement with an input_idx discriminator
+    so events from different inputs don't bleed into each other.
     Returns the modified SPL if any RI matched, or None if none matched.
     """
     current = spl
-    for parsed_input in inputs:
+    run_id = _extract_run_id(replacement)
+    for idx, parsed_input in enumerate(inputs):
         row_identifier = parsed_input.row_identifier.strip()
         if not row_identifier:
             continue
-        replaced = _replace_by_row_identifier(current, row_identifier, replacement)
+        # Build per-input replacement with input_idx discriminator
+        if len(inputs) > 1:
+            per_input_replacement = _build_replacement(run_id, input_idx=idx)
+        else:
+            per_input_replacement = replacement
+        replaced = _replace_by_row_identifier(current, row_identifier, per_input_replacement)
         if replaced is not None:
             current = replaced
     if current != spl:
         return current
     return None
+
+
+def _extract_run_id(replacement: str) -> str:
+    """Extract the run_id value from a replacement string like
+    'index=temp_query_tester run_id_abc123=abc123'.
+    """
+    for part in replacement.split():
+        if part.startswith("run_id_"):
+            eq = part.find("=")
+            if eq != -1:
+                return part[eq + 1:]
+    return ""
 
 
 def detect_strategy(spl: str) -> str:
@@ -104,8 +127,15 @@ def inject(
         logger.warning('Unknown injection strategy "%s" — returning SPL unchanged.', strategy)
         return spl
     result = handler(spl, run_id, inputs)
+    # Post-step: replace inputlookup commands in subsearches.
+    # When explicit RIs are configured, only replace inputlookups that match
+    # a configured RI. When no RIs are set, replace all (legacy behavior).
     if strategy != "tstats":
-        result = _replace_all_inputlookups(result, run_id)
+        has_explicit_ri = any(inp.row_identifier.strip() for inp in inputs)
+        if has_explicit_ri:
+            result = _replace_configured_inputlookups(result, run_id, inputs)
+        else:
+            result = _replace_all_inputlookups(result, run_id)
     pre_swap = result
     result = _swap_cache_lookups(result, run_id, test_id)
     if result != pre_swap:
@@ -238,6 +268,36 @@ def _replace_outer_index(spl: str, replacement: str) -> str:
 def _replace_all_inputlookups(spl: str, run_id: str) -> str:
     """Replace every inputlookup command in the SPL with the temp index."""
     return INPUTLOOKUP_PATTERN.sub(_build_replacement(run_id), spl)
+
+
+def _replace_configured_inputlookups(
+    spl: str, run_id: str, inputs: List[ParsedInput],
+) -> str:
+    """Replace inputlookup commands only if they match a configured row identifier.
+
+    For each inputlookup in the SPL, check if any input's RI matches the
+    inputlookup text (e.g. RI 'inputlookup users.csv'). Only replace matches.
+    Inputlookup commands with no matching RI are left untouched.
+    """
+    replacement = _build_replacement(run_id)
+    ri_set = set()
+    for inp in inputs:
+        ri = inp.row_identifier.strip().lower()
+        if ri:
+            ri_set.add(ri)
+    if not ri_set:
+        return spl
+
+    def _check_and_replace(match):
+        # type: (re.Match) -> str
+        matched_text = match.group(0).strip().lower()
+        # Check if any RI matches this inputlookup command text
+        for ri in ri_set:
+            if ri in matched_text or matched_text in ri:
+                return replacement
+        return match.group(0)
+
+    return INPUTLOOKUP_PATTERN.sub(_check_and_replace, spl)
 
 
 _ORPHAN_PATTERNS = [

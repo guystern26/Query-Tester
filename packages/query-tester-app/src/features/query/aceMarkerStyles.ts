@@ -13,6 +13,7 @@ export const MARKER_CLASSES: Record<string, string> = {
     warning: 'spl-lint-warning',
     info: 'spl-lint-info',
     injection: 'spl-injection-match',
+    datasource: 'spl-datasource-match',
 };
 
 /** Returns the CSS class for a field-tracking marker by color index. */
@@ -66,6 +67,13 @@ const MARKER_CSS = `
       border-radius: 2px;
       z-index: 4;
     }
+    .spl-datasource-match {
+      position: absolute;
+      background: rgba(147, 197, 253, 0.10);
+      border-bottom: 2px dotted rgba(147, 197, 253, 0.4);
+      border-radius: 2px;
+      z-index: 3;
+    }
     .spl-inject-0 { position:absolute; background:rgba(245,158,11,0.10); border-bottom:2px solid rgba(245,158,11,0.6); border-radius:2px; z-index:4; }
     .spl-inject-1 { position:absolute; background:rgba(56,189,248,0.10); border-bottom:2px solid rgba(56,189,248,0.6); border-radius:2px; z-index:4; }
     .spl-inject-2 { position:absolute; background:rgba(244,114,182,0.10); border-bottom:2px solid rgba(244,114,182,0.6); border-radius:2px; z-index:4; }
@@ -116,6 +124,11 @@ const MARKER_CSS = `
       background: #1e293b;
       border: 1px solid #475569;
       color: #e2e8f0;
+    }
+    .spl-lint-tooltip.datasource {
+      background: #1e293b;
+      border: 1px solid #3b82f6;
+      color: #93c5fd;
     }
 `;
 

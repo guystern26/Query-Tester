@@ -25,6 +25,11 @@ export interface WizardSliceState {
     querySidebarCollapsed: boolean;
     querySidebarWidth: number;
     lastExtractedSpl: string;
+    confirmedSources: Array<{
+        rowIdentifier: string;
+        fields: string[];
+        colorIndex: number;
+    }>;
 }
 
 export var wizardInitialState: WizardSliceState = {
@@ -33,6 +38,7 @@ export var wizardInitialState: WizardSliceState = {
     querySidebarCollapsed: loadCollapsed(),
     querySidebarWidth: loadWidth(),
     lastExtractedSpl: '',
+    confirmedSources: [],
 };
 
 type SetState = (recipe: (draft: WizardSliceState) => void) => void;
@@ -67,7 +73,30 @@ export function wizardSlice(set: SetState) {
                 d.activeStep = 0;
                 d.highestStepReached = 0;
                 d.lastExtractedSpl = '';
+                d.confirmedSources = [];
             });
+        },
+        setConfirmedSources: function (sources: Array<{ rowIdentifier: string; fields: string[]; colorIndex: number }>): void {
+            set(function (d) { d.confirmedSources = sources; });
+        },
+        addConfirmedSource: function (rowIdentifier: string, fields: string[]): void {
+            set(function (d) {
+                for (var i = 0; i < d.confirmedSources.length; i++) {
+                    if (d.confirmedSources[i].rowIdentifier.toLowerCase() === rowIdentifier.toLowerCase()) return;
+                }
+                var nextColor = d.confirmedSources.length;
+                d.confirmedSources.push({ rowIdentifier: rowIdentifier, fields: fields, colorIndex: nextColor });
+            });
+        },
+        removeConfirmedSource: function (rowIdentifier: string): void {
+            set(function (d) {
+                d.confirmedSources = d.confirmedSources.filter(function (s) {
+                    return s.rowIdentifier.toLowerCase() !== rowIdentifier.toLowerCase();
+                });
+            });
+        },
+        clearConfirmedSources: function (): void {
+            set(function (d) { d.confirmedSources = []; });
         },
     };
 }
