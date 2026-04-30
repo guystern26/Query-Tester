@@ -67,18 +67,38 @@ export function llmActionsSlice(_set: SetState, get: GetState) {
             scenarioId: EntityId,
             spl: string,
         ): Promise<ExtractedDataSource[]> => {
-            let sources: ExtractedDataSource[];
-            try {
-                sources = await extractDataSources(spl);
-            } catch {
-                // Fallback mock data for dev mode (no LLM configured)
-                sources = _mockExtractedSources(spl);
-            }
             const store = get() as ReturnType<typeof get> & {
                 setFieldExtraction: (id: EntityId, sources: ExtractedDataSource[]) => void;
             };
-            store.setFieldExtraction(testId, sources);
-            return sources;
+
+            // Step 1: Immediately populate with regex-detected sources
+            var regexSources = _regexExtractSources(spl);
+            if (regexSources.length > 0) {
+                store.setFieldExtraction(testId, regexSources);
+            }
+
+            // Step 2: Race LLM with 10s timeout
+            var LLM_TIMEOUT = 10000;
+            var timeoutPromise = new Promise<null>(function (resolve) {
+                setTimeout(function () { resolve(null); }, LLM_TIMEOUT);
+            });
+
+            try {
+                var result = await Promise.race([
+                    extractDataSources(spl),
+                    timeoutPromise,
+                ]);
+                if (result !== null) {
+                    // LLM responded in time — replace regex results
+                    store.setFieldExtraction(testId, result);
+                    return result;
+                }
+                // LLM timed out — keep regex results
+                return regexSources;
+            } catch {
+                // LLM failed — keep regex results
+                return regexSources;
+            }
         },
 
         /**
@@ -166,20 +186,72 @@ export function llmActionsSlice(_set: SetState, get: GetState) {
 
 // ── Mock data for dev mode (no LLM / no Splunk) ────────────────────────────
 
-function _mockExtractedSources(spl: string): ExtractedDataSource[] {
-    // Parse index=X sourcetype=Y from the SPL to build a plausible source
-    const idxMatch = /index\s*=\s*(\S+)/.exec(spl);
-    const stMatch = /sourcetype\s*=\s*(\S+)/.exec(spl);
-    const ri = (idxMatch ? 'index=' + idxMatch[1] : 'index=main') + (stMatch ? ' sourcetype=' + stMatch[1] : '');
-    // Extract field names from stats/eval/by clauses
-    const fields: string[] = [];
-    const byMatch = /\bby\s+([\w,\s]+)/gi;
-    let m: RegExpExecArray | null;
-    while ((m = byMatch.exec(spl)) !== null) { for (const f of m[1].split(/[,\s]+/)) { if (f && !fields.includes(f)) fields.push(f); } }
-    const asMatch = /\bas\s+(\w+)/gi;
-    while ((m = asMatch.exec(spl)) !== null) { if (!fields.includes(m[1])) fields.push(m[1]); }
-    if (fields.length === 0) fields.push('_time', 'host', 'source', 'sourcetype');
-    return [{ rowIdentifier: ri, fields }];
+/** Regex-based data source extraction — runs instantly, no LLM needed.
+ * Finds all index=, inputlookup, lookup, and rest clauses in the SPL. */
+function _regexExtractSources(spl: string): ExtractedDataSource[] {
+    var sources: ExtractedDataSource[] = [];
+    var seen = new Set<string>();
+
+    // index= with optional sourcetype/source/host
+    var idxRe = /\bindex\s*=\s*["']?[\w*\-\.]+["']?(?:\s+(?:sourcetype|source|host)\s*=\s*["']?[\w*\-\.]+["']?)*/gi;
+    var m: RegExpExecArray | null;
+    while ((m = idxRe.exec(spl)) !== null) {
+        var ri = m[0].trim();
+        if (!seen.has(ri.toLowerCase())) {
+            seen.add(ri.toLowerCase());
+            sources.push({ rowIdentifier: ri, fields: _extractFields(spl) });
+        }
+    }
+
+    // inputlookup
+    var ilRe = /(?:\|\s*)?inputlookup\s+[\w\-\.]+(?:\.csv)?/gi;
+    while ((m = ilRe.exec(spl)) !== null) {
+        var ri2 = m[0].replace(/^\|\s*/, '').trim();
+        if (!seen.has(ri2.toLowerCase())) {
+            seen.add(ri2.toLowerCase());
+            sources.push({ rowIdentifier: ri2, fields: [] });
+        }
+    }
+
+    // lookup (piped)
+    var lkRe = /\|\s*lookup\s+[\w\-\.]+/gi;
+    while ((m = lkRe.exec(spl)) !== null) {
+        var ri3 = m[0].replace(/^\|\s*/, '').trim();
+        if (!seen.has(ri3.toLowerCase())) {
+            seen.add(ri3.toLowerCase());
+            sources.push({ rowIdentifier: ri3, fields: [] });
+        }
+    }
+
+    // rest
+    var restRe = /(?:\|\s*)?rest\s+[^|]+?(?=\s*\||$)/gi;
+    while ((m = restRe.exec(spl)) !== null) {
+        var ri4 = m[0].replace(/^\|\s*/, '').trim();
+        if (!seen.has(ri4.toLowerCase())) {
+            seen.add(ri4.toLowerCase());
+            sources.push({ rowIdentifier: ri4, fields: [] });
+        }
+    }
+
+    return sources;
+}
+
+/** Extract field names from stats/eval/by/as clauses. */
+function _extractFields(spl: string): string[] {
+    var fields: string[] = [];
+    var byMatch = /\bby\s+([\w,\s]+)/gi;
+    var m: RegExpExecArray | null;
+    while ((m = byMatch.exec(spl)) !== null) {
+        var parts = m[1].split(/[,\s]+/);
+        for (var i = 0; i < parts.length; i++) {
+            if (parts[i] && fields.indexOf(parts[i]) === -1) fields.push(parts[i]);
+        }
+    }
+    var asMatch = /\bas\s+(\w+)/gi;
+    while ((m = asMatch.exec(spl)) !== null) {
+        if (fields.indexOf(m[1]) === -1) fields.push(m[1]);
+    }
+    return fields;
 }
 
 function _mockValidationFields(spl: string): string[] {
