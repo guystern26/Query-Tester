@@ -38,8 +38,8 @@ export function SourceTooltip({
         >
             {isUsed ? (
                 <div>
-                    <div className="text-slate-300 font-medium mb-0.5">Already added</div>
-                    <div className="text-slate-500">Click to add another input for this source</div>
+                    <div className="text-slate-400 font-medium mb-0.5">Already configured</div>
+                    <div className="text-slate-500">This source is already used in this scenario</div>
                 </div>
             ) : (
                 <div>

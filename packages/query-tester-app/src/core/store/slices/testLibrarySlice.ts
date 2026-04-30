@@ -165,8 +165,8 @@ export function testLibrarySlice(set: SetState, get: GetState) {
             const app = full.app || full.definition?.app;
             if (origin && app) {
                 getSavedSearchSpl(app, origin)
-                    .then((currentSpl) => {
-                        if (currentSpl.trim() !== (full.definition.query?.spl ?? '').trim()) {
+                    .then((result) => {
+                        if (result.spl.trim() !== (full.definition.query?.spl ?? '').trim()) {
                             set((d) => {
                                 d.splDriftWarning = 'The saved search "' + origin + '" has changed since this test was last saved.';
                             });
@@ -188,10 +188,10 @@ export function testLibrarySlice(set: SetState, get: GetState) {
             const app = activeTest?.app;
             if (!activeTest || !origin || !app) return;
             try {
-                const currentSpl = await getSavedSearchSpl(app, origin);
+                const result = await getSavedSearchSpl(app, origin);
                 set((d) => {
                     const test = d.tests.find((t) => t.id === d.activeTestId);
-                    if (test) test.query.spl = currentSpl;
+                    if (test) test.query.spl = result.spl;
                     d.splDriftWarning = null;
                 });
             } catch {

@@ -23,11 +23,19 @@ export function llmActionsSlice(_set: SetState, get: GetState) {
             app: string,
             savedSearchName: string,
         ): Promise<void> => {
-            const content = await getSavedSearchSpl(app, savedSearchName);
+            const result = await getSavedSearchSpl(app, savedSearchName);
             const store = get() as ReturnType<typeof get> & {
                 loadSavedSearchSpl: (id: EntityId, spl: string, origin: string | null) => void;
+                setTimeRange: (id: EntityId, tr: { earliest: string; latest: string; label: string }) => void;
             };
-            store.loadSavedSearchSpl(testId, content, savedSearchName);
+            store.loadSavedSearchSpl(testId, result.spl, savedSearchName);
+            if (result.earliestTime || result.latestTime) {
+                store.setTimeRange(testId, {
+                    earliest: result.earliestTime,
+                    latest: result.latestTime,
+                    label: result.earliestTime + ' to ' + result.latestTime,
+                });
+            }
         },
 
         /**
@@ -41,12 +49,12 @@ export function llmActionsSlice(_set: SetState, get: GetState) {
             app: string,
             savedSearchName: string,
         ): Promise<void> => {
-            const content = await getSavedSearchSpl(app, savedSearchName);
+            const result = await getSavedSearchSpl(app, savedSearchName);
             const store = get() as ReturnType<typeof get> & {
                 updateQueryDataSpl: (tId: EntityId, sId: EntityId, iId: EntityId, spl: string) => void;
                 updateQueryDataSavedSearch: (tId: EntityId, sId: EntityId, iId: EntityId, name: string | null) => void;
             };
-            store.updateQueryDataSpl(testId, scenarioId, inputId, content);
+            store.updateQueryDataSpl(testId, scenarioId, inputId, result.spl);
             store.updateQueryDataSavedSearch(testId, scenarioId, inputId, savedSearchName);
         },
 

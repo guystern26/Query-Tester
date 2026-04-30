@@ -28,7 +28,20 @@ export function SourceBadge({ testId, scenarioId, inputId, value, colorIndex, ma
     const [focused, setFocused] = useState(false);
 
     const color = COLORS[colorIndex % COLORS.length];
-    const orphans = useOrphanedFilters(spl, value);
+    // Count how many inputs before this one use the same RI (for occurrence matching)
+    var occurrenceIndex = 0;
+    if (test) {
+        var scenario = test.scenarios.find(function (s) { return s.id === scenarioId; });
+        if (scenario) {
+            for (var ii = 0; ii < scenario.inputs.length; ii++) {
+                if (scenario.inputs[ii].id === inputId) break;
+                if (scenario.inputs[ii].rowIdentifier.trim().toLowerCase() === value.trim().toLowerCase()) {
+                    occurrenceIndex++;
+                }
+            }
+        }
+    }
+    const orphans = useOrphanedFilters(spl, value, occurrenceIndex);
 
     const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         updateRowIdentifier(testId, scenarioId, inputId, e.target.value);

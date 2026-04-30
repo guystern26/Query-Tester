@@ -68,10 +68,12 @@ export function InteractiveSidebar({ spl, onSourceClick }: InteractiveSidebarPro
     }, []);
 
     const hasSources = spans.length > 0;
+    // Check if any source is still available (not all claimed)
+    const hasAvailable = hasSources && usedSet.length < spans.length;
 
     return (
         <div className="flex flex-col gap-2">
-            {hasSources && (
+            {hasAvailable && (
                 <div className="flex items-center gap-1.5 px-2 py-1.5 bg-blue-300/10 border border-blue-300/20 rounded-md mb-1">
                     <svg className="w-3.5 h-3.5 text-blue-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />

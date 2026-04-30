@@ -172,6 +172,13 @@ export function inputSlice(set: SetState) {
         const scenario = findScenario(findTest(draft.tests, testId), scenarioId);
         if (!scenario) return;
 
+        // Prevent duplicate row identifiers in the same scenario
+        const riLower = rowIdentifier.trim().toLowerCase();
+        const alreadyExists = scenario.inputs.some(
+          (inp) => inp.rowIdentifier.trim().toLowerCase() === riLower
+        );
+        if (alreadyExists) return;
+
         // Find an existing empty input to fill instead of creating a new one
         const emptyInput = scenario.inputs.find((inp) => {
             if (inp.rowIdentifier.trim() !== '') return false;

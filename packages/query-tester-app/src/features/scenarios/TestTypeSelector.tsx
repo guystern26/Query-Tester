@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTestStore } from 'core/store/testStore';
 import { selectActiveTest, inputHasData } from 'core/store/selectors';
 import type { TestType } from 'core/types';
+import { Modal } from '../../common';
 
 const LABELS: Record<TestType, string> = {
   standard: 'Synthetic Data',
@@ -20,17 +21,29 @@ export function TestTypeSelector({ compact = false }: Props) {
   const updateTestType = useTestStore((s) => s.updateTestType);
   const clearResults = useTestStore((s) => s.clearResults);
   const testType: TestType = activeTest?.testType ?? 'standard';
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmMsg, setConfirmMsg] = useState('');
 
   const handleSelect = (type: TestType) => {
     if (!activeTest || type === testType) return;
     if (type === 'query_only') {
       const msg = inputHasData(activeTest.scenarios)
-        ? 'Switching to Real Data mode will ignore all synthetic test data. Your data is preserved if you switch back.\n\nYour query will run directly against live Splunk data.'
+        ? 'Switching to Real Data mode will ignore all synthetic test data. Your data is preserved if you switch back.'
         : 'Your query will run directly against real Splunk data — no synthetic data will be injected.';
-      if (!window.confirm(msg)) return;
+      setConfirmMsg(msg);
+      setConfirmOpen(true);
+      return;
     }
     updateTestType(activeTest.id, type);
     clearResults();
+  };
+
+  const handleConfirm = () => {
+    if (activeTest) {
+      updateTestType(activeTest.id, 'query_only');
+      clearResults();
+    }
+    setConfirmOpen(false);
   };
 
   if (compact) {
@@ -38,13 +51,18 @@ export function TestTypeSelector({ compact = false }: Props) {
     const pillActive = 'bg-navy-700 text-white border-2 border-slate-600';
     const pillInactive = 'text-slate-600 border-2 border-transparent hover:text-slate-400';
     return (
-      <div className="flex items-center gap-3 shrink-0">
-        <span className="text-[11px] text-slate-500 uppercase tracking-wider shrink-0">Type</span>
-        <div className="flex rounded-lg p-0.5 gap-0.5 shrink-0">
-          <button className={`${pillBase} ${testType === 'standard' ? pillActive : pillInactive}`} onClick={() => handleSelect('standard')}>{LABELS.standard}</button>
-          <button data-tutorial="query-only" className={`${pillBase} ${testType === 'query_only' ? pillActive : pillInactive}`} onClick={() => handleSelect('query_only')}>{LABELS.query_only}</button>
+      <>
+        <div className="flex items-center gap-3 shrink-0">
+          <span className="text-[11px] text-slate-500 uppercase tracking-wider shrink-0">Type</span>
+          <div className="flex rounded-lg p-0.5 gap-0.5 shrink-0">
+            <button className={`${pillBase} ${testType === 'standard' ? pillActive : pillInactive}`} onClick={() => handleSelect('standard')}>{LABELS.standard}</button>
+            <button data-tutorial="query-only" className={`${pillBase} ${testType === 'query_only' ? pillActive : pillInactive}`} onClick={() => handleSelect('query_only')}>{LABELS.query_only}</button>
+          </div>
         </div>
-      </div>
+        <Modal open={confirmOpen} title="Switch to Real Data?" onClose={() => setConfirmOpen(false)} confirmLabel="Switch" onConfirm={handleConfirm}>
+          <p className="m-0 text-sm text-slate-300">{confirmMsg}</p>
+        </Modal>
+      </>
     );
   }
 
@@ -53,18 +71,23 @@ export function TestTypeSelector({ compact = false }: Props) {
   const cardInactive = 'border border-slate-700 bg-navy-950/50 hover:border-slate-500';
 
   return (
-    <div className="flex flex-col gap-3 w-full">
-      <span className="text-[11px] text-slate-500 uppercase tracking-wider">Test Type</span>
-      <div className="flex gap-3">
-        {(['standard', 'query_only'] as TestType[]).map((type) => (
-          <button key={type} className={`${cardBase} ${testType === type ? cardActive : cardInactive}`} onClick={() => handleSelect(type)}>
-            <span className={`block text-sm font-semibold mb-1 ${testType === type ? 'text-white' : 'text-slate-600'}`}>
-              {LABELS[type]}
-            </span>
-            <span className="block text-xs text-slate-400 leading-relaxed">{DESCS[type]}</span>
-          </button>
-        ))}
+    <>
+      <div className="flex flex-col gap-3 w-full">
+        <span className="text-[11px] text-slate-500 uppercase tracking-wider">Test Type</span>
+        <div className="flex gap-3">
+          {(['standard', 'query_only'] as TestType[]).map((type) => (
+            <button key={type} className={`${cardBase} ${testType === type ? cardActive : cardInactive}`} onClick={() => handleSelect(type)}>
+              <span className={`block text-sm font-semibold mb-1 ${testType === type ? 'text-white' : 'text-slate-600'}`}>
+                {LABELS[type]}
+              </span>
+              <span className="block text-xs text-slate-400 leading-relaxed">{DESCS[type]}</span>
+            </button>
+          ))}
+        </div>
       </div>
-    </div>
+      <Modal open={confirmOpen} title="Switch to Real Data?" onClose={() => setConfirmOpen(false)} confirmLabel="Switch" onConfirm={handleConfirm}>
+        <p className="m-0 text-sm text-slate-300">{confirmMsg}</p>
+      </Modal>
+    </>
   );
 }

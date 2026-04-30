@@ -125,29 +125,6 @@ export function WizardLayout({ localName, onNameChange, app, onAppChange, isIde 
     var setVisible = _s[1];
     var _prev = useRef(clampedStep);
     var _dir = useRef(1);
-    // Chevron attention pulse — fires when canGoNext flips to true
-    var _pulseNext = useState(0);
-    var pulseNextKey = _pulseNext[0];
-    var setPulseNextKey = _pulseNext[1];
-    var _prevCanNext = useRef(canGoNext);
-    useEffect(function () {
-        if (canGoNext && !_prevCanNext.current) {
-            setPulseNextKey(function (k) { return k + 1; });
-        }
-        _prevCanNext.current = canGoNext;
-    }, [canGoNext]);
-
-    // Back chevron pulse — fires when step advances (back becomes available)
-    var _pulseBack = useState(0);
-    var pulseBackKey = _pulseBack[0];
-    var setPulseBackKey = _pulseBack[1];
-    var _prevFirst = useRef(isFirst);
-    useEffect(function () {
-        if (!isFirst && _prevFirst.current) {
-            setPulseBackKey(function (k) { return k + 1; });
-        }
-        _prevFirst.current = isFirst;
-    }, [isFirst]);
 
     useEffect(function () {
         _dir.current = clampedStep >= _prev.current ? 1 : -1;
@@ -194,30 +171,30 @@ export function WizardLayout({ localName, onNameChange, app, onAppChange, isIde 
 
                 <div className="w-px h-5 bg-slate-700 shrink-0" />
 
-                <div data-tutorial="wizard-stepper" className="flex-1 min-w-0">
+                <div data-tutorial="wizard-stepper" className="flex-1 min-w-0 flex items-center gap-2">
                     <WizardStepper steps={stepDefs} activeStep={clampedStep} onStepClick={handleStepClick} />
+                    <div className="flex items-center gap-0.5 shrink-0 ml-4">
+                        <button type="button" onClick={handleBack} disabled={isFirst}
+                            className="px-1.5 py-0.5 text-[9px] uppercase tracking-wider rounded text-slate-600 hover:text-slate-400 transition-all cursor-pointer disabled:opacity-0 disabled:cursor-default">
+                            &laquo; Prev
+                        </button>
+                        {isLast ? (
+                            <button type="button" onClick={handleRun} disabled={isRunning}
+                                className="px-1.5 py-0.5 text-[9px] uppercase tracking-wider rounded text-green-600 hover:text-green-400 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-default">
+                                Run &raquo;
+                            </button>
+                        ) : (
+                            <button type="button" onClick={handleNext} disabled={!canGoNext}
+                                className="px-1.5 py-0.5 text-[9px] uppercase tracking-wider rounded text-slate-600 hover:text-slate-400 transition-all cursor-pointer disabled:opacity-0 disabled:cursor-default">
+                                Next &raquo;
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
 
-            {/* Content area with flanking nav chevrons */}
-            <div className="flex flex-1 min-h-0 items-stretch">
-                {/* Left chevron — Back */}
-                <button
-                    key={'back-btn-' + pulseBackKey}
-                    type="button"
-                    data-tutorial="wizard-nav"
-                    onClick={handleBack}
-                    disabled={isFirst}
-                    title={!isFirst && stepDefs[clampedStep - 1] ? stepDefs[clampedStep - 1].label : ''}
-                    className="w-7 shrink-0 flex items-center justify-center rounded-l-lg border border-transparent text-slate-600 transition-all cursor-pointer hover:text-slate-300 hover:border-slate-700/50 hover:bg-navy-800/60 disabled:opacity-0 disabled:cursor-default disabled:hover:bg-transparent disabled:hover:border-transparent"
-                    style={pulseBackKey > 0 && !isFirst ? { animation: 'navCardStretchLeft 3s ease-out' } : undefined}
-                >
-                    <svg key={'back-' + pulseBackKey} className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}
-                        style={pulseBackKey > 0 && !isFirst ? { animation: 'chevronAttentionLeft 3s ease-out' } : undefined}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                    </svg>
-                </button>
-
+            {/* Content area with floating nav squares */}
+            <div className="flex flex-1 min-h-0 items-stretch relative mx-10">
                 {/* Sidebar */}
                 {showSidebar ? (
                     <QuerySidebar
@@ -245,40 +222,35 @@ export function WizardLayout({ localName, onNameChange, app, onAppChange, isIde 
                     {currentStepId === 'validation' ? <ValidationSection /> : null}
                 </div>
 
-                {/* Right chevron — Next or Run */}
-                {isLast ? (
-                    <button
-                        key={'run-btn-' + pulseNextKey}
-                        type="button"
-                        data-tutorial="wizard-nav-next"
-                        onClick={handleRun}
-                        disabled={isRunning}
-                        title="Run Test"
-                        className="w-7 shrink-0 flex items-center justify-center rounded-r-lg border border-transparent text-green-400/70 transition-all cursor-pointer hover:text-green-400 hover:border-green-500/30 hover:bg-green-500/10 disabled:opacity-40 disabled:cursor-default"
-                        style={pulseNextKey > 0 ? { animation: 'navCardStretch 3s ease-out' } : undefined}
-                    >
-                        <svg key={'run-' + pulseNextKey} className="w-4 h-4" fill="none" viewBox="0 0 24 24"
-                            style={pulseNextKey > 0 ? { animation: 'chevronAttention 3s ease-out' } : undefined}>
-                            <polygon points="5 3 19 12 5 21 5 3" fill="currentColor" />
-                        </svg>
-                    </button>
-                ) : (
-                    <button
-                        key={'next-btn-' + pulseNextKey}
-                        type="button"
-                        data-tutorial="wizard-nav-next"
-                        onClick={handleNext}
-                        disabled={!canGoNext}
-                        title={stepDefs[clampedStep + 1] ? 'Next: ' + stepDefs[clampedStep + 1].label : 'Next'}
-                        className="w-7 shrink-0 flex items-center justify-center rounded-r-lg border border-transparent text-slate-600 transition-all cursor-pointer hover:text-slate-300 hover:border-slate-700/50 hover:bg-navy-800/60 disabled:opacity-0 disabled:cursor-default disabled:hover:bg-transparent disabled:hover:border-transparent"
-                        style={pulseNextKey > 0 && canGoNext ? { animation: 'navCardStretch 3s ease-out' } : undefined}
-                    >
-                        <svg key={'next-' + pulseNextKey} className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}
-                            style={pulseNextKey > 0 && canGoNext ? { animation: 'chevronAttention 3s ease-out' } : undefined}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                {/* Floating back square */}
+                {!isFirst && (
+                    <button type="button" onClick={handleBack}
+                        title={stepDefs[clampedStep - 1] ? stepDefs[clampedStep - 1].label : 'Back'}
+                        className="wizard-float wizard-float-left">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
                         </svg>
                     </button>
                 )}
+
+                {/* Floating next/run square */}
+                {isLast ? (
+                    <button type="button" onClick={handleRun} disabled={isRunning}
+                        title="Run Test"
+                        className="wizard-float wizard-float-right wizard-float-run">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24">
+                            <polygon points="5 3 19 12 5 21 5 3" fill="currentColor" />
+                        </svg>
+                    </button>
+                ) : canGoNext ? (
+                    <button type="button" onClick={handleNext}
+                        title={stepDefs[clampedStep + 1] ? 'Next: ' + stepDefs[clampedStep + 1].label : 'Next'}
+                        className="wizard-float wizard-float-right">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </button>
+                ) : null}
             </div>
         </div>
     );

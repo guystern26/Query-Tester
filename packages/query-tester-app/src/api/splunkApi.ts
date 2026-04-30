@@ -125,11 +125,17 @@ export async function getSavedSearches(app: string, signal?: AbortSignal): Promi
   }
 }
 
+export interface SavedSearchResult {
+  spl: string;
+  earliestTime: string;
+  latestTime: string;
+}
+
 /**
- * Fetch the SPL of a specific saved search.
- * GET /servicesNS/-/{app}/saved/searches/{name} → entry[0].content.search
+ * Fetch the SPL and time range of a specific saved search.
+ * GET /servicesNS/-/{app}/saved/searches/{name} → entry[0].content
  */
-export async function getSavedSearchSpl(app: string, name: string): Promise<string> {
+export async function getSavedSearchSpl(app: string, name: string): Promise<SavedSearchResult> {
   const encoded = encodeURIComponent(name);
   let data: Record<string, unknown>;
 
@@ -142,18 +148,21 @@ export async function getSavedSearchSpl(app: string, name: string): Promise<stri
   }
 
   const entries = (data as {
-    entry?: Array<{ content?: { search?: string } }>;
+    entry?: Array<{ content?: Record<string, unknown> }>;
   }).entry;
 
   if (!Array.isArray(entries) || entries.length === 0) {
     throw new Error('Saved search "' + name + '" not found in app "' + app + '".');
   }
 
-  const spl = entries[0].content?.search;
+  const content = entries[0].content || {};
+  const spl = content.search;
   if (typeof spl !== 'string') {
     throw new Error(
       'Saved search "' + name + '" exists but has no SPL content.'
     );
   }
-  return spl;
+  var earliest = (content['dispatch.earliest_time'] as string) || '';
+  var latest = (content['dispatch.latest_time'] as string) || '';
+  return { spl: spl, earliestTime: earliest, latestTime: latest };
 }
