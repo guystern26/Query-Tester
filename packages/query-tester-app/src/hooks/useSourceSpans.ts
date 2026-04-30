@@ -28,8 +28,8 @@ interface SourceSpanResult {
 const INDEX_SOURCE_RE = /\bindex\s*=\s*["']?[\w*\-\.]+["']?(?:\s+(?:sourcetype|source|host)\s*=\s*["']?[\w*\-\.]+["']?)*/gi;
 
 const COMMAND_PATTERNS: Array<{ re: RegExp; label: string }> = [
-    { re: /(?:\|\s*)?inputlookup\s+[\w\-\.]+(?:\.csv)?/gi, label: 'inputlookup' },
-    { re: /(?:\|\s*)?rest\s+[^|]+?(?=\s*\||$)/gi, label: 'rest' },
+    { re: /(?:^|\|)\s*inputlookup\s+[\w\-\.]+(?:\.csv)?/gi, label: 'inputlookup' },
+    { re: /(?:^|\|)\s*rest\s+[^|]+?(?=\s*\||$)/gi, label: 'rest' },
     { re: /\|\s*lookup\s+[\w\-\.]+/gi, label: 'lookup' },
     { re: INDEX_SOURCE_RE, label: 'index' },
 ];
