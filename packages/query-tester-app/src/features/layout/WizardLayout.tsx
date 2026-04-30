@@ -173,7 +173,7 @@ export function WizardLayout({ localName, onNameChange, app, onAppChange, isIde 
 
                 <div data-tutorial="wizard-stepper" className="flex-1 min-w-0 flex items-center gap-2">
                     <WizardStepper steps={stepDefs} activeStep={clampedStep} onStepClick={handleStepClick} />
-                    <div className="flex items-center gap-0.5 shrink-0 ml-4">
+                    <div data-tutorial="wizard-nav" className="flex items-center gap-0.5 shrink-0 ml-4">
                         <button type="button" onClick={handleBack} disabled={isFirst}
                             className="px-1.5 py-0.5 text-[9px] uppercase tracking-wider rounded text-slate-600 hover:text-slate-400 transition-all cursor-pointer disabled:opacity-0 disabled:cursor-default">
                             &laquo; Prev
@@ -244,6 +244,7 @@ export function WizardLayout({ localName, onNameChange, app, onAppChange, isIde 
                     </button>
                 ) : canGoNext ? (
                     <button type="button" onClick={handleNext}
+                        data-tutorial="wizard-float-nav"
                         title={stepDefs[clampedStep + 1] ? 'Next: ' + stepDefs[clampedStep + 1].label : 'Next'}
                         className="wizard-float wizard-float-right">
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>

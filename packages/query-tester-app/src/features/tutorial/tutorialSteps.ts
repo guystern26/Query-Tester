@@ -61,12 +61,11 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     },
     {
         id: 'wizard-nav-next',
-        title: 'Click here to advance',
+        title: 'Navigate between steps',
         content:
-            'This chevron takes you to the next step. You can also press the right arrow key. ' +
-            'On the Validation step, it becomes a green play button to run the test. ' +
-            'The left chevron on the other side goes back.',
-        selector: '[data-tutorial="wizard-nav-next"]',
+            'Use these floating arrows on the card edges, the Prev/Next buttons in the top bar, or keyboard arrow keys ' +
+            'to move between steps. On the Validation step, the right arrow becomes a green play button to run the test.',
+        selector: '[data-tutorial="wizard-float-nav"]',
         panel: 'query',
         placement: 'left',
     },
@@ -77,18 +76,17 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
         content:
             'Now we will move to the Data section, where you define the test events ' +
             'that will be injected into your query. Click Next to continue.',
-        selector: '[data-tutorial="wizard-nav-next"]',
+        selector: '[data-tutorial="wizard-nav"]',
         panel: 'query',
-        placement: 'left',
     },
     {
         id: 'row-identifier',
         title: 'Set your data source',
         content:
-            'The "Inject Into" field tells the test runner which part of your query to replace ' +
-            'with test data. It should match the base search clause — typically the index and ' +
-            'sourcetype. Matching text is highlighted in the query sidebar.',
-        selector: '[data-tutorial="row-identifier"], input[placeholder*="index=main sourcetype"]',
+            'The "Data Source in Query" field tells the test runner which part of your query to replace ' +
+            'with test data. Click a highlighted source in the sidebar to fill it automatically, ' +
+            'or type the base search clause (index, sourcetype).',
+        selector: '[data-tutorial="row-identifier"], input[placeholder*="Pick from sidebar"]',
         panel: 'data',
     },
     {
@@ -96,18 +94,18 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
         title: 'The value must match exactly',
         content:
             'The text must exactly match what appears in your SPL. If your query says ' +
-            'index=main sourcetype=access_combined, the inject-into field must be that exact ' +
+            'index=main sourcetype=access_combined, the data source field must be that exact ' +
             'string. Check the query sidebar to confirm the match is highlighted.',
-        selector: '[data-tutorial="row-identifier"], input[placeholder*="index=main sourcetype"]',
+        selector: '[data-tutorial="row-identifier"], input[placeholder*="Pick from sidebar"]',
         panel: 'data',
     },
     {
         id: 'query-sidebar',
         title: 'Query sidebar',
         content:
-            'The query sidebar shows your SPL with syntax highlighting while you work on Data ' +
-            'or Validation. It is resizable — drag the edge to adjust width, or collapse it ' +
-            'by dragging it small. Click "edit" to jump back to the Query step.',
+            'The query sidebar shows your SPL with highlighted data sources while you work on Data ' +
+            'or Validation. Click a highlighted source to add it as an input. ' +
+            'Click "edit" to make quick SPL changes inline, or drag the edge to resize.',
         selector: '[data-tutorial="query-sidebar"]',
         panel: 'data',
         placement: 'right',
@@ -194,9 +192,8 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
         content:
             'Now we will move to the Validation section, where you define what the query ' +
             'results should look like — row counts, field values, and pass/fail conditions.',
-        selector: '[data-tutorial="wizard-nav-next"]',
+        selector: '[data-tutorial="wizard-nav"]',
         panel: 'data',
-        placement: 'left',
     },
     ...TUTORIAL_VALIDATION_STEPS,
 ];
