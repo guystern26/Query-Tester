@@ -144,6 +144,19 @@ class TestInputlookup:
              _inputs(""), "inputlookup",
              "{} | stats count".format(R))
 
+    def test_ri_without_pipe_cleans_leading_pipe(self):
+        """RI is 'inputlookup users.csv' (no pipe) but SPL has '| inputlookup'.
+        Must not produce '| index=...' — the leading pipe should be consumed."""
+        _run('| inputlookup users.csv | where status="active"',
+             _inputs("inputlookup users.csv"), "inputlookup",
+             '{} | where status="active"'.format(R))
+
+    def test_ri_without_pipe_subsearch(self):
+        """RI without pipe in a subsearch context."""
+        _run("index=main | append [| inputlookup users.csv | head 5]",
+             _inputs("inputlookup users.csv"), "standard",
+             "index=main | append [{} | head 5]".format(R))
+
 
 # ── Lookup ─────────────────────────────────────────────────────────────
 
@@ -289,3 +302,70 @@ class TestEdgeCases:
         _run("index=main\n| stats count by host\n| sort -count",
              _inputs(""), "standard",
              "{}\n| stats count by host\n| sort -count".format(R))
+
+
+# ── Pipe-stripping (RI without leading pipe) ──────────────────────────
+
+class TestPipeStripping:
+    """When the sidebar strips the leading pipe from RIs like inputlookup/rest,
+    the injector must also consume the pipe in the SPL to avoid '| index=...'."""
+
+    def test_inputlookup_primary_ri_no_pipe(self):
+        """| inputlookup at SPL start, RI='inputlookup users.csv'."""
+        _run('| inputlookup users.csv | where status="active"',
+             _inputs("inputlookup users.csv"), "inputlookup",
+             '{} | where status="active"'.format(R))
+
+    def test_inputlookup_no_pipe_spl_no_pipe(self):
+        """SPL starts with 'inputlookup' (no pipe), RI also no pipe."""
+        _run('inputlookup users.csv | stats count',
+             _inputs("inputlookup users.csv"), "inputlookup",
+             '{} | stats count'.format(R))
+
+    def test_inputlookup_in_subsearch_ri_no_pipe(self):
+        """inputlookup inside subsearch, RI without pipe."""
+        _run("index=main | append [| inputlookup users.csv | head 5]",
+             _inputs("inputlookup users.csv"), "standard",
+             "index=main | append [{} | head 5]".format(R))
+
+    def test_inputlookup_in_subsearch_after_search(self):
+        """inputlookup in subsearch after 'search' keyword."""
+        _run("index=main | append [search | inputlookup extras.csv]",
+             _inputs("inputlookup extras.csv"), "standard",
+             "index=main | append [search {}]".format(R))
+
+    def test_rest_primary_ri_no_pipe(self):
+        """| rest at SPL start, RI='rest /services/server/info'."""
+        _run("| rest /services/server/info | fields server_name",
+             _inputs("rest /services/server/info"), "rest",
+             "{} | fields server_name".format(R))
+
+    def test_rest_no_pipe_spl(self):
+        """SPL starts with 'rest' (no pipe)."""
+        _run("rest /services/server/info | fields server_name",
+             _inputs("rest /services/server/info"), "rest",
+             "{} | fields server_name".format(R))
+
+    def test_rest_in_subsearch_ri_no_pipe(self):
+        """rest inside subsearch, RI without pipe."""
+        _run("index=main | append [| rest /services/saved/searches | head 5]",
+             _inputs("rest /services/saved/searches"), "standard",
+             "index=main | append [{} | head 5]".format(R))
+
+    def test_two_inputlookups_one_ri(self):
+        """Two inputlookups, only one matched by RI — other untouched."""
+        _run("| inputlookup main.csv | append [| inputlookup other.csv]",
+             _inputs("inputlookup main.csv"), "inputlookup",
+             "{} | append [| inputlookup other.csv]".format(R))
+
+    def test_index_in_subsearch_with_search_keyword(self):
+        """'search index=X' inside subsearch — index= RI replaces correctly."""
+        _run("index=main | append [search index=main | stats count]",
+             _inputs(""), "standard",
+             "{} | append [search {} | stats count]".format(R, R))
+
+    def test_lookup_ri_with_pipe_in_spl(self):
+        """lookup RI swaps the name, pipe stays intact."""
+        _run("index=main | lookup users_list user AS username | stats count",
+             _inputs("lookup users_list"), "lookup",
+             "index=main | lookup {} user AS username | stats count".format(LK))

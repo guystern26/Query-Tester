@@ -243,9 +243,23 @@ def _inject_lookup(spl: str, run_id: str, inputs: List[ParsedInput]) -> str:
 def _replace_by_row_identifier(
     spl: str, row_identifier: str, replacement: str,
 ) -> Optional[str]:
-    """Replace ALL occurrences of the row identifier in the full SPL."""
+    """Replace ALL occurrences of the row identifier in the full SPL.
+
+    For inputlookup/rest RIs (no leading pipe), also consume a leading
+    ``| `` or ``|`` before the match so the result doesn't produce
+    ``| index=...`` which is invalid SPL.
+    """
     escaped = re.escape(row_identifier)
-    pattern = re.compile(escaped, re.IGNORECASE)
+    ri_lower = row_identifier.strip().lower()
+    needs_pipe_cleanup = (
+        ri_lower.startswith("inputlookup ")
+        or ri_lower.startswith("rest ")
+    )
+    if needs_pipe_cleanup:
+        # Match optional leading pipe+whitespace before the RI
+        pattern = re.compile(r"(?:\|\s*)?" + escaped, re.IGNORECASE)
+    else:
+        pattern = re.compile(escaped, re.IGNORECASE)
     result, count = pattern.subn(replacement, spl)
     if count == 0:
         return None

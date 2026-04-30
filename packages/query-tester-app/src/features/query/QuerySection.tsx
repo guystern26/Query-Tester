@@ -5,7 +5,7 @@ import debounce from 'lodash/debounce';
 import { useTestStore } from 'core/store/testStore';
 import { selectActiveTest } from 'core/store/selectors';
 import { useSavedSearches } from '../../hooks/useSavedSearches';
-import { SearchableSelect, Message } from '../../common';
+import { SearchableSelect, Message, Modal } from '../../common';
 import { TimeRangePicker } from './TimeRangePicker';
 import { lintSpl, SplWarning } from './splLinter';
 import { useAceMarkers } from './useAceMarkers';
@@ -61,6 +61,7 @@ export function QuerySection({ isIde }: QuerySectionProps): React.ReactElement {
   const [editorFocused, setEditorFocused] = useState(false);
 
   const [selectedFields, setSelectedFields] = useState<Set<string>>(new Set());
+  const [clearSSOpen, setClearSSOpen] = useState(false);
   const editorRef = useRef<HTMLDivElement>(null);
 
   // LLM analysis state
@@ -123,9 +124,19 @@ export function QuerySection({ isIde }: QuerySectionProps): React.ReactElement {
   useEffect(() => { if (app !== prevApp.current && prevApp.current !== '') setAppChanged(true); prevApp.current = app; }, [app]);
   const ssOptions = savedSearches.map((s) => ({ value: s.name, label: s.name }));
 
+  const loadSavedSearchSpl = useTestStore((s) => s.loadSavedSearchSpl);
+
   const handleSavedSearch = async (value: string) => {
     if (!test || !app || !value) return;
     try { await fetchSavedSearchSpl(test.id, app, value); } catch { /* leave SPL unchanged */ }
+  };
+
+  const handleClearSS = (keepSpl: boolean) => {
+    if (test) {
+      if (!keepSpl) { updateSpl(test.id, ''); setLocalSpl(''); }
+      loadSavedSearchSpl(test.id, keepSpl ? spl : '', null);
+    }
+    setClearSSOpen(false);
   };
 
   const handleSplChange = (_e: React.SyntheticEvent, { value }: { value: string }) => {
@@ -156,8 +167,36 @@ export function QuerySection({ isIde }: QuerySectionProps): React.ReactElement {
       )}
 
       <div><label className="block mb-1 text-slate-400 text-[13px]">Load from saved search</label>
-        <SearchableSelect value={origin} options={ssOptions} onChange={handleSavedSearch} disabled={loading} placeholder="Search saved searches..." />
+        <div className="flex items-center gap-2">
+          <div className="flex-1 min-w-0">
+            <SearchableSelect value={origin} options={ssOptions} onChange={handleSavedSearch} disabled={loading} placeholder="Search saved searches..." />
+          </div>
+          {origin && (
+            <button type="button" onClick={() => setClearSSOpen(true)}
+              className="w-7 h-7 rounded-md border border-slate-700 text-slate-500 flex items-center justify-center hover:bg-red-900/30 hover:border-red-500/50 hover:text-red-400 cursor-pointer transition-all shrink-0"
+              title="Unlink saved search">
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
         {error && <div className="mt-1 text-[13px] text-red-400">{error}</div>}
+        <Modal open={clearSSOpen} title={'Unlink "' + origin + '"?'} onClose={() => setClearSSOpen(false)}>
+          <p className="m-0 text-sm text-slate-300 mb-3">
+            This will remove the saved search link. What would you like to do with the current SPL?
+          </p>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => handleClearSS(true)}
+              className="flex-1 px-3 py-2 rounded-lg border border-blue-300/30 bg-blue-300/10 text-blue-300 text-sm font-medium hover:bg-blue-300/20 cursor-pointer transition-colors">
+              Keep the SPL
+            </button>
+            <button type="button" onClick={() => handleClearSS(false)}
+              className="flex-1 px-3 py-2 rounded-lg border border-red-500/30 bg-red-500/10 text-red-400 text-sm font-medium hover:bg-red-500/20 cursor-pointer transition-colors">
+              Clear SPL
+            </button>
+          </div>
+        </Modal>
       </div>
 
       <div className="flex gap-3 items-start">
