@@ -89,9 +89,6 @@ export function FieldGroupCard({ testId, group, index, scenarios, isOnly }: Fiel
         atLimit={atLimit}
       />
 
-      {preview && (
-        <p className="text-[11px] text-slate-500 italic mt-2 m-0 truncate">Preview: {preview}</p>
-      )}
     </div>
   );
 }
@@ -114,7 +111,7 @@ function ConditionsStrip({ testId, groupId, conds, logic, toggleLogic, onAdd, at
   var currentRow: Array<{ cond: typeof conds[0]; idx: number }> = [];
   for (var ci = 0; ci < conds.length; ci++) {
     currentRow.push({ cond: conds[ci], idx: ci });
-    if (currentRow.length === 2 || ci === conds.length - 1) {
+    if (currentRow.length === 3 || ci === conds.length - 1) {
       rows.push(currentRow);
       currentRow = [];
     }
@@ -133,26 +130,21 @@ function ConditionsStrip({ testId, groupId, conds, logic, toggleLogic, onAdd, at
                 <div className="flex-1 border-t border-slate-700/20" />
               </div>
             )}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center">
               {row.map(function (item, ii) {
                 return (
                   <React.Fragment key={item.cond.id}>
                     {ii > 0 && (
-                      <button className={'text-[9px] font-bold px-1.5 py-0.5 rounded cursor-pointer transition-colors shrink-0 ' + (logic === 'or' ? 'text-orange-400' : 'text-blue-400')}
+                      <button className={'text-[9px] font-bold px-2 rounded cursor-pointer transition-colors shrink-0 ' + (logic === 'or' ? 'text-orange-400' : 'text-blue-400')}
                         onClick={toggleLogic}>{logic.toUpperCase()}</button>
                     )}
-                    <div className="flex-1 min-w-0">
-                      <ConditionRow testId={testId} groupId={groupId} condition={item.cond} isOnly={conds.length <= 1} />
-                    </div>
+                    <ConditionRow testId={testId} groupId={groupId} condition={item.cond} isOnly={conds.length <= 1} />
                   </React.Fragment>
                 );
               })}
-              {row.length === 1 && (
-                <div className="flex-1 min-w-0" />
-              )}
               {ri === rows.length - 1 && (
                 <button
-                  className="text-[12px] text-slate-500 hover:text-blue-300 transition cursor-pointer px-2.5 py-1.5 rounded-lg border border-dashed border-slate-700 hover:border-blue-300/40 shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="text-[12px] text-slate-500 hover:text-blue-300 transition cursor-pointer px-2.5 py-1.5 ml-2 rounded-lg border border-dashed border-slate-700 hover:border-blue-300/40 shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
                   onClick={onAdd} disabled={atLimit}>+</button>
               )}
             </div>

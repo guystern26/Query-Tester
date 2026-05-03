@@ -578,9 +578,6 @@ video {
 .visible {
   visibility: visible;
 }
-.invisible {
-  visibility: hidden;
-}
 .static {
   position: static;
 }
@@ -954,11 +951,11 @@ video {
 .max-h-\[200px\] {
   max-height: 200px;
 }
+.max-h-\[280px\] {
+  max-height: 280px;
+}
 .max-h-\[30vh\] {
   max-height: 30vh;
-}
-.max-h-\[320px\] {
-  max-height: 320px;
 }
 .max-h-\[60vh\] {
   max-height: 60vh;
@@ -1131,6 +1128,9 @@ video {
 }
 .min-w-\[32px\] {
   min-width: 32px;
+}
+.min-w-\[80px\] {
+  min-width: 80px;
 }
 .max-w-2xl {
   max-width: 42rem;
@@ -1378,9 +1378,6 @@ video {
 }
 .whitespace-nowrap {
   white-space: nowrap;
-}
-.whitespace-pre {
-  white-space: pre;
 }
 .whitespace-pre-wrap {
   white-space: pre-wrap;
