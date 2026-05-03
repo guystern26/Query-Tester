@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { useTestStore } from 'core/store/testStore';
 import { selectActiveTest } from 'core/store/selectors';
 import { MAX_FIELD_GROUPS } from 'core/constants/limits';
@@ -20,6 +20,19 @@ export function FieldConditionsGrid() {
 
   const toggleFieldLogic = () => updateFieldLogic(test.id, fieldLogic === 'and' ? 'or' : 'and');
 
+  const topBtnRef = useRef<HTMLButtonElement>(null);
+  const [topVisible, setTopVisible] = useState(true);
+  useEffect(() => {
+    const el = topBtnRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => { setTopVisible(entry.isIntersecting); },
+      { threshold: 0.1 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
   return (
     <div className="flex flex-col gap-3" data-tutorial="field-conditions">
       <ValidationScopeSelector
@@ -35,6 +48,7 @@ export function FieldConditionsGrid() {
 
       <div className="flex justify-center">
         <button
+          ref={topBtnRef}
           className="px-5 py-1.5 rounded-lg border border-dashed border-slate-600 text-[12px] font-medium text-slate-400 hover:text-blue-300 hover:border-blue-300/40 transition-colors duration-200 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
           onClick={() => addFieldGroup(test.id)}
           disabled={atLimit}
@@ -82,7 +96,17 @@ export function FieldConditionsGrid() {
         </div>
       ))}
 
-
+      {groups.length > 0 && !topVisible && (
+        <div className="flex justify-center mt-1">
+          <button
+            className="px-5 py-1.5 rounded-lg border border-dashed border-slate-600 text-[12px] font-medium text-slate-400 hover:text-blue-300 hover:border-blue-300/40 transition-colors duration-200 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+            onClick={() => addFieldGroup(test.id)}
+            disabled={atLimit}
+          >
+            + Add Field
+          </button>
+        </div>
+      )}
     </div>
   );
 }
