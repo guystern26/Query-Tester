@@ -114,14 +114,14 @@ export function buildPayload(test: TestDefinition): ApiPayload {
       validationType: test.validation.validationType,
       fieldConditions: test.validation.fieldGroups.flatMap((g) =>
         g.conditions.map((c) => ({
-          field: g.field,
+          field: g.field.trim(),
           operator: c.operator,
           value: c.value,
           scenarioScope: g.scenarioScope,
         }))
       ),
       fieldGroups: test.validation.fieldGroups.map((g) => ({
-        field: g.field,
+        field: g.field.trim(),
         conditionLogic: g.conditionLogic,
         scenarioScope: g.scenarioScope,
         conditions: g.conditions.map((c) => ({ operator: c.operator, value: c.value })),

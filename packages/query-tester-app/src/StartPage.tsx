@@ -70,11 +70,11 @@ export function StartPage({ mode = 'builder', onNavigateLibrary, loadTestId }: S
     const [typeChosen, setTypeChosen] = useState(false);
     // Reset typeChosen when switching tests
     useEffect(function () { setTypeChosen(false); }, [activeTestId]);
-    const setupDone = isIde ? hasApp : (hasApp && typeChosen);
 
     const kbShortcuts = useIdeKeyboardShortcuts(isIde);
 
     const tutorial = useTutorial();
+    const setupDone = isIde ? hasApp : (hasApp && (typeChosen || tutorial.isActive));
     const setupRequired = useTestStore((s) => s.setupRequired);
     const [showTourPrompt, setShowTourPrompt] = useState(false);
 

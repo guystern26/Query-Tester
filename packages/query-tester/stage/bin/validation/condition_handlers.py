@@ -125,7 +125,8 @@ def check_field_condition(
             message='Unknown operator "{0}" \u2717'.format(condition.operator),
         )
 
-    actual_values = [str(row.get(condition.field, "")) for row in results]
+    field = condition.field.strip()
+    actual_values = [str(row.get(field, "")) for row in results]
     per_row = [handler(value, condition.value) for value in actual_values]
 
     match_count = sum(per_row)

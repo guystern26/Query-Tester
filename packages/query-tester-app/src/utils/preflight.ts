@@ -117,6 +117,16 @@ export function validateBeforeRun(
     }
   }
 
+  // Field group validations — require field name when conditions exist
+  for (let gi = 0; gi < test.validation.fieldGroups.length; gi++) {
+    const group = test.validation.fieldGroups[gi];
+    if (group.conditions.length > 0 && !group.field.trim()) {
+      errors.push(
+        'Field group ' + (gi + 1) + ' has conditions but no field name. Enter a field name or remove the group.'
+      );
+    }
+  }
+
   return errors;
 }
 
