@@ -14,28 +14,39 @@ const DESCS: Record<TestType, string> = {
   query_only: 'Run your query directly against live Splunk data — no data simulation or injection.',
 };
 
-interface Props { compact?: boolean; }
+interface Props { compact?: boolean; onTypeChosen?: () => void; }
 
-export function TestTypeSelector({ compact = false }: Props) {
+export function TestTypeSelector({ compact = false, onTypeChosen }: Props) {
   const activeTest = useTestStore(selectActiveTest);
   const updateTestType = useTestStore((s) => s.updateTestType);
   const clearResults = useTestStore((s) => s.clearResults);
   const testType: TestType = activeTest?.testType ?? 'standard';
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmMsg, setConfirmMsg] = useState('');
+  const [hasChosen, setHasChosen] = useState(false);
 
   const handleSelect = (type: TestType) => {
-    if (!activeTest || type === testType) return;
+    if (!activeTest) return;
+    if (type === testType && hasChosen) {
+      // Already chosen this type, just confirm again
+      setHasChosen(true);
+      if (onTypeChosen) onTypeChosen();
+      return;
+    }
     if (type === 'query_only') {
-      const msg = inputHasData(activeTest.scenarios)
-        ? 'Switching to Real Data mode will ignore all synthetic test data. Your data is preserved if you switch back.'
-        : 'Your query will run directly against real Splunk data — no synthetic data will be injected.';
-      setConfirmMsg(msg);
+      setConfirmMsg(
+        inputHasData(activeTest.scenarios)
+          ? 'Switching to Real Data mode will ignore all synthetic test data. Your data is preserved if you switch back.'
+          : 'Your query will run directly against real Splunk data — no synthetic data will be injected.'
+      );
       setConfirmOpen(true);
       return;
     }
+    // Standard/synthetic — apply immediately
     updateTestType(activeTest.id, type);
     clearResults();
+    setHasChosen(true);
+    if (onTypeChosen) onTypeChosen();
   };
 
   const handleConfirm = () => {
@@ -43,6 +54,8 @@ export function TestTypeSelector({ compact = false }: Props) {
       updateTestType(activeTest.id, 'query_only');
       clearResults();
     }
+    setHasChosen(true);
+    if (onTypeChosen) onTypeChosen();
     setConfirmOpen(false);
   };
 
@@ -75,14 +88,17 @@ export function TestTypeSelector({ compact = false }: Props) {
       <div className="flex flex-col gap-3 w-full">
         <span className="text-[11px] text-slate-500 uppercase tracking-wider">Test Type</span>
         <div className="flex gap-3">
-          {(['standard', 'query_only'] as TestType[]).map((type) => (
-            <button key={type} className={`${cardBase} ${testType === type ? cardActive : cardInactive}`} onClick={() => handleSelect(type)}>
-              <span className={`block text-sm font-semibold mb-1 ${testType === type ? 'text-white' : 'text-slate-600'}`}>
+          {(['standard', 'query_only'] as TestType[]).map((type) => {
+            var isActive = hasChosen && testType === type;
+            return (
+            <button key={type} className={`${cardBase} ${isActive ? cardActive : cardInactive}`} onClick={() => handleSelect(type)}>
+              <span className={`block text-sm font-semibold mb-1 ${isActive ? 'text-white' : 'text-slate-600'}`}>
                 {LABELS[type]}
               </span>
               <span className="block text-xs text-slate-400 leading-relaxed">{DESCS[type]}</span>
             </button>
-          ))}
+            );
+          })}
         </div>
       </div>
       <Modal open={confirmOpen} title="Switch to Real Data?" onClose={() => setConfirmOpen(false)} confirmLabel="Switch" onConfirm={handleConfirm}>

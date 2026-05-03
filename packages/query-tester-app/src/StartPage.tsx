@@ -67,6 +67,10 @@ export function StartPage({ mode = 'builder', onNavigateLibrary, loadTestId }: S
 
     const app = activeTest?.app ?? '';
     const hasApp = app.trim() !== '';
+    const [typeChosen, setTypeChosen] = useState(false);
+    // Reset typeChosen when switching tests
+    useEffect(function () { setTypeChosen(false); }, [activeTestId]);
+    const setupDone = isIde ? hasApp : (hasApp && typeChosen);
 
     const kbShortcuts = useIdeKeyboardShortcuts(isIde);
 
@@ -103,7 +107,7 @@ export function StartPage({ mode = 'builder', onNavigateLibrary, loadTestId }: S
         >
             <TopBar mode={mode} onNavigateLibrary={onNavigateLibrary} onNavigateSetup={() => { window.location.hash = 'setup'; }} onStartTutorial={isIde ? undefined : tutorial.start} />
 
-            {hasApp ? null : isLoadingTest ? (
+            {setupDone ? null : isLoadingTest ? (
                 <div className="flex-1 flex items-center justify-center px-5 pt-4 animate-fadeIn">
                     <div className="flex flex-col items-center gap-4">
                         <svg className="w-8 h-8 text-blue-300 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -131,10 +135,10 @@ export function StartPage({ mode = 'builder', onNavigateLibrary, loadTestId }: S
                     </div>
                 </div>
             ) : (
-                <SetupCard localName={localName} onNameChange={handleNameChange} app={app} onAppChange={handleAppChange} isIde={isIde} />
+                <SetupCard localName={localName} onNameChange={handleNameChange} app={app} onAppChange={handleAppChange} isIde={isIde} onTypeChosen={function () { setTypeChosen(true); }} />
             )}
 
-            {hasApp && isIde ? (
+            {setupDone && isIde ? (
                 <div className="flex gap-2 px-5 pb-5 pt-3 flex-1 animate-fadeIn min-h-0">
                     <div className="flex-1 bg-navy-800 rounded-xl border border-slate-700/20 p-5 shadow-lg shadow-black/20 overflow-y-auto flex flex-col gap-4 min-w-0">
                         <span className="text-[13px] font-bold text-slate-400 uppercase tracking-wide">Query</span>
@@ -145,7 +149,7 @@ export function StartPage({ mode = 'builder', onNavigateLibrary, loadTestId }: S
                         <IntelligencePanel />
                     </div>
                 </div>
-            ) : hasApp ? (
+            ) : setupDone ? (
                 <WizardLayout
                     localName={localName}
                     onNameChange={handleNameChange}

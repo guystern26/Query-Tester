@@ -25,6 +25,8 @@ export function testSlice(set: SetState, _get: GetState) {
         draft.savedTestId = null;
         draft.savedTestVersion = null;
         draft.hasUnsavedChanges = false;
+        draft.activeStep = 0;
+        draft.highestStepReached = 0;
       });
     },
 
@@ -38,6 +40,8 @@ export function testSlice(set: SetState, _get: GetState) {
         draft.savedTestId = null;
         draft.savedTestVersion = null;
         draft.hasUnsavedChanges = false;
+        draft.activeStep = 0;
+        draft.highestStepReached = 0;
       });
     },
 

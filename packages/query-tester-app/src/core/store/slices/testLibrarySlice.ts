@@ -155,7 +155,7 @@ export function testLibrarySlice(set: SetState, get: GetState) {
         // --- Loader + SPL drift ---
         loadTestFromPayload: (full: SavedTestFull): void => {
             if (!full || !full.definition) return;
-            set((d) => { applyTestToBuilder(d, full, full.id); });
+            set((d) => { applyTestToBuilder(d, full, full.id); d.activeStep = 0; d.highestStepReached = 0; });
         },
         loadTestIntoBuilder: (id: string): string => {
             const state = get();
@@ -164,7 +164,7 @@ export function testLibrarySlice(set: SetState, get: GetState) {
                 set((d) => { d.libraryError = 'Test not found in library.'; });
                 throw new Error('Test not found');
             }
-            set((d) => { applyTestToBuilder(d, full, id); d.splDriftWarning = null; });
+            set((d) => { applyTestToBuilder(d, full, id); d.splDriftWarning = null; d.activeStep = 0; d.highestStepReached = 0; });
             // Fire-and-forget SPL drift check
             const origin = full.definition?.query?.savedSearchOrigin;
             const app = full.app || full.definition?.app;

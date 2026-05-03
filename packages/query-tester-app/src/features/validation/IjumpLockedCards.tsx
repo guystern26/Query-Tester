@@ -63,8 +63,14 @@ export function ReasonCard({ testId, group }: { testId: string; group: FieldCond
     var updateConditionInGroup = useTestStore(function (s) { return s.updateConditionInGroup; });
     var removeConditionFromGroup = useTestStore(function (s) { return s.removeConditionFromGroup; });
     var addConditionToGroup = useTestStore(function (s) { return s.addConditionToGroup; });
+    var updateFieldGroupLogic = useTestStore(function (s) { return s.updateFieldGroupLogic; });
 
     var additionalConds = group ? group.conditions.filter(function (c) { return c.operator !== 'is_not_empty'; }) : [];
+    var logic = group ? group.conditionLogic : 'and';
+
+    var toggleLogic = function () {
+        if (group) updateFieldGroupLogic(testId, group.id, logic === 'and' ? 'or' : 'and');
+    };
 
     return (
         <div className="bg-navy-900 border border-slate-700 rounded-lg p-3">
@@ -76,22 +82,28 @@ export function ReasonCard({ testId, group }: { testId: string; group: FieldCond
 
             {/* Always-visible condition area */}
             <div className="flex flex-wrap items-center gap-1.5 mt-1 pl-1">
-                {additionalConds.map(function (c) {
+                {additionalConds.map(function (c, i) {
                     var hideValue = VALUELESS_OPS.has(c.operator);
                     return (
-                        <div key={c.id} className="flex items-center gap-1.5 bg-navy-800 border border-slate-700 rounded-lg px-2 py-1">
-                            <select className={selectCls + ' text-[11px] py-0.5 px-1 w-[110px]'} value={c.operator}
-                                onChange={function (e) { updateConditionInGroup(testId, group!.id, c.id, { operator: e.target.value as ConditionOperator }); }}>
-                                {REASON_OPERATORS.map(function (o) { return <option key={o.value} value={o.value}>{o.label}</option>; })}
-                            </select>
-                            {!hideValue && (
-                                <input className={inputCls + ' text-[11px] py-0.5 px-1.5 w-[100px]'} value={c.value}
-                                    onChange={function (e) { updateConditionInGroup(testId, group!.id, c.id, { value: e.target.value }); }}
-                                    placeholder="value" />
+                        <React.Fragment key={c.id}>
+                            {i > 0 && (
+                                <button className={'text-[9px] font-bold px-2 py-0.5 rounded cursor-pointer transition-colors shrink-0 ' + (logic === 'or' ? 'text-orange-400' : 'text-blue-400')}
+                                    onClick={toggleLogic}>{logic.toUpperCase()}</button>
                             )}
-                            <button className="text-[12px] text-slate-500 hover:text-red-400 transition cursor-pointer"
-                                onClick={function () { removeConditionFromGroup(testId, group!.id, c.id); }}>&times;</button>
-                        </div>
+                            <div className="flex items-center gap-1.5 bg-navy-800 border border-slate-700 rounded-lg px-2 py-1">
+                                <select className={selectCls + ' text-[11px] py-0.5 px-1 w-[110px]'} value={c.operator}
+                                    onChange={function (e) { updateConditionInGroup(testId, group!.id, c.id, { operator: e.target.value as ConditionOperator }); }}>
+                                    {REASON_OPERATORS.map(function (o) { return <option key={o.value} value={o.value}>{o.label}</option>; })}
+                                </select>
+                                {!hideValue && (
+                                    <input className={inputCls + ' text-[11px] py-0.5 px-1.5 w-[100px]'} value={c.value}
+                                        onChange={function (e) { updateConditionInGroup(testId, group!.id, c.id, { value: e.target.value }); }}
+                                        placeholder="value" />
+                                )}
+                                <button className="text-[12px] text-slate-500 hover:text-red-400 transition cursor-pointer"
+                                    onClick={function () { removeConditionFromGroup(testId, group!.id, c.id); }}>&times;</button>
+                            </div>
+                        </React.Fragment>
                     );
                 })}
 

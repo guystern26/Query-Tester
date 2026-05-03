@@ -8,9 +8,10 @@ export interface SetupCardProps {
     app: string;
     onAppChange: (value: string) => void;
     isIde?: boolean;
+    onTypeChosen?: () => void;
 }
 
-export function SetupCard({ localName, onNameChange, app, onAppChange, isIde }: SetupCardProps) {
+export function SetupCard({ localName, onNameChange, app, onAppChange, isIde, onTypeChosen }: SetupCardProps) {
     if (isIde) {
         return (
             <div className="flex-1 flex items-center justify-center px-5 pt-4 animate-fadeIn">
@@ -49,7 +50,7 @@ export function SetupCard({ localName, onNameChange, app, onAppChange, isIde }: 
                     <span className="text-[11px] text-slate-500 uppercase tracking-wider">Splunk App</span>
                     <AppSelector value={app} onChange={onAppChange} autoFocus />
                 </div>
-                <TestTypeSelector />
+                <TestTypeSelector onTypeChosen={onTypeChosen} />
             </div>
         </div>
     );

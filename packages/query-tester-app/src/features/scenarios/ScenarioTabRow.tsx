@@ -19,7 +19,7 @@ export function ScenarioTabRow({
     scenarios, selectedId, onSelect, onRemove, canAdd, onAdd,
 }: ScenarioTabRowProps): React.ReactElement {
     return (
-        <div className="flex items-center border-b border-slate-800 mb-4">
+        <div data-tutorial="scenario-tabs" className="flex items-center border-b border-slate-800 mb-4">
             {scenarios.map((s, i) => {
                 const sc = getScenarioColor(i);
                 return (
