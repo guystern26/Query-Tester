@@ -74,7 +74,12 @@ export function testLibrarySlice(set: SetState, get: GetState) {
                 for (const t of tests) { const o = (t as Def).definition?.query?.savedSearchOrigin; if (o) t.savedSearchOrigin = o; }
                 set((d) => { d.savedTests = tests; d.isLoadingLibrary = false; });
             } catch (e) {
-                set((d) => { d.isLoadingLibrary = false; d.libraryError = errMsg(e); });
+                // Dev mode fallback — show demo tests when API unavailable
+                if (typeof window !== 'undefined' && window.location.port === '3000') {
+                    set((d) => { d.savedTests = _devMockTests(); d.isLoadingLibrary = false; });
+                } else {
+                    set((d) => { d.isLoadingLibrary = false; d.libraryError = errMsg(e); });
+                }
             }
         },
         saveCurrentTest: async (name: string, description: string) => {
@@ -199,4 +204,31 @@ export function testLibrarySlice(set: SetState, get: GetState) {
             }
         },
     };
+}
+
+/** Dev-mode mock tests for localhost:3000 Library page preview. */
+function _devMockTests(): SavedTestFull[] {
+    var now = new Date().toISOString();
+    var base = {
+        testType: 'standard' as const, validationType: 'standard' as const,
+        scenarioCount: 1, version: 1, description: '',
+    };
+    var emptyDef: TestDefinition = {
+        testType: 'standard', validationType: 'standard', app: 'search', name: '',
+        scenarios: [], query: { spl: '', savedSearchOrigin: null, timeRange: { earliest: '-24h', latest: 'now', label: '' } },
+        validation: { validationType: 'standard', fieldGroups: [], fieldLogic: 'and', validationScope: 'all_events', scopeN: null,
+            resultCount: { enabled: false, operator: 'greater_than', value: 0 } },
+    };
+    return [
+        { ...base, id: 'demo-1', name: 'License Usage Monitor', app: 'QueryTester', createdAt: now, updatedAt: now, createdBy: 'admin',
+          savedSearchOrigin: 'Demo - License Usage by Pool', definition: { ...emptyDef, name: 'License Usage Monitor' } },
+        { ...base, id: 'demo-2', name: 'Failed Logins Detection', app: 'search', createdAt: now, updatedAt: now, createdBy: 'guy.stern',
+          savedSearchOrigin: null, description: 'Detects brute force login attempts', definition: { ...emptyDef, name: 'Failed Logins Detection' } },
+        { ...base, id: 'demo-3', name: 'Disk Space Alert', app: 'search', createdAt: now, updatedAt: now, createdBy: 'admin',
+          validationType: 'ijump_alert' as const, savedSearchOrigin: 'disk_space_check', definition: { ...emptyDef, name: 'Disk Space Alert' } },
+        { ...base, id: 'demo-4', name: 'Indexer Queue Health', app: 'QueryTester', createdAt: now, updatedAt: now, createdBy: 'ops-team',
+          savedSearchOrigin: null, description: 'Checks indexer pipeline queues', definition: { ...emptyDef, name: 'Indexer Queue Health' } },
+        { ...base, id: 'demo-5', name: 'Certificate Expiry Check', app: 'search', createdAt: now, updatedAt: now, createdBy: 'guy.stern',
+          savedSearchOrigin: 'cert_expiry_alert', definition: { ...emptyDef, name: 'Certificate Expiry Check' } },
+    ];
 }

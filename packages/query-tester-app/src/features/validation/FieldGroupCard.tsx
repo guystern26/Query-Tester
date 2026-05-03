@@ -78,41 +78,91 @@ export function FieldGroupCard({ testId, group, index, scenarios, isOnly }: Fiel
         </button>
       </div>
 
-      <div className="text-[10px] uppercase tracking-[1.5px] text-slate-500 mb-2">Validation Conditions</div>
-
-      {/* Condition rows with logic dividers */}
-      <div className="flex flex-col gap-0">
-        {conds.map((c, i) => (
-          <div key={c.id}>
-            {i > 0 && (
-              <div className="flex items-center gap-2 my-1.5">
-                <div className="flex-1 border-t border-slate-700/50" />
-                <button
-                  className={`text-[10px] font-bold px-3 py-1 rounded-md transition-colors duration-300 cursor-pointer ${
-                    logic === 'or' ? 'bg-navy-700 border border-orange-500/40 text-orange-300' : 'bg-navy-700 border border-blue-400/40 text-blue-300'
-                  }`}
-                  onClick={toggleLogic}
-                >
-                  {logic.toUpperCase()}
-                </button>
-                <div className="flex-1 border-t border-slate-700/50" />
-              </div>
-            )}
-            <ConditionRow testId={testId} groupId={group.id} condition={c} isOnly={conds.length <= 1} />
-          </div>
-        ))}
-      </div>
-
-      <button
-        className="text-xs text-slate-400 hover:text-blue-300 transition cursor-pointer mt-2 disabled:opacity-30 disabled:cursor-not-allowed"
-        onClick={() => addConditionToGroup(testId, group.id)}
-        disabled={atLimit}
-      >
-        + Add Condition
-      </button>
+      {/* Conditions — inline horizontal with scroll arrows */}
+      <ConditionsStrip
+        testId={testId}
+        groupId={group.id}
+        conds={conds}
+        logic={logic}
+        toggleLogic={toggleLogic}
+        onAdd={() => addConditionToGroup(testId, group.id)}
+        atLimit={atLimit}
+      />
 
       {preview && (
         <p className="text-[11px] text-slate-500 italic mt-2 m-0 truncate">Preview: {preview}</p>
+      )}
+    </div>
+  );
+}
+
+/* ── Wrapping conditions strip ───────────────────────────── */
+
+interface ConditionsStripProps {
+  testId: EntityId;
+  groupId: EntityId;
+  conds: FieldConditionGroup['conditions'];
+  logic: 'and' | 'or';
+  toggleLogic: () => void;
+  onAdd: () => void;
+  atLimit: boolean;
+}
+
+function ConditionsStrip({ testId, groupId, conds, logic, toggleLogic, onAdd, atLimit }: ConditionsStripProps) {
+  // Build pairs: 2 conditions per row
+  var rows: Array<Array<{ cond: typeof conds[0]; idx: number }>> = [];
+  var currentRow: Array<{ cond: typeof conds[0]; idx: number }> = [];
+  for (var ci = 0; ci < conds.length; ci++) {
+    currentRow.push({ cond: conds[ci], idx: ci });
+    if (currentRow.length === 2 || ci === conds.length - 1) {
+      rows.push(currentRow);
+      currentRow = [];
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5 py-1">
+      {rows.map(function (row, ri) {
+        return (
+          <div key={ri}>
+            {ri > 0 && (
+              <div className="flex items-center gap-2 my-1">
+                <div className="flex-1 border-t border-slate-700/20" />
+                <button className={'text-[9px] font-bold px-2 py-0.5 rounded cursor-pointer transition-colors ' + (logic === 'or' ? 'text-orange-400' : 'text-blue-400')}
+                  onClick={toggleLogic}>{logic.toUpperCase()}</button>
+                <div className="flex-1 border-t border-slate-700/20" />
+              </div>
+            )}
+            <div className="flex items-center gap-3">
+              {row.map(function (item, ii) {
+                return (
+                  <React.Fragment key={item.cond.id}>
+                    {ii > 0 && (
+                      <button className={'text-[9px] font-bold px-1.5 py-0.5 rounded cursor-pointer transition-colors shrink-0 ' + (logic === 'or' ? 'text-orange-400' : 'text-blue-400')}
+                        onClick={toggleLogic}>{logic.toUpperCase()}</button>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <ConditionRow testId={testId} groupId={groupId} condition={item.cond} isOnly={conds.length <= 1} />
+                    </div>
+                  </React.Fragment>
+                );
+              })}
+              {row.length === 1 && (
+                <div className="flex-1 min-w-0" />
+              )}
+              {ri === rows.length - 1 && (
+                <button
+                  className="text-[12px] text-slate-500 hover:text-blue-300 transition cursor-pointer px-2.5 py-1.5 rounded-lg border border-dashed border-slate-700 hover:border-blue-300/40 shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
+                  onClick={onAdd} disabled={atLimit}>+</button>
+              )}
+            </div>
+          </div>
+        );
+      })}
+      {conds.length === 0 && (
+        <button
+          className="text-[12px] text-slate-500 hover:text-blue-300 transition cursor-pointer px-2.5 py-1.5 rounded-lg border border-dashed border-slate-700 hover:border-blue-300/40 disabled:opacity-30 disabled:cursor-not-allowed"
+          onClick={onAdd} disabled={atLimit}>+ Add Condition</button>
       )}
     </div>
   );

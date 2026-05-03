@@ -59,18 +59,24 @@ function TestsTableRowInner({
         setIsConfirming(false);
     };
 
+    var lastStatus = schedule ? schedule.lastRunStatus : null;
+    var isFailed = lastStatus === 'fail' || lastStatus === 'error';
+    var rowCls = isFailed
+        ? 'border-b border-slate-800 hover:bg-navy-700/15 cursor-pointer transition-colors duration-200'
+        : 'border-b border-slate-800 hover:bg-navy-700/15 cursor-pointer transition-colors duration-200';
+
     return (
-        <tr onClick={handleRowClick} className="border-b border-slate-800 hover:bg-navy-700/15 cursor-pointer transition-colors duration-200">
-            <td className="px-4 py-3 max-w-[180px]">
-                <span className="text-sm font-semibold text-slate-200 truncate block">{test.name}</span>
+        <tr onClick={handleRowClick} className={rowCls}>
+            <td className="px-4 py-3">
+                <span className={'text-sm font-semibold truncate block ' + (isFailed ? 'text-red-400' : 'text-slate-200')}>{test.name}</span>
             </td>
-            <td className="px-4 py-3 max-w-[160px]">
+            <td className="px-4 py-3">
                 <span className="text-xs text-slate-400 truncate block">{test.description || '\u2014'}</span>
             </td>
-            <td className="px-4 py-3 max-w-[150px]">
+            <td className="px-4 py-3">
                 <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-navy-700 text-slate-300 border border-slate-700 truncate block">{test.app || '\u2014'}</span>
             </td>
-            <td className="px-4 py-3 max-w-[160px]">
+            <td className="px-4 py-3">
                 <span className="text-xs text-slate-400 truncate block">{test.savedSearchOrigin || '\u2014'}</span>
             </td>
             <td className="px-4 py-3">
@@ -137,7 +143,9 @@ function TestsTableRowInner({
                         <button className={ICON_BTN_CLS} onClick={() => onSchedule(test.id)} title={schedule ? 'Edit schedule settings' : 'Create schedule'}>
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><circle cx="12" cy="12" r="3" /></svg>
                         </button>
-                        <button className={ICON_BTN_CLS} onClick={() => onHistory(test.id)} title="Run history">
+                        <button className={ICON_BTN_CLS + (!schedule || !schedule.lastRunAt ? ' opacity-30 cursor-not-allowed' : '')}
+                            onClick={() => { if (schedule && schedule.lastRunAt) onHistory(test.id); }}
+                            title={schedule && schedule.lastRunAt ? 'Run history' : 'No run history yet'}>
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h5" /><path strokeLinecap="round" strokeLinejoin="round" d="M4 9a8 8 0 1 1 1.34 4.41" /></svg>
                         </button>
                         {isCloning ? (

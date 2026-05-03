@@ -60,7 +60,8 @@ export function ScheduleModal({ open, onClose, editingTest, preselectedTestId }:
             setIntervalKey(mapped || editingTest.intervalKey || '');
             setEnabled(editingTest.enabled);
             setAlertOn(editingTest.alertOnFailure);
-            setRecipients(editingTest.emailRecipients.length > 0 ? editingTest.emailRecipients : [DEFAULT_ALERT_EMAIL]);
+            var defaultEmail = (saved && saved.createdBy) || DEFAULT_ALERT_EMAIL;
+            setRecipients(editingTest.emailRecipients.length > 0 ? editingTest.emailRecipients : [defaultEmail]);
             setUseCurrentQuery(!editingTest.savedSearchOrigin);
         } else {
             setTestId(preselectedTestId || '');
@@ -70,7 +71,8 @@ export function ScheduleModal({ open, onClose, editingTest, preselectedTestId }:
             setIntervalKey('daily');
             setEnabled(true);
             setAlertOn(false);
-            setRecipients([DEFAULT_ALERT_EMAIL]);
+            var creatorEmail = (pre && pre.createdBy) || DEFAULT_ALERT_EMAIL;
+            setRecipients([creatorEmail]);
             setUseCurrentQuery(false);
         }
     }, [open, editingTest, preselectedTestId]);
@@ -85,9 +87,10 @@ export function ScheduleModal({ open, onClose, editingTest, preselectedTestId }:
 
     const handleSave = async () => {
         if (!canSave || !selectedTest) return;
+        var saveDefaultEmail = (selectedTest && selectedTest.createdBy) || DEFAULT_ALERT_EMAIL;
         const finalRecipients = alertOn
             ? recipients.filter((r) => r.trim() !== '')
-            : [DEFAULT_ALERT_EMAIL];
+            : [saveDefaultEmail];
 
         // Rename the test if the name changed
         const trimmedName = testName.trim();

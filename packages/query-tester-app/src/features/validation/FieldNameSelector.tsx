@@ -57,7 +57,8 @@ export function FieldNameSelector({ testId, groupId, value, className = '' }: Fi
       <div className="flex">
         <input
           value={value}
-          onChange={(e) => updateFieldGroupField(testId, groupId, e.target.value)}
+          onChange={(e) => { updateFieldGroupField(testId, groupId, e.target.value); if (hasSuggestions) setOpen(true); }}
+          onClick={() => { if (hasSuggestions) setOpen(true); }}
           onFocus={() => { if (hasSuggestions) setOpen(true); }}
           placeholder="Field name (e.g., status, reason)"
           className={`flex-1 min-w-0 px-2.5 py-1.5 text-[13px] bg-navy-950 border border-slate-700 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-300/20 transition font-semibold ${

@@ -96,6 +96,13 @@ def _summary_section(full_results):
     )
 
 
+def _logo_url(splunk_web_url):
+    # type: (str) -> str
+    """Build the URL to the QT logo hosted in the Splunk app static dir."""
+    base = splunk_web_url.rstrip("/") if splunk_web_url else ""
+    return "{0}/static/app/QueryTester/appIconAlt_2x.png".format(base)
+
+
 def build_failure_email(
     test_name,           # type: str
     ran_at,              # type: str
@@ -112,6 +119,7 @@ def build_failure_email(
     status_color = "#dc2626" if status in ("fail", "error") else "#d97706"
     status_label = status.upper()
     status_bg = "#fef2f2" if status in ("fail", "error") else "#fffbeb"
+    logo = _logo_url(splunk_web_url)
 
     scenarios = "\n".join(
         "<tr><td style=\"padding:0 0 4px\">"
@@ -136,10 +144,16 @@ def build_failure_email(
         '<tr><td class="em-card" bgcolor="#ffffff"'
         ' style="padding:24px 24px 16px">'
         '<table cellpadding="0" cellspacing="0" border="0" width="100%">'
-        '<tr><td class="em-head" style="font-size:22px;font-weight:bold;'
+        "<tr>"
+        '<td class="em-head" style="font-size:22px;font-weight:bold;'
         'color:#1f2937;font-family:Arial,sans-serif">'
-        "Test Failure Report</td></tr>"
-        '<tr><td class="em-sub" style="padding:4px 0 0;font-size:14px;'
+        "Test Failure Report</td>"
+        '<td style="text-align:right;vertical-align:top">'
+        '<img src="{logo}" alt="QT" width="48" height="48"'
+        ' style="display:inline-block;width:48px;height:48px" />'
+        "</td></tr>"
+        '<tr><td class="em-sub" colspan="2"'
+        ' style="padding:4px 0 0;font-size:14px;'
         'color:#6b7280;font-family:Arial,sans-serif">'
         "{test_name}</td></tr></table></td></tr>"
         '<tr><td class="em-card" bgcolor="#ffffff"'
@@ -184,6 +198,7 @@ def build_failure_email(
     ).format(
         dark_css=DARK_CSS,
         test_name=esc(test_name),
+        logo=logo,
         status_color=status_color,
         status_bg=status_bg,
         status_label=status_label,

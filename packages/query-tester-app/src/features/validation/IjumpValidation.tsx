@@ -56,6 +56,7 @@ export function IjumpValidation() {
 
   const groups = test.validation.fieldGroups;
   const reasonGroup = groups.find((g) => g.field === 'reason');
+  const statusGroup = groups.find((g) => g.field === 'status');
 
   const handleSubModeChange = (newMode: IjumpSubMode) => {
     if (newMode === subMode) return;
@@ -87,7 +88,7 @@ export function IjumpValidation() {
       <AndDivider />
       <ReasonCard testId={test.id} group={reasonGroup ?? null} />
       <AndDivider />
-      <StatusCard subMode={subMode} />
+      <StatusCard testId={test.id} group={statusGroup ?? null} subMode={subMode} />
 
       <IjumpCustomConditions testId={test.id} groups={groups} />
     </div>

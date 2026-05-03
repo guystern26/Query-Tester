@@ -147,7 +147,7 @@ export function LibraryPage({ onNavigateBuilder }: LibraryPageProps): React.Reac
             )}
 
             <div className="flex-1 overflow-y-auto px-6 py-6">
-                <div className="max-w-7xl mx-auto flex flex-col gap-5">
+                <div className="mx-auto flex flex-col gap-5">
                     <div className="flex items-center justify-between">
                         <h1 className="text-xl font-bold text-slate-100 m-0">Test Library</h1>
                         <button className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold rounded-lg bg-blue-300 hover:bg-blue-200 text-slate-900 shadow-[0_1px_3px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.1)] hover:shadow-[0_2px_6px_rgba(147,197,253,0.2)] transition-all duration-200 cursor-pointer" onClick={handleCreateNew}>

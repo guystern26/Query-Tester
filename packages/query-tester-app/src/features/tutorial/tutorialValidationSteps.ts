@@ -1,108 +1,42 @@
 import type { TutorialStep } from './tutorialSteps';
 
-/** Validation, results, and library tutorial steps — split from tutorialSteps.ts */
+/** Validation, results, and library tutorial steps — streamlined */
 export const TUTORIAL_VALIDATION_STEPS: TutorialStep[] = [
     {
         id: 'result-count',
-        title: 'Result count is enough on its own',
+        title: 'Result count validation',
         content:
-            'The simplest validation: just check how many rows your query returns. Set an ' +
-            'expected count with an operator (equals, greater than, etc.) and you have a test.',
+            'The simplest check: verify how many rows your query returns. ' +
+            '"Greater than 0" is a common smoke test. Combine with field conditions for deeper testing.',
         selector: '[data-tutorial="result-count"]',
         panel: 'validation',
     },
     {
-        id: 'result-count-op',
-        title: 'Count operators',
-        content:
-            'Choose how to compare the actual result count: exactly equals, greater than, ' +
-            'less than, or a range. "Greater than 0" is a common smoke test.',
-        selector: '[data-tutorial="result-count"] select',
-        panel: 'validation',
-    },
-    {
         id: 'field-conditions',
-        title: 'Per-field conditions',
+        title: 'Field conditions',
         content:
-            'Go beyond counts — validate specific field values in the results. Add conditions ' +
-            'like "status must equal 200" or "duration must be less than 5000".',
+            'Validate specific field values: "status equals 200", "duration less than 5000". ' +
+            'Multiple conditions per field are joined with AND or OR. Click the operator to change it.',
         selector: '[data-tutorial="field-conditions"], .flex.flex-col.gap-3',
         panel: 'validation',
     },
     {
-        id: 'field-logic',
-        title: 'AND vs OR',
-        content:
-            'Field conditions within a group are ANDed (all must match). Switch to OR when ' +
-            'any single condition passing is enough. Groups let you mix AND/OR logic.',
-        selector: '[data-tutorial="field-logic"], .bg-navy-900.rounded-lg.border.border-slate-700.p-4',
-        panel: 'validation',
-    },
-    {
         id: 'validation-scope',
-        title: 'Per-event validation',
+        title: 'Validation scope',
         content:
-            'Choose whether conditions apply to any row, every row, or a specific row. ' +
-            '"Any" passes if at least one row matches. "Every" requires all rows to match.',
+            'Choose whether conditions must match any row, every row, or exactly N rows. ' +
+            'Use iJump mode (toggle at top) to test Splunk alert trigger logic instead.',
         selector: '[data-tutorial="validation-scope"]',
         panel: 'validation',
     },
     {
-        id: 'validation-type',
-        title: 'Two validation modes',
-        content:
-            'Standard mode validates query results directly. iJump mode tests Splunk alerts — ' +
-            'it checks whether the alert would have triggered based on your test data.',
-        selector: '[data-tutorial="validation-type"]',
-        panel: 'validation',
-    },
-    {
-        id: 'ijump-mode',
-        title: 'iJump Alert mode',
-        content:
-            'iJump mode wraps your query in alert trigger logic. It validates that the alert ' +
-            'fires (or does not fire) given your test events. Perfect for testing alerting rules.',
-        selector: '[data-tutorial="validation-type"] button:last-child',
-        panel: 'validation',
-    },
-    {
-        id: 'query-only',
-        title: 'Query Only mode',
-        content:
-            'Skip data injection and validation entirely — just run the SPL and see what comes ' +
-            'back. Useful for exploring queries or debugging before writing full test scenarios.',
-        selector: '[data-tutorial="query-only"]',
-        panel: 'setup',
-    },
-    {
-        id: 'run-button',
-        title: 'Run your test',
-        content:
-            'On the Validation step, the right chevron becomes a green play button. Click it ' +
-            'to run the test. You can also use the Run button in the bottom results bar. ' +
-            'The backend indexes your test events, runs the query, validates the results, and ' +
-            'cleans up — all automatically.',
-        selector: '[data-tutorial="wizard-nav-next"]',
-        panel: 'validation',
-        placement: 'left',
-    },
-    {
         id: 'results-bar',
-        title: 'Results appear here',
+        title: 'Run and see results',
         content:
-            'After running, this bar shows pass/fail status for each scenario. Green means all ' +
-            'conditions passed, red means at least one failed. Click to expand and see ' +
-            'the full result card with actual values compared against your conditions.',
+            'Click Run Test in the bottom bar. Results show pass/fail for each scenario. ' +
+            'Expand the bar to see actual values compared against your conditions. ' +
+            'Save to the Library to schedule, track history, and get failure email alerts.',
         selector: '[data-tutorial="results-bar"], .fixed.bottom-0.left-0.right-0',
         panel: 'validation',
-    },
-    {
-        id: 'save-test-btn',
-        title: 'Save to the library',
-        content:
-            'Save persists your test to the server-side Test Library. Once saved, you can access ' +
-            'it from the Library page, set up a cron schedule to run it automatically, configure ' +
-            'failure email alerts, and track run history over time.',
-        selector: '[data-tutorial="save-test-btn"]',
     },
 ];

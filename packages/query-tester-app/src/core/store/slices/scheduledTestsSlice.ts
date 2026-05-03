@@ -42,9 +42,13 @@ export function scheduledTestsSlice(set: SetState, get: GetState) {
                     draft.scheduledTests = Array.isArray(tests) ? tests : [];
                 });
             } catch (e) {
-                set((draft) => {
-                    draft.scheduledError = e instanceof Error ? e.message : String(e);
-                });
+                if (typeof window !== 'undefined' && window.location.port === '3000') {
+                    set((draft) => { draft.scheduledTests = _devMockSchedules(); });
+                } else {
+                    set((draft) => {
+                        draft.scheduledError = e instanceof Error ? e.message : String(e);
+                    });
+                }
             }
         },
 
@@ -186,4 +190,28 @@ export function scheduledTestsSlice(set: SetState, get: GetState) {
             });
         },
     };
+}
+
+/** Dev-mode mock schedules for localhost:3000 Library page preview. */
+function _devMockSchedules(): ScheduledTest[] {
+    var now = new Date().toISOString();
+    var hour = new Date(Date.now() - 3600000).toISOString();
+    return [
+        { id: 'sched-1', testId: 'demo-1', testName: 'License Usage Monitor', app: 'QueryTester',
+          savedSearchOrigin: 'Demo - License Usage by Pool', cronSchedule: '0 6 * * *', intervalKey: 'daily',
+          enabled: true, createdAt: now, lastRunAt: hour, lastRunStatus: 'pass',
+          alertOnFailure: true, emailRecipients: ['admin'], version: 1, createdBy: 'admin' },
+        { id: 'sched-2', testId: 'demo-2', testName: 'Failed Logins Detection', app: 'search',
+          savedSearchOrigin: '', cronSchedule: '0 */12 * * *', intervalKey: '2day',
+          enabled: true, createdAt: now, lastRunAt: hour, lastRunStatus: 'fail',
+          alertOnFailure: true, emailRecipients: ['guy.stern'], version: 1, createdBy: 'guy.stern' },
+        { id: 'sched-3', testId: 'demo-3', testName: 'Disk Space Alert', app: 'search',
+          savedSearchOrigin: 'disk_space_check', cronSchedule: '0 8 * * 1', intervalKey: 'weekly',
+          enabled: false, createdAt: now, lastRunAt: now, lastRunStatus: 'error',
+          alertOnFailure: false, emailRecipients: [], version: 1, createdBy: 'admin' },
+        { id: 'sched-4', testId: 'demo-4', testName: 'Indexer Queue Health', app: 'QueryTester',
+          savedSearchOrigin: '', cronSchedule: '0 6 * * *', intervalKey: 'daily',
+          enabled: true, createdAt: now, lastRunAt: null, lastRunStatus: null,
+          alertOnFailure: true, emailRecipients: ['ops-team'], version: 1, createdBy: 'ops-team' },
+    ];
 }

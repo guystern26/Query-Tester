@@ -176,6 +176,16 @@ export function ResultsBar() {
           return <div key={'w' + i} className="px-3 py-2.5 rounded-md border-l-4 border-amber-500 bg-navy-800 text-[13px] text-slate-200">{w.message}</div>;
         })}
 
+        {!response && !isRunning && !isPreflightFailure && (
+          <div className="flex flex-col items-center justify-center py-10 text-center">
+            <svg className="w-10 h-10 text-slate-600 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 3l14 9-14 9V3z" />
+            </svg>
+            <p className="text-sm text-slate-400 m-0">Run the test to see results here</p>
+            <p className="text-xs text-slate-500 mt-1 m-0">Click the Run Test button or navigate to the last step</p>
+          </div>
+        )}
+
         {sr.map(function (s, i) { return <ScenarioResultCard key={i} result={s} />; })}
 
         {totalS > 0 && (
