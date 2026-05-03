@@ -3038,6 +3038,15 @@ video {
   50% { transform: translateX(-6px); }
 }
 
+@keyframes logicPulse {
+  0% { transform: scale(1); }
+  15% { transform: scale(1.4); }
+  30% { transform: scale(1); }
+  45% { transform: scale(1.3); }
+  60% { transform: scale(1); }
+  100% { transform: scale(1); }
+}
+
 /* ── Wizard floating nav squares ──────────────────────────── */
 
 .wizard-float {
@@ -3138,6 +3147,11 @@ body {
 }
 .input-base::-moz-placeholder { color: #64748b; }
 .input-base::placeholder { color: #64748b; }
+.hover\:scale-125:hover {
+  --tw-scale-x: 1.25;
+  --tw-scale-y: 1.25;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
+}
 .hover\:border-blue-300:hover {
   --tw-border-opacity: 1;
   border-color: rgb(147 197 253 / var(--tw-border-opacity, 1));

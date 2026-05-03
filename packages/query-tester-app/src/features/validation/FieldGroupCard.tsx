@@ -125,8 +125,8 @@ function ConditionsStrip({ testId, groupId, conds, logic, toggleLogic, onAdd, at
             {ri > 0 && (
               <div className="flex items-center gap-2 my-1">
                 <div className="flex-1 border-t border-slate-700/20" />
-                <button className={'text-[9px] font-bold px-2 py-0.5 rounded cursor-pointer transition-colors ' + (logic === 'or' ? 'text-orange-400' : 'text-blue-400')}
-                  onClick={toggleLogic}>{logic.toUpperCase()}</button>
+                <button className={'text-[9px] font-bold px-2 py-0.5 rounded cursor-pointer transition-all hover:scale-125 ' + (logic === 'or' ? 'text-orange-400' : 'text-blue-400')}
+                  onClick={toggleLogic} title="Click to toggle AND/OR">{logic.toUpperCase()}</button>
                 <div className="flex-1 border-t border-slate-700/20" />
               </div>
             )}
@@ -135,8 +135,9 @@ function ConditionsStrip({ testId, groupId, conds, logic, toggleLogic, onAdd, at
                 return (
                   <React.Fragment key={item.cond.id}>
                     {ii > 0 && (
-                      <button className={'text-[9px] font-bold px-2 rounded cursor-pointer transition-colors shrink-0 ' + (logic === 'or' ? 'text-orange-400' : 'text-blue-400')}
-                        onClick={toggleLogic}>{logic.toUpperCase()}</button>
+                      <button className={'text-[9px] font-bold px-2 rounded cursor-pointer transition-all shrink-0 hover:scale-125 ' + (logic === 'or' ? 'text-orange-400' : 'text-blue-400')}
+                        onClick={toggleLogic} title="Click to toggle AND/OR"
+                        style={{ animation: 'logicPulse 1.5s ease-out' }}>{logic.toUpperCase()}</button>
                     )}
                     <ConditionRow testId={testId} groupId={groupId} condition={item.cond} isOnly={conds.length <= 1} />
                   </React.Fragment>
