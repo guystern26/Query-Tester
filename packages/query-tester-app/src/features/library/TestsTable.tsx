@@ -80,7 +80,7 @@ export function TestsTable({
 
     return (
         <div className="bg-navy-800 rounded-xl border border-slate-700/20 overflow-x-auto shadow-lg shadow-black/20">
-            <table className="w-full min-w-[1400px]">
+            <table className="w-full min-w-[1000px]">
                 <thead>
                     <tr className="border-b border-slate-700 bg-navy-900/50">
                         <th className={TH}>Name</th>
@@ -90,9 +90,9 @@ export function TestsTable({
                         <th className={TH}>Type</th>
                         <th className={TH}>Schedule</th>
                         <th className={TH}>Created by</th>
-                        <th className={TH}>Updated</th>
-                        <th className={TH + ' whitespace-nowrap'}>Actions</th>
                         <th className={TH}>Last Run</th>
+                        <th className={TH + ' whitespace-nowrap'}>Actions</th>
+                        <th className={TH}>Updated</th>
                     </tr>
                 </thead>
                 <tbody>

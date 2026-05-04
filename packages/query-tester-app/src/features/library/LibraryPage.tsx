@@ -146,7 +146,7 @@ export function LibraryPage({ onNavigateBuilder }: LibraryPageProps): React.Reac
                 </div>
             )}
 
-            <div className="flex-1 overflow-y-auto px-6 py-6">
+            <div className="flex-1 overflow-y-auto px-16 py-6">
                 <div className="mx-auto flex flex-col gap-5">
                     <div className="flex items-center justify-between">
                         <h1 className="text-xl font-bold text-slate-100 m-0">Test Library</h1>

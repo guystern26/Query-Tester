@@ -67,22 +67,26 @@ function TestsTableRowInner({
 
     return (
         <tr onClick={handleRowClick} className={rowCls}>
-            <td className="px-4 py-3">
+            <td className="px-3 py-3">
                 <span className={'text-sm font-semibold truncate block ' + (isFailed ? 'text-red-400' : 'text-slate-200')}>{test.name}</span>
             </td>
-            <td className="px-4 py-3">
-                <span className="text-xs text-slate-400 truncate block">{test.description || '\u2014'}</span>
+            <td className="px-3 py-3 max-w-[140px]">
+                {test.description ? (
+                    <span className="text-xs text-slate-400 truncate block cursor-help" title={test.description}>{test.description}</span>
+                ) : (
+                    <span className="text-xs text-slate-600">&mdash;</span>
+                )}
             </td>
-            <td className="px-4 py-3">
+            <td className="px-3 py-3">
                 <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-navy-700 text-slate-300 border border-slate-700 truncate block">{test.app || '\u2014'}</span>
             </td>
-            <td className="px-4 py-3">
+            <td className="px-3 py-3">
                 <span className="text-xs text-slate-400 truncate block">{test.savedSearchOrigin || '\u2014'}</span>
             </td>
-            <td className="px-4 py-3">
+            <td className="px-3 py-3">
                 <span className={'px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider border ' + badge.cls}>{badge.label}</span>
             </td>
-            <td className="px-4 py-3">
+            <td className="px-3 py-3">
                 {isCreatingSchedule ? (
                     <div className="flex items-center gap-1.5" data-action="true">
                         <div className="w-3 h-3 border-[1.5px] border-slate-600 border-t-blue-400 rounded-full animate-spin" />
@@ -108,13 +112,23 @@ function TestsTableRowInner({
                     <span className="text-[11px] text-slate-600">&mdash;</span>
                 )}
             </td>
-            <td className="px-4 py-3">
+            <td className="px-3 py-3">
                 <span className="text-xs text-slate-400">{test.createdBy}</span>
             </td>
-            <td className="px-4 py-3">
-                <span className="text-xs text-slate-400" title={test.updatedAt}>{relativeTime(test.updatedAt)}</span>
+            <td className="px-3 py-3 whitespace-nowrap">
+                {schedule && schedule.lastRunAt ? (
+                    <div className="flex items-center gap-1.5">
+                        <span className={'w-1.5 h-1.5 rounded-full shrink-0 ' + (STATUS_STYLES[schedule.lastRunStatus || '']?.dot || 'bg-slate-600')} />
+                        <span className={'text-[11px] font-medium ' + (STATUS_STYLES[schedule.lastRunStatus || '']?.text || 'text-slate-500')}>
+                            {STATUS_STYLES[schedule.lastRunStatus || '']?.label || schedule.lastRunStatus || '\u2014'}
+                        </span>
+                        <span className="text-[10px] text-slate-500" title={schedule.lastRunAt}>{relativeTime(schedule.lastRunAt)}</span>
+                    </div>
+                ) : (
+                    <span className="text-[11px] text-slate-600">&mdash;</span>
+                )}
             </td>
-            <td className="px-5 py-3 whitespace-nowrap min-w-[200px]">
+            <td className="px-3 py-3 whitespace-nowrap min-w-[160px]">
                 {isLoading ? (
                     <div className="flex items-center justify-center">
                         <div className="w-4 h-4 border-2 border-slate-600 border-t-blue-400 rounded-full animate-spin" />
@@ -164,18 +178,8 @@ function TestsTableRowInner({
                     </div>
                 )}
             </td>
-            <td className="px-4 py-3 whitespace-nowrap">
-                {schedule && schedule.lastRunAt ? (
-                    <div className="flex items-center gap-1.5">
-                        <span className={'w-1.5 h-1.5 rounded-full shrink-0 ' + (STATUS_STYLES[schedule.lastRunStatus || '']?.dot || 'bg-slate-600')} />
-                        <span className={'text-[11px] font-medium ' + (STATUS_STYLES[schedule.lastRunStatus || '']?.text || 'text-slate-500')}>
-                            {STATUS_STYLES[schedule.lastRunStatus || '']?.label || schedule.lastRunStatus || '\u2014'}
-                        </span>
-                        <span className="text-[10px] text-slate-500" title={schedule.lastRunAt}>{relativeTime(schedule.lastRunAt)}</span>
-                    </div>
-                ) : (
-                    <span className="text-[11px] text-slate-600">&mdash;</span>
-                )}
+            <td className="px-3 py-3">
+                <span className="text-xs text-slate-400" title={test.updatedAt}>{relativeTime(test.updatedAt)}</span>
             </td>
         </tr>
     );

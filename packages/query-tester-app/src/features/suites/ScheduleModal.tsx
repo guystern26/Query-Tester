@@ -38,6 +38,7 @@ export function ScheduleModal({ open, onClose, editingTest, preselectedTestId }:
 
     const [testId, setTestId] = useState('');
     const [testName, setTestName] = useState('');
+    const [testDesc, setTestDesc] = useState('');
     const [cron, setCron] = useState('0 6 * * *');
     const [intervalKey, setIntervalKey] = useState('daily');
     const [enabled, setEnabled] = useState(true);
@@ -55,6 +56,7 @@ export function ScheduleModal({ open, onClose, editingTest, preselectedTestId }:
             setTestId(editingTest.testId);
             const saved = savedTests.find((t) => t.id === editingTest.testId);
             setTestName(saved ? saved.name : editingTest.testName);
+            setTestDesc(saved ? saved.description || '' : '');
             setCron(editingTest.cronSchedule);
             const mapped = reverseMapInterval(editingTest.cronSchedule);
             setIntervalKey(mapped || editingTest.intervalKey || '');
@@ -67,6 +69,7 @@ export function ScheduleModal({ open, onClose, editingTest, preselectedTestId }:
             setTestId(preselectedTestId || '');
             const pre = savedTests.find((t) => t.id === preselectedTestId);
             setTestName(pre ? pre.name : '');
+            setTestDesc(pre ? pre.description || '' : '');
             setCron('0 6 * * *');
             setIntervalKey('daily');
             setEnabled(true);
@@ -94,8 +97,9 @@ export function ScheduleModal({ open, onClose, editingTest, preselectedTestId }:
 
         // Rename the test if the name changed
         const trimmedName = testName.trim();
-        if (trimmedName && trimmedName !== selectedTest.name) {
-            updateSavedTest(selectedTest.id, trimmedName, selectedTest.description);
+        var trimmedDesc = testDesc.trim();
+        if ((trimmedName && trimmedName !== selectedTest.name) || trimmedDesc !== (selectedTest.description || '')) {
+            updateSavedTest(selectedTest.id, trimmedName || selectedTest.name, trimmedDesc);
         }
 
         const origin = useCurrentQuery ? null : (selectedTest.savedSearchOrigin || null);
@@ -155,6 +159,21 @@ export function ScheduleModal({ open, onClose, editingTest, preselectedTestId }:
                             onChange={(e) => setTestName(e.target.value)}
                             maxLength={120}
                             placeholder="Test name..."
+                            className="w-full px-3 py-2 text-sm bg-navy-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-300/20 transition-all duration-200"
+                        />
+                    </div>
+                )}
+
+                {/* Description */}
+                {selectedTest && (
+                    <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-semibold text-slate-400">Description</label>
+                        <input
+                            type="text"
+                            value={testDesc}
+                            onChange={(e) => setTestDesc(e.target.value)}
+                            maxLength={200}
+                            placeholder="Short description..."
                             className="w-full px-3 py-2 text-sm bg-navy-950 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-300/20 transition-all duration-200"
                         />
                     </div>
