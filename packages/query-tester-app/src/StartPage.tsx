@@ -67,14 +67,24 @@ export function StartPage({ mode = 'builder', onNavigateLibrary, loadTestId }: S
 
     const app = activeTest?.app ?? '';
     const hasApp = app.trim() !== '';
-    const [typeChosen, setTypeChosen] = useState(false);
-    // Reset typeChosen when switching tests
-    useEffect(function () { setTypeChosen(false); }, [activeTestId]);
+    const savedTestId = useTestStore(function (s) { return s.savedTestId; });
+    const [setupPassedIds, setSetupPassedIds] = useState<Set<string>>(new Set());
+    var typeChosen = activeTestId ? setupPassedIds.has(activeTestId) : false;
+    var setTypeChosen = function (val: boolean) {
+        if (!activeTestId) return;
+        setSetupPassedIds(function (prev) {
+            var next = new Set(prev);
+            if (val) next.add(activeTestId); else next.delete(activeTestId);
+            return next;
+        });
+    };
+    // A test that already has SPL content has been configured
+    var hasSpl = activeTest ? (activeTest.query.spl || '').trim() !== '' : false;
 
     const kbShortcuts = useIdeKeyboardShortcuts(isIde);
 
     const tutorial = useTutorial();
-    const setupDone = isIde ? hasApp : (hasApp && (typeChosen || tutorial.isActive));
+    const setupDone = isIde ? hasApp : (hasApp && (typeChosen || !!savedTestId || hasSpl || tutorial.isActive));
     const setupRequired = useTestStore((s) => s.setupRequired);
     const [showTourPrompt, setShowTourPrompt] = useState(false);
 

@@ -22,6 +22,8 @@ export function testSlice(set: SetState, _get: GetState) {
         newTest.id = genId();
         draft.tests.push(newTest);
         draft.activeTestId = newTest.id;
+        draft.testResponse = null;
+        draft.resultsBarExpanded = false;
         draft.savedTestId = null;
         draft.savedTestVersion = null;
         draft.hasUnsavedChanges = false;
@@ -37,6 +39,7 @@ export function testSlice(set: SetState, _get: GetState) {
         draft.tests = [fresh];
         draft.activeTestId = fresh.id;
         draft.testResponse = null;
+        draft.resultsBarExpanded = false;
         draft.savedTestId = null;
         draft.savedTestVersion = null;
         draft.hasUnsavedChanges = false;
@@ -77,6 +80,7 @@ export function testSlice(set: SetState, _get: GetState) {
       set((draft) => {
         if (draft.activeTestId !== testId) {
           draft.testResponse = null;
+          draft.resultsBarExpanded = false;
           draft.activeStep = 0;
           draft.highestStepReached = 0;
           draft.lastExtractedSpl = '';
