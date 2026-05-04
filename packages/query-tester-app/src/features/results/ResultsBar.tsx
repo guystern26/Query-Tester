@@ -34,7 +34,8 @@ export function ResultsBar() {
       ? ((test.validation && test.validation.fieldGroups && test.validation.fieldGroups.length > 0)
           || (test.validation && test.validation.resultCount && test.validation.resultCount.enabled))
       : false;
-  var canRun = isOnLastStep || hasValidation || isRunning;
+  var hasApp = test ? (test.app || '').trim() !== '' : false;
+  var canRun = hasApp && (isOnLastStep || hasValidation || isRunning);
 
   var preflightErrors = ((response && response.errors) || []).filter(function (e) { return e.code.indexOf('PREFLIGHT_') === 0; });
   var isPreflightFailure = preflightErrors.length > 0;
