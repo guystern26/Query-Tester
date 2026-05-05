@@ -146,15 +146,15 @@ export function IdeChat(): React.ReactElement {
                 )}
             </div>
 
-            {/* Input */}
-            <div className="flex gap-2 pt-2 border-t border-slate-700/60 shrink-0">
+            {/* Input — raised with mb for Splunk app visibility */}
+            <div className="flex gap-2 pt-2 pb-1 border-t border-slate-700/60 shrink-0">
                 <textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="Ask about your query..."
-                    rows={2}
-                    className="flex-1 bg-navy-800 text-slate-200 text-[12px] px-2.5 py-1.5 rounded border border-slate-700 focus:border-blue-500 outline-none resize-none"
+                    rows={3}
+                    className="flex-1 bg-navy-800 text-slate-200 text-[12px] px-2.5 py-2 rounded border border-slate-700 focus:border-blue-500 outline-none resize-none"
                 />
                 <button
                     type="button"

@@ -87,7 +87,7 @@ function buildClaimedMap(
         var uid = sorted[u].uid;
         for (let i = 0; i < spans.length; i++) {
             if (claimed.has(i)) continue;
-            var spanLower = spans[i].rowIdentifier.toLowerCase();
+            var spanLower = spans[i].rowIdentifier.trim().toLowerCase();
             // RI has extra filters → must match at this exact position
             if (uid.length > spanLower.length && uid.indexOf(spanLower) === 0) {
                 var atPos = splLower.indexOf(uid, spans[i].start);

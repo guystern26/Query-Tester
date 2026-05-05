@@ -237,20 +237,57 @@ function _regexExtractSources(spl: string): ExtractedDataSource[] {
 }
 
 /** Extract field names from stats/eval/by/as clauses. */
+/** Extract field names from common SPL commands. */
 function _extractFields(spl: string): string[] {
     var fields: string[] = [];
-    var byMatch = /\bby\s+([\w,\s]+)/gi;
     var m: RegExpExecArray | null;
-    while ((m = byMatch.exec(spl)) !== null) {
-        var parts = m[1].split(/[,\s]+/);
+
+    function addParts(text: string) {
+        var parts = text.split(/[,\s]+/);
         for (var i = 0; i < parts.length; i++) {
-            if (parts[i] && fields.indexOf(parts[i]) === -1) fields.push(parts[i]);
+            var clean = parts[i].replace(/^[-+]/, '').replace(/[()]/g, '');
+            if (clean && clean.indexOf('=') === -1 && clean !== '*' && fields.indexOf(clean) === -1) {
+                fields.push(clean);
+            }
         }
     }
+
+    // stats/chart ... by field1, field2
+    var byMatch = /\bby\s+([\w,\s]+)/gi;
+    while ((m = byMatch.exec(spl)) !== null) { addParts(m[1]); }
+
+    // ... as fieldName
     var asMatch = /\bas\s+(\w+)/gi;
     while ((m = asMatch.exec(spl)) !== null) {
         if (fields.indexOf(m[1]) === -1) fields.push(m[1]);
     }
+
+    // | table field1, field2  /  | fields field1, field2
+    var tableFieldsMatch = /\|\s*(?:table|fields)\s+([\w,\s\-*]+?)(?=\s*\||$)/gi;
+    while ((m = tableFieldsMatch.exec(spl)) !== null) { addParts(m[1]); }
+
+    // | sort -field1, +field2
+    var sortMatch = /\|\s*sort\s+([\w,\s\-+]+?)(?=\s*\||$)/gi;
+    while ((m = sortMatch.exec(spl)) !== null) { addParts(m[1]); }
+
+    // | eval field = ...
+    var evalMatch = /\|\s*eval\s+(\w+)\s*=/gi;
+    while ((m = evalMatch.exec(spl)) !== null) {
+        if (fields.indexOf(m[1]) === -1) fields.push(m[1]);
+    }
+
+    // | rename old AS new
+    var renameMatch = /\|\s*rename\s+[\w.]+\s+[Aa][Ss]\s+(\w+)/gi;
+    while ((m = renameMatch.exec(spl)) !== null) {
+        if (fields.indexOf(m[1]) === -1) fields.push(m[1]);
+    }
+
+    // | lookup file.csv field AS output
+    var lookupAsMatch = /\|\s*lookup\s+[\w\-\.]+\s+[\w]+(?:\s+[Aa][Ss]\s+(\w+))?/gi;
+    while ((m = lookupAsMatch.exec(spl)) !== null) {
+        if (m[1] && fields.indexOf(m[1]) === -1) fields.push(m[1]);
+    }
+
     return fields;
 }
 

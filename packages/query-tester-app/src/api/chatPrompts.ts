@@ -93,6 +93,8 @@ export interface ChatContextData {
     queryResultCount: number | null;
     previousQueryRows: Record<string, string>[] | null;
     previousQueryCount: number | null;
+    currentSpl?: string;
+    splNote?: string;
 }
 
 export interface SkillEntry {
@@ -123,7 +125,8 @@ export function buildChatSystemPrompt(
 
     // ── Part 2: Auto-injected context (always appended) ──
     parts.push('---', '', '# Auto-injected context (refreshed on every message — always reflects the CURRENT editor state)', '');
-    parts.push('## Current Query (live from the editor — this is the latest version)', '```spl', spl || '(empty)', '```', '');
+    parts.push('## Current Query (live from the editor — this is the latest version)', '```spl', (context.currentSpl || spl) || '(empty)', '```', '');
+    if (context.splNote) parts.push('', '> ' + context.splNote, '');
     parts.push('- App: ' + (app || 'not set'));
     if (timeRange) parts.push('- Time range: ' + timeRange.earliest + ' to ' + timeRange.latest);
     if (userContext) parts.push('- User notes: ' + userContext);

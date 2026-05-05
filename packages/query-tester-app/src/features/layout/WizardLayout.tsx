@@ -109,13 +109,35 @@ export function WizardLayout({ localName, onNameChange, app, onAppChange, isIde 
         if (index <= highestReached) setActiveStep(index);
     }, [highestReached, setActiveStep]);
 
+    var fetchSampleValues = useTestStore(function (s) { return s.fetchSampleValues; });
+
     var handleSourceClick = useCallback(function (rowIdentifier: string, fields: string[]) {
         if (!test) return;
-        var scenario = activeScenarioId
-            ? test.scenarios.find(function (s) { return s.id === activeScenarioId; })
-            : test.scenarios[0];
-        if (scenario) addInputFromSource(test.id, scenario.id, rowIdentifier, fields);
-    }, [test, addInputFromSource, activeScenarioId]);
+        var scenarioId = activeScenarioId
+            ? activeScenarioId
+            : (test.scenarios[0] ? test.scenarios[0].id : null);
+        if (!scenarioId) return;
+        addInputFromSource(test.id, scenarioId, rowIdentifier, fields);
+        // Fetch sample values after the input is created
+        var app = test.app || '';
+        var tr = test.query ? test.query.timeRange : undefined;
+        if (app && fields.length > 0) {
+            // Read the updated state to find the new input
+            requestAnimationFrame(function () {
+                var state = useTestStore.getState();
+                var updated = state.tests.find(function (t) { return t.id === test.id; });
+                if (!updated) return;
+                var sc = updated.scenarios.find(function (s) { return s.id === scenarioId; });
+                if (!sc) return;
+                for (var i = sc.inputs.length - 1; i >= 0; i--) {
+                    if (sc.inputs[i].rowIdentifier.trim().toLowerCase() === rowIdentifier.trim().toLowerCase()) {
+                        fetchSampleValues(test.id, scenarioId, sc.inputs[i].id, rowIdentifier, fields, app, tr);
+                        break;
+                    }
+                }
+            });
+        }
+    }, [test, addInputFromSource, activeScenarioId, fetchSampleValues]);
 
     var showSidebar = currentStepId === 'data' || currentStepId === 'validation';
 

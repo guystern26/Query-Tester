@@ -113,6 +113,9 @@ export function createSendChatMessage(set: SetState, get: ChatStoreGet): (text: 
         }
         const sampleData = autoSample || cur.chatSampleData;
         const ctx = buildContext(state.ideResponse, sampleData, cur.chatPreviousResponse);
+        // Inject current SPL into context so AI always sees the latest version
+        ctx.currentSpl = spl;
+        ctx.splNote = 'IMPORTANT: The current SPL in the editor is shown above. Always reference the CURRENT SPL, not any previous version. When suggesting changes, show the modified SPL — do NOT claim you have updated the editor. The user must apply changes manually.';
         // Use rawContent (with action blocks) for history so the AI knows what it previously suggested
         const history: ChatMessage[] = cur.chatMessages.map((m) => ({ role: m.role, content: m.rawContent || m.content }));
         if (chatAbortController) chatAbortController.abort();
