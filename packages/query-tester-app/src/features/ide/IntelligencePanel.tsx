@@ -36,6 +36,21 @@ export function IntelligencePanel(): React.ReactElement {
         updateSpl(test.id, lines.join('\n'));
     }, [test, updateSpl]);
 
+    /** Scroll the Ace editor to the note's line and flash-highlight it. */
+    const handleClickNote = useCallback((note: AnalysisNote) => {
+        if (note.line === null || note.line === undefined) return;
+        const aceEl = document.querySelector('.ace_editor') as HTMLElement | null;
+        if (!aceEl) return;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const editor = (aceEl as any).env?.editor;
+        if (!editor) return;
+        const row = note.line - 1;
+        editor.gotoLine(note.line, 0, true);
+        editor.selection.selectLine();
+        // Flash: briefly highlight then clear after 1.5s
+        setTimeout(() => { editor.selection.clearSelection(); }, 1500);
+    }, []);
+
     return (
         <div className="flex flex-col h-full">
             {/* Tab bar */}
@@ -105,6 +120,7 @@ export function IntelligencePanel(): React.ReactElement {
                     notes={analysisNotes}
                     isLoading={analysisLoading}
                     onApplySuggestion={handleApply}
+                    onClickNote={handleClickNote}
                 />
             </div>
             <div className={`flex-1 min-h-0 ${activeTab === 'chat' ? '' : 'hidden'}`}>

@@ -1,27 +1,42 @@
 /**
  * AnalysisPanel — renders analysis notes as a scrollable list.
- * Color-coded by severity, with optional "Apply" button for suggestions.
+ * Color-coded by category, with click-to-highlight and "Apply" for suggestions.
  */
 import React, { useState, useCallback } from 'react';
 import type { AnalysisNote } from '../../api/ideApi';
 
 const COPIED_TIMEOUT_MS = 1500;
 
-const SEVERITY_STYLES: Record<string, { border: string; dot: string; text: string }> = {
-    error:   { border: 'border-red-500',   dot: 'bg-red-500',   text: 'text-red-400' },
-    warning: { border: 'border-amber-500', dot: 'bg-amber-500', text: 'text-amber-400' },
-    info:    { border: 'border-blue-500',  dot: 'bg-blue-500',  text: 'text-blue-400' },
+/** Category-based colors — each analysis category gets a distinct accent. */
+const CATEGORY_STYLES: Record<string, { border: string; dot: string; text: string; bg: string }> = {
+    performance:    { border: 'border-purple-500',  dot: 'bg-purple-500',  text: 'text-purple-400',  bg: 'bg-purple-500/8' },
+    best_practice:  { border: 'border-blue-500',    dot: 'bg-blue-500',    text: 'text-blue-400',    bg: 'bg-blue-500/8' },
+    unused_field:   { border: 'border-amber-500',   dot: 'bg-amber-500',   text: 'text-amber-400',   bg: 'bg-amber-500/8' },
+    unused_command: { border: 'border-amber-500',   dot: 'bg-amber-500',   text: 'text-amber-400',   bg: 'bg-amber-500/8' },
+    correctness:    { border: 'border-red-500',     dot: 'bg-red-500',     text: 'text-red-400',     bg: 'bg-red-500/8' },
 };
 
-const DEFAULT_STYLE = { border: 'border-slate-500', dot: 'bg-slate-500', text: 'text-slate-400' };
+/** Fallback: severity-based for unknown categories. */
+const SEVERITY_STYLES: Record<string, { border: string; dot: string; text: string; bg: string }> = {
+    error:   { border: 'border-red-500',   dot: 'bg-red-500',   text: 'text-red-400',   bg: 'bg-red-500/8' },
+    warning: { border: 'border-amber-500', dot: 'bg-amber-500', text: 'text-amber-400', bg: 'bg-amber-500/8' },
+    info:    { border: 'border-blue-500',  dot: 'bg-blue-500',  text: 'text-blue-400',  bg: 'bg-blue-500/8' },
+};
+
+const DEFAULT_STYLE = { border: 'border-slate-500', dot: 'bg-slate-500', text: 'text-slate-400', bg: '' };
+
+function getStyle(note: AnalysisNote): { border: string; dot: string; text: string; bg: string } {
+    return CATEGORY_STYLES[note.category] || SEVERITY_STYLES[note.severity] || DEFAULT_STYLE;
+}
 
 interface AnalysisPanelProps {
     notes: AnalysisNote[];
     isLoading: boolean;
     onApplySuggestion?: (note: AnalysisNote) => void;
+    onClickNote?: (note: AnalysisNote) => void;
 }
 
-export function AnalysisPanel({ notes, isLoading, onApplySuggestion }: AnalysisPanelProps): React.ReactElement {
+export function AnalysisPanel({ notes, isLoading, onApplySuggestion, onClickNote }: AnalysisPanelProps): React.ReactElement {
     const errorNotes = notes.filter((n) => n.severity === 'error');
     const warningNotes = notes.filter((n) => n.severity === 'warning');
     const infoNotes = notes.filter((n) => n.severity === 'info');
@@ -67,32 +82,41 @@ export function AnalysisPanel({ notes, isLoading, onApplySuggestion }: AnalysisP
 
             {/* Note cards */}
             {visibleNotes.map((note) => (
-                <NoteCard key={note.id} note={note} onApply={onApplySuggestion} />
+                <NoteCard key={note.id} note={note} onApply={onApplySuggestion} onClick={onClickNote} />
             ))}
 
         </div>
     );
 }
 
-function NoteCard({ note, onApply }: { note: AnalysisNote; onApply?: (n: AnalysisNote) => void }): React.ReactElement {
-    const style = SEVERITY_STYLES[note.severity] || DEFAULT_STYLE;
+function NoteCard({ note, onApply, onClick }: { note: AnalysisNote; onApply?: (n: AnalysisNote) => void; onClick?: (n: AnalysisNote) => void }): React.ReactElement {
+    const style = getStyle(note);
     const [copied, setCopied] = useState(false);
+    const hasLine = note.line !== null && note.line !== undefined;
 
     const handleApply = useCallback(() => {
         if (!note.suggestion) return;
-        if (onApply && note.line !== null && note.line !== undefined) {
+        if (onApply && hasLine) {
             onApply(note);
             return;
         }
-        // Fallback: copy suggestion to clipboard
         navigator.clipboard.writeText(note.suggestion).then(() => {
             setCopied(true);
             setTimeout(() => setCopied(false), COPIED_TIMEOUT_MS);
         }).catch(() => { /* clipboard API unavailable */ });
-    }, [note, onApply]);
+    }, [note, onApply, hasLine]);
+
+    const handleClick = useCallback(() => {
+        if (hasLine && onClick) onClick(note);
+    }, [note, onClick, hasLine]);
 
     return (
-        <div className={`flex flex-col gap-1 px-2.5 py-2 rounded-md border-l-4 ${style.border} bg-navy-800/60`}>
+        <div
+            className={`flex flex-col gap-1 px-2.5 py-2 rounded-md border-l-4 ${style.border} ${style.bg || 'bg-navy-800/60'} ${hasLine ? 'cursor-pointer hover:brightness-125' : ''} transition-all duration-200`}
+            onClick={handleClick}
+            role={hasLine ? 'button' : undefined}
+            tabIndex={hasLine ? 0 : undefined}
+        >
             <div className="flex items-start gap-2">
                 <span className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${style.dot}`} />
                 <div className="flex-1 min-w-0">
@@ -103,8 +127,8 @@ function NoteCard({ note, onApply }: { note: AnalysisNote; onApply?: (n: Analysi
                         {note.source === 'llm' && (
                             <span className="text-[10px] text-purple-400/60 font-medium">AI</span>
                         )}
-                        {note.line !== null && note.line !== undefined && (
-                            <span className="text-[10px] text-slate-500">L{note.line}</span>
+                        {hasLine && (
+                            <span className={`text-[10px] ${style.text} opacity-60`}>L{note.line}</span>
                         )}
                     </div>
                     <p className="text-[12px] text-slate-300 leading-snug">{note.message}</p>
@@ -118,10 +142,10 @@ function NoteCard({ note, onApply }: { note: AnalysisNote; onApply?: (n: Analysi
                     </span>
                     <button
                         type="button"
-                        onClick={handleApply}
+                        onClick={(e) => { e.stopPropagation(); handleApply(); }}
                         className="text-[11px] px-2 py-0.5 rounded bg-navy-700 text-blue-300 hover:bg-blue-500/30 transition cursor-pointer shrink-0"
                     >
-                        {copied ? 'Copied!' : (note.line !== null && note.line !== undefined ? 'Apply' : 'Copy')}
+                        {copied ? 'Copied!' : (hasLine ? 'Apply' : 'Copy')}
                     </button>
                 </div>
             )}
