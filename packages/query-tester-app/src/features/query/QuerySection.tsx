@@ -79,7 +79,7 @@ export function QuerySection({ isIde }: QuerySectionProps): React.ReactElement {
   useEffect(() => { setStoreAnalysisLoading(isAnalyzing); }, [isAnalyzing, setStoreAnalysisLoading]);
   useEffect(() => {
     if (!hasAnalysis && !analysisError) { setStoreAnalysisNotes([]); return; }
-    const toNote = (w: SplWarning, i: number, p: string) => ({ id: p + i, message: w.message, category: 'general',
+    const toNote = (w: SplWarning, i: number, p: string) => ({ id: p + i, message: w.message, category: w.category || 'general',
       severity: (w.severity === 'error' ? 'error' : w.severity === 'warning' ? 'warning' : 'info') as 'error' | 'warning' | 'info',
       line: null as number | null, suggestion: null as string | null, source: 'llm' as const });
     const unmatched = unmatchedNotes.map((n, i) => ({ id: 'u-' + i, message: n.message, category: n.category || 'general',

@@ -25,6 +25,8 @@ export interface SplWarning {
     severity: 'error' | 'warning' | 'info' | 'field' | 'injection' | 'datasource';
     /** Whether this command is blocked by policy. */
     isBlocked: boolean;
+    /** LLM analysis category (performance, best_practice, unused_field, correctness, etc.). */
+    category?: string;
     /** Color index for field-tracking highlights (only when severity === 'field'). */
     colorIndex?: number;
 }

@@ -46,9 +46,10 @@ export function mapNotesToWarnings(spl: string, notes: AnalyzeQueryNote[]): SplW
             start: loc.start,
             end: loc.end,
             token: note.token,
-            message: '[' + note.category + '] ' + note.message,
+            message: note.message,
             severity: 'info',
             isBlocked: false,
+            category: note.category || 'general',
         });
     }
     return warnings;
