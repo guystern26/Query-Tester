@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SPL IDE — Query Tester</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #080c14; color: #e2e8f0; font-family: 'Outfit', sans-serif; line-height: 1.6; }
+  .poster { max-width: 640px; margin: 0 auto; padding: 48px 32px 40px; }
+
+  /* Hero */
+  .hero { text-align: center; margin-bottom: 36px; }
+  .tag { display: inline-block; padding: 4px 14px; background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.2); border-radius: 100px; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #4ade80; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 18px; }
+  .hero h1 { font-family: 'JetBrains Mono', monospace; font-size: 52px; font-weight: 800; line-height: 1.1; letter-spacing: -2px; margin-bottom: 8px; }
+  .hero h1 .g { background: linear-gradient(135deg, #4ade80, #93C5FD, #c4b5fd); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .hero h1 .d { color: #475569; font-weight: 400; font-size: 0.5em; letter-spacing: 0; }
+  .hero .sub { font-size: 17px; font-weight: 300; color: #94a3b8; }
+
+  /* IDE mockup */
+  .ide-mock {
+    background: #0f1623;
+    border: 1px solid #1e293b;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 32px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+  }
+  .ide-topbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: #0a0f1a;
+    border-bottom: 1px solid #1e293b;
+  }
+  .ide-topbar .dots { display: flex; gap: 4px; }
+  .ide-topbar .dots span { width: 8px; height: 8px; border-radius: 50%; }
+  .ide-topbar .dots span:nth-child(1) { background: #f87171; }
+  .ide-topbar .dots span:nth-child(2) { background: #fbbf24; }
+  .ide-topbar .dots span:nth-child(3) { background: #4ade80; }
+  .ide-topbar .title { color: #64748b; font-size: 9px; margin-left: 8px; }
+  .ide-topbar .tabs { display: flex; gap: 0; margin-left: auto; }
+  .ide-topbar .tab { padding: 3px 10px; font-size: 9px; color: #64748b; border-radius: 4px; }
+  .ide-topbar .tab.active { background: rgba(147,197,253,0.1); color: #93C5FD; }
+  .ide-body { display: flex; min-height: 200px; }
+  .ide-editor { flex: 1.2; padding: 10px 12px; border-right: 1px solid #1e293b; }
+  .ide-chat { flex: 1; padding: 10px 12px; background: #0a0e18; }
+  .ide-line { display: flex; gap: 8px; line-height: 1.7; }
+  .ide-ln { color: #334155; min-width: 14px; text-align: right; user-select: none; }
+  .ide-code { white-space: nowrap; }
+  .ide-code .kw { color: #60a5fa; }
+  .ide-code .pp { color: #475569; }
+  .ide-code .fn { color: #c4b5fd; }
+  .ide-code .st { color: #4ade80; }
+  .ide-code .op { color: #fbbf24; }
+  .ide-fields { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 8px; padding-top: 6px; border-top: 1px solid #1e293b; }
+  .ide-field-tag { padding: 1px 6px; border-radius: 3px; font-size: 8px; font-weight: 600; }
+  .ide-field-tag.f1 { background: rgba(96,165,250,0.15); color: #60a5fa; }
+  .ide-field-tag.f2 { background: rgba(192,132,252,0.15); color: #c4b5fd; }
+  .ide-field-tag.f3 { background: rgba(251,191,36,0.15); color: #fbbf24; }
+  .ide-field-tag.f4 { background: rgba(248,113,113,0.15); color: #f87171; }
+  .ide-field-tag.f5 { background: rgba(74,222,128,0.15); color: #4ade80; }
+  .ide-note { font-size: 8px; color: #64748b; margin-top: 4px; line-height: 1.4; font-style: italic; }
+  .ide-chat-label { font-size: 8px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; font-weight: 700; }
+  .ide-chat-msg { font-size: 9px; line-height: 1.5; margin-bottom: 8px; }
+  .ide-chat-msg.u { color: #94a3b8; }
+  .ide-chat-msg.a { color: #93C5FD; }
+  .ide-chat-msg .b { color: #e2e8f0; font-weight: 700; }
+  .ide-chat-action { display: inline-block; padding: 2px 6px; background: rgba(147,197,253,0.08); border: 1px solid rgba(147,197,253,0.2); border-radius: 3px; font-size: 8px; color: #93C5FD; margin-top: 3px; }
+  .ide-chat-input { margin-top: 6px; padding: 4px 8px; background: #0f1623; border: 1px solid #1e293b; border-radius: 4px; font-size: 8px; color: #475569; }
+  .ide-btn-row { display: flex; gap: 4px; padding: 4px 12px 6px; background: #0a0f1a; border-top: 1px solid #1e293b; }
+  .ide-btn { padding: 2px 8px; border-radius: 3px; font-size: 8px; font-weight: 600; }
+  .ide-btn.analyze { background: rgba(147,197,253,0.1); border: 1px solid rgba(147,197,253,0.2); color: #93C5FD; }
+  .ide-btn.run { background: #166534; color: #4ade80; }
+  .ide-sub-bar { display: flex; align-items: center; gap: 8px; padding: 5px 12px; background: #0b1120; border-bottom: 1px solid #1e293b; }
+  .ide-ss-label { font-size: 8px; color: #475569; }
+  .ide-ss-pill { font-size: 8px; padding: 2px 8px; background: #0f1623; border: 1px solid #1e293b; border-radius: 4px; color: #94a3b8; }
+  .ide-sample { font-size: 8px; color: #60a5fa; }
+  .ide-opt-btn { font-size: 8px; padding: 2px 8px; background: rgba(147,197,253,0.08); border: 1px solid rgba(147,197,253,0.2); border-radius: 4px; color: #93C5FD; }
+  .ide-warn { font-size: 8px; color: #94a3b8; line-height: 1.5; margin-top: 8px; padding: 6px 8px; background: rgba(251,191,36,0.04); border-left: 2px solid rgba(251,191,36,0.3); border-radius: 0 4px 4px 0; }
+  .ide-char-count { font-size: 8px; color: #334155; margin-left: 8px; }
+  .ide-ready { font-size: 8px; color: #475569; margin-right: 6px; }
+  .ide-chat-tab-row { display: flex; gap: 0; margin-bottom: 8px; border-bottom: 1px solid #1e293b; }
+  .ide-chat-tab { padding: 3px 10px; font-size: 8px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; }
+  .ide-chat-tab.active { color: #93C5FD; border-bottom: 1px solid #93C5FD; }
+  .ide-sep { height: 1px; background: #1e293b; margin: 6px 0; }
+
+  /* Divider */
+  .divider { height: 1px; background: linear-gradient(to right, transparent, #1e293b, transparent); margin: 28px 0; }
+
+  /* Labels */
+  .label { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 14px; }
+
+  /* Feature grid */
+  .features { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 28px; }
+  .feat { background: #0f1623; border: 1px solid #1e293b; border-radius: 8px; padding: 16px; }
+  .feat .fi { font-size: 20px; margin-bottom: 8px; }
+  .feat h3 { font-size: 13px; font-weight: 700; color: #e2e8f0; margin-bottom: 4px; }
+  .feat p { font-size: 11.5px; color: #64748b; line-height: 1.5; }
+
+  /* Chat demo */
+  .chat-demo { background: #0a0f1a; border: 1px solid #1e293b; border-radius: 8px; overflow: hidden; margin-bottom: 28px; }
+  .chat-header { padding: 8px 14px; background: #0f1623; border-bottom: 1px solid #1e293b; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 6px; }
+  .chat-header .dot { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; }
+  .chat-msg { padding: 10px 14px; border-bottom: 1px solid rgba(30,41,59,0.4); }
+  .chat-msg:last-child { border-bottom: none; }
+  .chat-msg.user { }
+  .chat-msg.ai { background: rgba(147,197,253,0.03); }
+  .chat-role { font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+  .chat-msg.user .chat-role { color: #4ade80; }
+  .chat-msg.ai .chat-role { color: #93C5FD; }
+  .chat-text { font-size: 12.5px; color: #94a3b8; line-height: 1.6; }
+  .chat-text strong { color: #e2e8f0; }
+  .chat-action { display: inline-block; margin-top: 6px; padding: 4px 10px; background: rgba(147,197,253,0.08); border: 1px solid rgba(147,197,253,0.2); border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: #93C5FD; }
+
+  /* Actions strip */
+  .actions-strip { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 28px; }
+  .action-chip { padding: 6px 12px; background: #0f1623; border: 1px solid #1e293b; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: #e2e8f0; }
+  .action-chip .ac { color: #93C5FD; }
+
+  /* Code block */
+  pre { background: #0a0f1a; border: 1px solid #1e293b; border-radius: 8px; padding: 14px 18px; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.7; margin-bottom: 10px; white-space: pre-wrap; }
+  pre .c { color: #60a5fa; } pre .p { color: #475569; } pre .o { color: #fbbf24; } pre .s { color: #4ade80; } pre .f { color: #c4b5fd; } pre .dim { color: #475569; font-style: italic; }
+
+  /* Safety */
+  .safety-line { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; background: rgba(74,222,128,0.04); border: 1px solid rgba(74,222,128,0.12); border-radius: 8px; margin-bottom: 28px; }
+  .safety-line .ico { font-size: 18px; flex-shrink: 0; }
+  .safety-line p { font-size: 12px; color: #94a3b8; line-height: 1.6; }
+  .safety-line strong { color: #4ade80; }
+
+  /* Footer */
+  .footer { text-align: center; padding-top: 18px; border-top: 1px solid #1e293b; font-size: 12px; color: #475569; }
+  .footer .app { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: #93C5FD; }
+</style>
+</head>
+<body>
+<div class="poster">
+
+  <div class="hero">
+    <div class="tag">Built-in Feature</div>
+    <h1><span class="g">SPL IDE</span> <span class="d">+ AI Chat</span></h1>
+    <p class="sub">Write, debug, and optimize SPL with an AI copilot</p>
+  </div>
+
+  <p style="text-align:center; font-size:14px; color:#94a3b8; max-width:500px; margin:0 auto 26px; line-height:1.7;">
+    A full SPL editor with syntax highlighting, live query execution, and a multi-turn AI assistant
+    that sees your query, results, and sample data in real time.
+  </p>
+
+  <!-- IDE Mockup -->
+  <div class="ide-mock">
+    <div class="ide-topbar">
+      <div class="dots"><span></span><span></span><span></span></div>
+      <span class="title">Query Tester &mdash; SPL IDE</span>
+      <div class="tabs">
+        <div class="tab active">Analysis</div>
+        <div class="tab">Chat</div>
+      </div>
+    </div>
+    <div class="ide-sub-bar">
+      <span class="ide-ss-label">Load from saved search</span>
+      <span class="ide-ss-pill">License Usage Data Cube</span>
+      <span style="flex:1"></span>
+      <span class="ide-sample">3 sample events</span>
+      <span class="ide-opt-btn">Optimize this query</span>
+    </div>
+    <div class="ide-body">
+      <div class="ide-editor">
+        <div class="ide-line"><span class="ide-ln">1</span><span class="ide-code"><span class="kw">index</span>=_internal <span class="kw">source</span>=<span class="st">"*license_usage.log"</span> <span class="op">type</span>=<span class="st">"Usage"</span></span></div>
+        <div class="ide-line"><span class="ide-ln">2</span><span class="ide-code"><span class="pp">|</span> <span class="kw">eval</span> <span class="fn">h</span>=<span class="kw">if</span>(<span class="kw">len</span>(h)>0 <span class="kw">OR</span> <span class="kw">isnull</span>(h),<span class="st">"$SQUASHED$"</span>,h)</span></div>
+        <div class="ide-line"><span class="ide-ln">3</span><span class="ide-code"><span class="pp">|</span> <span class="kw">eval</span> <span class="fn">s</span>=<span class="kw">if</span>(<span class="kw">len</span>(s)>0 <span class="kw">OR</span> <span class="kw">isnull</span>(s),<span class="st">"$SQUASHED$"</span>,s)</span></div>
+        <div class="ide-line"><span class="ide-ln">4</span><span class="ide-code"><span class="pp">|</span> <span class="kw">eval</span> <span class="fn">idx</span>=<span class="kw">if</span>(<span class="kw">isnull</span>(idx),<span class="st">"UNKNOWN"</span>,idx)</span></div>
+        <div class="ide-line"><span class="ide-ln">5</span><span class="ide-code"><span class="pp">|</span> <span class="kw">bin</span> <span class="fn">_time</span> <span class="op">span</span>=1d</span></div>
+        <div class="ide-line"><span class="ide-ln">6</span><span class="ide-code"><span class="pp">|</span> <span class="kw">stats</span> <span class="kw">sum</span>(b) <span class="kw">as</span> b <span class="kw">by</span> <span class="fn">_time</span>, <span class="fn">pool</span>, <span class="fn">s</span>, <span class="fn">st</span>, <span class="fn">h</span>, <span class="fn">idx</span></span></div>
+        <div class="ide-warn">&#9888; This query replaces null or empty field values with placeholder text, buckets the data into daily intervals, and calculates the total usage (sum) for each combination of time, pool, s, st, h, and idx.</div>
+        <div class="ide-fields">
+          <span style="font-size:8px;color:#64748b;margin-right:4px">Fields:</span>
+          <span class="ide-field-tag f1">_time</span>
+          <span class="ide-field-tag f2">pool</span>
+          <span class="ide-field-tag f3">s</span>
+          <span class="ide-field-tag f4">st</span>
+          <span class="ide-field-tag f1">h</span>
+          <span class="ide-field-tag f5">idx</span>
+          <span class="ide-field-tag f2">b</span>
+        </div>
+        <div class="ide-note">3 best practice suggestions to use 'coalesce' instead of multiple 'if' statements.</div>
+      </div>
+      <div class="ide-chat">
+        <div class="ide-chat-tab-row">
+          <span class="ide-chat-tab">Analysis</span>
+          <span class="ide-chat-tab active">Chat</span>
+        </div>
+        <div class="ide-chat-msg a">To optimize the query, we can filter earlier by specifying the <span class="b">index</span> and <span class="b">sourcetype</span> in the base search. Also, use <span class="b">fields</span> to limit the columns processed.</div>
+        <div class="ide-chat-msg a">This version filters results more efficiently right from the start. <span class="ide-chat-action">&#9654; Apply to editor</span></div>
+        <div class="ide-sep"></div>
+        <div class="ide-chat-msg u" style="font-size:8px">Why is this returning 0 results?</div>
+        <div class="ide-chat-msg a" style="font-size:8px">Pipe 3 drops to <span class="b">0 rows</span>. Field <span class="b">s</span> is null after squash. <span class="ide-chat-action">&#9654; debug_pipeline</span></div>
+        <div class="ide-chat-input">Ask about your query...</div>
+      </div>
+    </div>
+    <div class="ide-btn-row">
+      <span class="ide-btn analyze">&#10022; Analyze Query</span>
+      <span class="ide-char-count">352 chars</span>
+      <span style="flex:1"></span>
+      <span class="ide-ready">Ready to run</span>
+      <span class="ide-btn run">&#9654; Run Query</span>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Features -->
+  <div class="label">Capabilities</div>
+  <div class="features">
+    <div class="feat">
+      <div class="fi">&#128172;</div>
+      <h3>Multi-Turn AI Chat</h3>
+      <p>Ask follow-up questions. The AI remembers context and auto-injects live query state on every message.</p>
+    </div>
+    <div class="feat">
+      <div class="fi">&#128269;</div>
+      <h3>Analyze Query</h3>
+      <p>One-click code review: performance tips, unused fields, correctness issues — color-coded in the editor.</p>
+    </div>
+    <div class="feat">
+      <div class="fi">&#128736;</div>
+      <h3>Debug Pipeline</h3>
+      <p>Runs your query pipe-by-pipe. Finds exactly where results drop to zero and explains why.</p>
+    </div>
+    <div class="feat">
+      <div class="fi">&#9889;</div>
+      <h3>Live Execution</h3>
+      <p>Run queries directly against Splunk. Results appear inline — no switching between tabs.</p>
+    </div>
+    <div class="feat">
+      <div class="fi">&#127919;</div>
+      <h3>Smart Context</h3>
+      <p>AI auto-fetches sample events, query output, and field lists. No copy-paste needed.</p>
+    </div>
+    <div class="feat">
+      <div class="fi">&#128218;</div>
+      <h3>Custom Skills</h3>
+      <p>Plug in domain-specific prompts (security, observability, etc.) — AI adapts to your use case.</p>
+    </div>
+  </div>
+
+  <!-- Chat demo -->
+  <div class="label">See It In Action</div>
+  <div class="chat-demo">
+    <div class="chat-header"><span class="dot"></span> AI Chat</div>
+    <div class="chat-msg user">
+      <div class="chat-role">You</div>
+      <div class="chat-text">Why is this query returning 0 results?</div>
+    </div>
+    <div class="chat-msg ai">
+      <div class="chat-role">AI</div>
+      <div class="chat-text">
+        The <strong>where</strong> clause on pipe 3 filters by <strong>status="success"</strong>,
+        but the field is actually called <strong>action</strong> in this sourcetype. Replace <strong>status</strong> with <strong>action</strong>.
+        <br>
+        <span class="chat-action">&#9654; action:debug_pipeline</span>
+        <span class="chat-action">&#9654; action:update_spl</span>
+      </div>
+    </div>
+    <div class="chat-msg user">
+      <div class="chat-role">You</div>
+      <div class="chat-text">Can you also optimize it? It's slow.</div>
+    </div>
+    <div class="chat-msg ai">
+      <div class="chat-role">AI</div>
+      <div class="chat-text">
+        Move the <strong>where</strong> filter before <strong>stats</strong> to reduce the dataset early.
+        Also, <strong>tstats</strong> would be 10x faster here since Authentication is an accelerated data model.
+        <br>
+        <span class="chat-action">&#9654; action:update_spl</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Actions -->
+  <div class="label">Chat Actions</div>
+  <div class="actions-strip">
+    <div class="action-chip"><span class="ac">run_query</span> &mdash; run a partial query</div>
+    <div class="action-chip"><span class="ac">update_spl</span> &mdash; replace editor SPL</div>
+    <div class="action-chip"><span class="ac">auto_query</span> &mdash; execute &amp; feed back</div>
+    <div class="action-chip"><span class="ac">debug_pipeline</span> &mdash; pipe-by-pipe debug</div>
+  </div>
+
+  <!-- Safety -->
+  <div class="safety-line">
+    <span class="ico">&#128274;</span>
+    <p>
+      <strong>Safe by default.</strong>
+      Destructive commands (delete, outputlookup, collect, sendemail) are flagged with modal warnings.
+      Auto-executed queries are read-only. All commands go through policy checks.
+    </p>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    Part of <span class="app">Query Tester</span> &mdash; navigate to <strong>#ide</strong> in the app
+  </div>
+
+</div>
+</body>
+</html>
