@@ -286,6 +286,26 @@
 
   <row>
     <panel>
+      <title>Orphaned Temp Lookups (not cleaned up)</title>
+      <table>
+        <search>
+          <query>| rest /servicesNS/nobody/QueryTester/storage/collections/config splunk_server=local
+| search title="temp_lookup_*" OR title="temp_cache_*"
+| eval age_min=round((now()-strptime(updated,"%Y-%m-%dT%H:%M:%S%z"))/60,0)
+| where age_min > 30
+| eval age=case(age_min&lt;60, age_min." min", age_min&lt;1440, round(age_min/60,1)." hrs", 1=1, round(age_min/1440,1)." days")
+| sort - age_min
+| table title age
+| rename title as "Collection Name", age as "Age (stale &gt;30min)"</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="count">10</option>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
       <title>HEC Indexing Activity</title>
       <chart>
         <search>

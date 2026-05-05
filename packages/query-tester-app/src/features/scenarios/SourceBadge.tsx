@@ -41,7 +41,15 @@ export function SourceBadge({ testId, scenarioId, inputId, value, colorIndex, ma
             }
         }
     }
-    const orphans = useOrphanedFilters(spl, value, occurrenceIndex);
+    // Get extracted fields for this data source (for optional-field marking)
+    const sourceFields = (() => {
+        if (!test || !test.fieldExtraction || !test.fieldExtraction.sources) return undefined;
+        const src = test.fieldExtraction.sources.find(
+            (s) => s.rowIdentifier.trim().toLowerCase() === value.trim().toLowerCase(),
+        );
+        return src ? src.fields : undefined;
+    })();
+    const orphans = useOrphanedFilters(spl, value, occurrenceIndex, sourceFields);
 
     const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         updateRowIdentifier(testId, scenarioId, inputId, e.target.value);
@@ -92,16 +100,39 @@ export function SourceBadge({ testId, scenarioId, inputId, value, colorIndex, ma
                 </button>
             </div>
 
-            {orphans.length > 0 && (
-                <div className="flex items-start gap-1.5 mt-1.5 px-2 py-1.5 rounded-md bg-red-500/5 border border-red-500/20">
-                    <span className="text-red-400 text-[12px] mt-px">{'\u26A0'}</span>
-                    <div className="text-[11px] text-red-300/80 leading-snug">
-                        <span className="font-medium">Orphaned filters: </span>
-                        {orphans.map((o) => o.text).join(', ')}
-                        <span className="text-slate-500"> — these stay in the query and may cause zero results.</span>
-                    </div>
-                </div>
-            )}
+            {orphans.length > 0 && (() => {
+                const blocking = orphans.filter((o) => !o.isOptional);
+                const optional = orphans.filter((o) => o.isOptional);
+                return (
+                    <>
+                        {blocking.length > 0 && (
+                            <div className="flex items-start gap-1.5 mt-1.5 px-2 py-1.5 rounded-md bg-red-500/5 border border-red-500/20">
+                                <span className="text-red-400 text-[12px] mt-px">{'\u26A0'}</span>
+                                <div className="text-[11px] text-red-300/80 leading-snug">
+                                    <span className="font-medium">Orphaned filters: </span>
+                                    {blocking.map((o) => o.text).join(', ')}
+                                    <span className="text-slate-500"> — these stay in the query and may cause zero results.</span>
+                                </div>
+                            </div>
+                        )}
+                        {optional.length > 0 && (
+                            <div className="flex items-start gap-1.5 mt-1.5 px-2 py-1.5 rounded-md bg-blue-500/5 border border-blue-500/20">
+                                <span className="text-blue-400 text-[12px] mt-px">{'\u2139'}</span>
+                                <div className="text-[11px] leading-snug">
+                                    <span className="text-blue-300/80 font-medium">Optional fields: </span>
+                                    {optional.map((o, i) => (
+                                        <span key={i}>
+                                            {i > 0 && ', '}
+                                            <span className="text-blue-300 font-semibold">{o.text}</span>
+                                        </span>
+                                    ))}
+                                    <span className="text-slate-500"> — you can include these as input fields for more precise testing.</span>
+                                </div>
+                            </div>
+                        )}
+                    </>
+                );
+            })()}
         </div>
     );
 }

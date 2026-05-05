@@ -27,6 +27,7 @@ export interface AnalyzeQueryState {
     runAnalysis: (spl: string, skills?: SkillSnippet[]) => void;
     clearAnalysis: () => void;
     markStale: () => void;
+    setError: (msg: string) => void;
 }
 
 export function useAnalyzeQuery(): AnalyzeQueryState {
@@ -88,12 +89,23 @@ export function useAnalyzeQuery(): AnalyzeQueryState {
             })
             .catch((err: Error) => {
                 if (splRef.current !== spl) return;
-                setAnalysisError(err.message || 'Analysis failed');
+                const msg = err.message || 'Analysis failed';
+                if (msg.includes('500') || msg.includes('Internal Server Error')) {
+                    setAnalysisError('LLM service error (500). The model may be overloaded — try again in a moment.');
+                } else if (msg.includes('429') || msg.toLowerCase().includes('rate limit') || msg.toLowerCase().includes('token')) {
+                    setAnalysisError('Token limit or rate limit reached. Try a shorter query or wait a moment.');
+                } else if (msg.includes('timeout') || msg.includes('Timeout') || msg.includes('ETIMEDOUT') || msg.includes('ECONNABORTED')) {
+                    setAnalysisError('Request timed out. The query may be too complex — try simplifying it.');
+                } else {
+                    setAnalysisError(msg);
+                }
             })
             .finally(() => {
                 if (splRef.current === spl) setIsAnalyzing(false);
             });
     }, []);
+
+    const setError = useCallback((msg: string) => { setAnalysisError(msg); }, []);
 
     return {
         isAnalyzing,
@@ -109,5 +121,6 @@ export function useAnalyzeQuery(): AnalyzeQueryState {
         runAnalysis,
         clearAnalysis,
         markStale,
+        setError,
     };
 }

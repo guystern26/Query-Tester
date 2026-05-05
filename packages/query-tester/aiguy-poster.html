@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>aiguy — AI Inside Your SPL</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #080c14;
+    color: #e2e8f0;
+    font-family: 'Outfit', sans-serif;
+    line-height: 1.6;
+  }
+
+  .poster {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 48px 32px 40px;
+  }
+
+  /* ── Hero ── */
+  .hero {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  .hero .tag {
+    display: inline-block;
+    padding: 4px 14px;
+    background: rgba(147,197,253,0.1);
+    border: 1px solid rgba(147,197,253,0.2);
+    border-radius: 100px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    color: #93C5FD;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 64px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -2px;
+    margin-bottom: 10px;
+  }
+  .hero h1 .p { color: #475569; font-weight: 400; }
+  .hero h1 .n {
+    background: linear-gradient(135deg, #93C5FD, #c4b5fd, #60a5fa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero-inline-prompt {
+    font-size: 0.4em;
+    font-weight: 400;
+    letter-spacing: 0;
+    vertical-align: baseline;
+    color: #64748b;
+  }
+  .hero-inline-prompt .s { color: #4ade80; }
+  .hero .sub {
+    font-size: 18px;
+    font-weight: 300;
+    color: #94a3b8;
+  }
+
+  /* ── Divider ── */
+  .divider {
+    height: 1px;
+    background: linear-gradient(to right, transparent, #1e293b, transparent);
+    margin: 32px 0;
+  }
+
+  /* ── Section label ── */
+  .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 14px;
+  }
+
+  /* ── Code examples ── */
+  pre {
+    background: #0a0f1a;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    line-height: 1.7;
+    overflow-x: auto;
+    margin-bottom: 10px;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  pre .c { color: #60a5fa; }
+  pre .p { color: #475569; }
+  pre .o { color: #fbbf24; }
+  pre .s { color: #4ade80; }
+  pre .f { color: #c4b5fd; }
+  pre .dim { color: #475569; font-style: italic; }
+
+  .ex-label {
+    font-size: 12px;
+    color: #64748b;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .ex-label .num {
+    width: 18px; height: 18px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    background: rgba(147,197,253,0.1);
+    color: #93C5FD;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+  }
+  .examples-group { margin-bottom: 32px; }
+  .examples-group > div { margin-bottom: 16px; }
+  .examples-group > div:last-child { margin-bottom: 0; }
+
+  /* ── Output fields row ── */
+  .fields-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 32px;
+  }
+  .field-chip {
+    flex: 1;
+    background: #0f1623;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .field-chip .fname {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    color: #4ade80;
+    margin-bottom: 3px;
+  }
+  .field-chip .fdesc {
+    font-size: 11px;
+    color: #64748b;
+    line-height: 1.4;
+  }
+
+  /* ── Live demo ── */
+  .demo {
+    margin-bottom: 32px;
+  }
+  .demo-spl {
+    margin-bottom: 0;
+    border-radius: 8px 8px 0 0;
+    border-bottom: none;
+  }
+  .demo-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: #0a0f1a;
+    border-left: 1px solid #1e293b;
+    border-right: 1px solid #1e293b;
+    padding: 8px 0;
+  }
+  .demo-arrow .arrow-icon {
+    font-size: 18px;
+    color: #93C5FD;
+  }
+  .demo-arrow .arrow-text {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+  }
+  .demo-table-wrap {
+    overflow-x: auto;
+    border: 1px solid #1e293b;
+    border-radius: 0 0 8px 8px;
+    border-top: none;
+  }
+  .demo-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .demo-table th {
+    background: #0f1623;
+    padding: 8px 12px;
+    text-align: left;
+    font-weight: 700;
+    color: #64748b;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 1px solid #1e293b;
+  }
+  .demo-table td {
+    padding: 7px 12px;
+    border-bottom: 1px solid rgba(30,41,59,0.4);
+    color: #94a3b8;
+    vertical-align: top;
+  }
+  .demo-table tr:last-child td { border-bottom: none; }
+  .demo-table .blocked { color: #f87171; }
+  .demo-table .ai-col {
+    background: rgba(147,197,253,0.04);
+    border-left: 2px solid rgba(147,197,253,0.25);
+  }
+  .demo-table th.ai-col {
+    color: #93C5FD;
+    background: rgba(147,197,253,0.06);
+    border-left: 2px solid rgba(147,197,253,0.25);
+  }
+  .ai-val {
+    color: #93C5FD;
+    font-family: 'Outfit', sans-serif;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.5;
+    display: block;
+  }
+
+  /* ── Modes strip ── */
+  .modes-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 32px;
+  }
+  .mode {
+    padding: 6px 14px;
+    background: #0f1623;
+    border: 1px solid #1e293b;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: #e2e8f0;
+  }
+
+  /* ── Flow ── */
+  .flow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    margin-bottom: 32px;
+    padding: 20px 12px;
+    background: #0f1623;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
+  }
+  .flow-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 0 14px;
+    min-width: 80px;
+  }
+  .flow-step .fi {
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 8px;
+    font-size: 16px;
+  }
+  .flow-step:nth-child(1) .fi { background: rgba(96,165,250,0.12); }
+  .flow-step:nth-child(3) .fi { background: rgba(147,197,253,0.12); }
+  .flow-step:nth-child(5) .fi { background: rgba(192,132,252,0.12); }
+  .flow-step:nth-child(7) .fi { background: rgba(74,222,128,0.12); }
+  .flow-step .ft {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    color: #e2e8f0;
+  }
+  .flow-step .fs {
+    font-size: 9px;
+    color: #475569;
+  }
+  .flow-arrow {
+    color: #334155;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  /* ── Warning line ── */
+  .warning-line {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px 18px;
+    background: rgba(251,191,36,0.04);
+    border: 1px solid rgba(251,191,36,0.15);
+    border-radius: 8px;
+    margin-bottom: 12px;
+  }
+  .warning-line .ico { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+  .warning-line p {
+    font-size: 13px;
+    color: #94a3b8;
+    line-height: 1.6;
+  }
+  .warning-line strong { color: #fbbf24; }
+  .warning-line code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    background: rgba(251,191,36,0.08);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: #fbbf24;
+  }
+
+  /* ── Safety line ── */
+  .safety-line {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px 18px;
+    background: rgba(74,222,128,0.04);
+    border: 1px solid rgba(74,222,128,0.12);
+    border-radius: 8px;
+    margin-bottom: 32px;
+  }
+  .safety-line .ico { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+  .safety-line p {
+    font-size: 13px;
+    color: #94a3b8;
+    line-height: 1.6;
+  }
+  .safety-line strong { color: #4ade80; }
+
+  /* ── Footer ── */
+  .footer {
+    text-align: center;
+    padding-top: 20px;
+    border-top: 1px solid #1e293b;
+    font-size: 12px;
+    color: #475569;
+  }
+  .footer .app {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    color: #93C5FD;
+  }
+</style>
+</head>
+<body>
+<div class="poster">
+
+  <div class="hero">
+    <div class="tag">New Custom Command</div>
+    <h1><span class="p">|</span> <span class="n">aiguy</span> <span class="hero-inline-prompt">prompt=<span class="s">"..."</span></span></h1>
+    <p class="sub">AI inside your SPL pipeline</p>
+  </div>
+
+  <p style="text-align:center; font-size:15px; color:#94a3b8; max-width:500px; margin:0 auto 36px; line-height:1.7;">
+    Pipe any search results through <strong style="color:#e2e8f0">aiguy</strong> and get
+    an instant AI analysis — added as a field on every row.
+    One pipe. Zero setup. Works in alerts too.
+  </p>
+
+  <div class="divider"></div>
+
+  <!-- Live demo -->
+  <div class="label">See It In Action</div>
+  <div class="demo">
+    <pre class="demo-spl"><span class="c">index</span>=main
+<span class="p">|</span> <span class="c">stats</span> <span class="f">count</span> <span class="c">by</span> <span class="f">sourcetype</span>
+<span class="p">|</span> <span class="c">aiguy</span> <span class="o">prompt</span>=<span class="s">"which sourcetype has the most events and why?"</span></pre>
+    <div class="demo-arrow">
+      <span class="arrow-icon">&#9660;</span>
+      <span class="arrow-text">Results</span>
+      <span class="arrow-icon">&#9660;</span>
+    </div>
+    <div class="demo-table-wrap">
+      <table class="demo-table">
+        <thead>
+          <tr><th>sourcetype</th><th>count</th><th class="ai-col">ai_answer</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>access_combined</td><td>24,891</td><td class="ai-col"><span class="ai-val">access_combined dominates with 24,891 events (68% of total) &mdash; this is your web traffic. syslog is a distant second at 7,320. The ratio is typical for a web-facing environment.</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Examples -->
+  <div class="label">More Examples</div>
+  <div class="examples-group">
+    <div>
+      <div class="ex-label"><span class="num">1</span> Use a preset <span class="o" style="font-family:'JetBrains Mono',monospace;font-size:11px">mode</span> instead of writing a prompt</div>
+      <pre>... <span class="p">|</span> <span class="c">aiguy</span> <span class="o">mode</span>=<span class="s">"anomaly"</span></pre>
+    </div>
+    <div>
+      <div class="ex-label"><span class="num">2</span> Focus AI on a specific <span class="o" style="font-family:'JetBrains Mono',monospace;font-size:11px">field</span></div>
+      <pre>... <span class="p">|</span> <span class="c">aiguy</span> <span class="o">mode</span>=<span class="s">"health"</span> <span class="o">field</span>=<span class="s">"cpu_pct"</span></pre>
+    </div>
+    <div>
+      <div class="ex-label"><span class="num">3</span> Filter rows with <span class="o" style="font-family:'JetBrains Mono',monospace;font-size:11px">field</span> + <span class="o" style="font-family:'JetBrains Mono',monospace;font-size:11px">value</span> &mdash; AI only sees matching rows</div>
+      <pre>... <span class="p">|</span> <span class="c">stats</span> <span class="f">count</span> <span class="c">by</span> <span class="f">status</span>, <span class="f">host</span>
+<span class="p">|</span> <span class="c">aiguy</span> <span class="o">mode</span>=<span class="s">"alert"</span> <span class="o">field</span>=<span class="s">"status"</span> <span class="o">value</span>=<span class="s">"Error"</span>
+<span class="dim">   ^^ AI receives only the rows where status=Error</span>
+<span class="dim">      (3 of 12 rows) &mdash; the rest still pass through</span></pre>
+    </div>
+    <div>
+      <div class="ex-label"><span class="num">4</span> Use the AI answer downstream in your pipeline</div>
+      <pre>... <span class="p">|</span> <span class="c">aiguy</span> <span class="o">mode</span>=<span class="s">"alert"</span> <span class="p">|</span> <span class="c">where</span> <span class="f">ai_answer</span> <span class="c">LIKE</span> <span class="s">"%yes%"</span> <span class="p">|</span> <span class="c">sendalert</span> slack</pre>
+    </div>
+  </div>
+
+  <!-- Advanced -->
+  <div class="label">Advanced &mdash; Chain AI Calls</div>
+  <div class="examples-group">
+    <div>
+      <div class="ex-label">Rename the first answer, then ask a follow-up based on it</div>
+      <pre>... <span class="p">|</span> <span class="c">aiguy</span> <span class="o">prompt</span>=<span class="s">"summarize the traffic"</span>
+<span class="p">|</span> <span class="c">rename</span> <span class="f">ai_answer</span> <span class="c">AS</span> <span class="f">ai_summary</span>
+<span class="p">|</span> <span class="c">aiguy</span> <span class="o">prompt</span>=<span class="s">"based on ai_summary, what needs attention?"</span>
+<span class="dim">   ^^ second AI sees the first answer as a data column</span>
+<span class="dim">      results keep both: ai_summary + ai_answer</span></pre>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Output fields -->
+  <div class="label">Output Fields</div>
+  <div class="fields-row">
+    <div class="field-chip">
+      <div class="fname">ai_answer</div>
+      <div class="fdesc">The AI response (plain text)</div>
+    </div>
+    <div class="field-chip">
+      <div class="fname">aiguy_timestamp</div>
+      <div class="fdesc">When the AI answered</div>
+    </div>
+    <div class="field-chip">
+      <div class="fname">aiguy_source</div>
+      <div class="fdesc">live / rate-limited / error</div>
+    </div>
+  </div>
+
+  <!-- Modes -->
+  <div class="label">Built-in Modes</div>
+  <div class="modes-strip">
+    <div class="mode">summary</div>
+    <div class="mode">anomaly</div>
+    <div class="mode">trend</div>
+    <div class="mode">compare</div>
+    <div class="mode">alert</div>
+    <div class="mode">health</div>
+    <div class="mode">top</div>
+  </div>
+
+  <!-- Flow -->
+  <div class="label">How It Works</div>
+  <div class="flow">
+    <div class="flow-step">
+      <div class="fi">&#128269;</div>
+      <div class="ft">Query</div>
+      <div class="fs">runs normally</div>
+    </div>
+    <div class="flow-arrow">&#10132;</div>
+    <div class="flow-step">
+      <div class="fi">&#128203;</div>
+      <div class="ft">Collect</div>
+      <div class="fs">20 rows sample</div>
+    </div>
+    <div class="flow-arrow">&#10132;</div>
+    <div class="flow-step">
+      <div class="fi">&#129302;</div>
+      <div class="ft">LLM</div>
+      <div class="fs">single API call</div>
+    </div>
+    <div class="flow-arrow">&#10132;</div>
+    <div class="flow-step">
+      <div class="fi">&#9989;</div>
+      <div class="ft">Yield</div>
+      <div class="fs">all rows + ai_answer</div>
+    </div>
+  </div>
+
+  <!-- Warning -->
+  <div class="warning-line">
+    <span class="ico">&#9888;&#65039;</span>
+    <p>
+      <strong>Scheduled alerts must have a cron interval of 10 minutes or more.</strong>
+      aiguy checks the alert's dispatch history and auto-skips the LLM call if it ran less than 10 minutes ago.
+      Alerts with shorter intervals will see <code>aiguy_source="rate-limited"</code> on most runs.
+    </p>
+  </div>
+
+  <!-- Safety -->
+  <div class="safety-line">
+    <span class="ico">&#128274;</span>
+    <p>
+      <strong>Read-only &amp; safe.</strong>
+      Never executes SPL or modifies data. Never suggests destructive commands.
+    </p>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    Part of <span class="app">Query Tester</span> &mdash; requires LLM configured in Setup
+  </div>
+
+</div>
+</body>
+</html>

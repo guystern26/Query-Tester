@@ -52,6 +52,7 @@ If only index is present with no other filters, use index alone.
 FIELDS TO INCLUDE (original/source fields):
 These are fields that exist in the raw data source or are natively provided by Splunk for that source.
 1. Filter predicates — fields in where, search, or MID-PIPELINE search terms. Example: search index=main status=500 host=web* → status, host. NOTE: Base search clause filters that are part of the data source key (index, sourcetype, source, data_type, project, eventtype, tag) are EXCLUDED — they belong to the data source identity, not the fields array.
+   ALSO EXCLUDE internal Splunk time range fields: _time, _index_earliest, _index_latest, earliest, latest, _indextime, earliest_time, latest_time. These are set by the time picker, NOT by the data itself — they are never input fields.
 2. eval right-hand references — original fields consumed on the right side of =. Example: eval duration = end_time - start_time → end_time, start_time
 3. rex field= parameter — the source field being extracted from. Example: rex field=_raw "user=(?<extracted_user>\\w+)" → _raw
 4. stats/eventstats/streamstats — aggregation arguments and by-clause fields. Example: stats avg(response_time) by host → response_time, host

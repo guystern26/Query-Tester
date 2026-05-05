@@ -15,6 +15,7 @@ import { AnalysisResultBar } from './AnalysisResultBar';
 import { IDE_POLICY } from './ideCommandPolicy';
 import { formatSpl } from './splFormatter';
 import { useSplSyntax } from '../../hooks/useSplSyntax';
+import { MAX_ANALYZE_QUERY_CHARS } from '../../core/constants/limits';
 
 const APP_CHANGE_MSG = 'You changed the app. Some lookups and saved searches may not be available.';
 
@@ -69,7 +70,7 @@ export function QuerySection({ isIde }: QuerySectionProps): React.ReactElement {
     isAnalyzing, isStale: analysisStale, hasResults: hasAnalysis,
     analysisNotes, fieldHighlights, explanation,
     analysisSummary, analysisError, unmatchedNotes, trackedFields,
-    runAnalysis, clearAnalysis, markStale,
+    runAnalysis, clearAnalysis, markStale, setError: setAnalysisError,
   } = useAnalyzeQuery();
 
   const { markers: injectionMarkers, matchCount, hasIdentifiers } = useInjectionMarkers();
@@ -219,9 +220,15 @@ export function QuerySection({ isIde }: QuerySectionProps): React.ReactElement {
                 }
                 setSelectedFields(new Set());
                 const skills = chatSkills.filter((s) => s.enabled).map((s) => ({ name: s.name, prompt: s.prompt }));
-                runAnalysis(formatted, skills.length > 0 ? skills : undefined);
-                // Fire extract + suggest in parallel (background)
+                // Always fire extract + suggest (lighter prompts, no char limit)
                 if (test && !isIde) { const s0 = test.scenarios[0]; const sid = s0 ? s0.id : undefined; if (sid) { void extractDS(test.id, sid, formatted).catch(() => {}); void suggestVF(test.id, formatted).catch(() => {}); } }
+                // Full analysis has a character limit
+                if (formatted.length > MAX_ANALYZE_QUERY_CHARS) {
+                  clearAnalysis();
+                  setAnalysisError('Query is too long for full analysis (' + formatted.length + ' chars, limit ' + MAX_ANALYZE_QUERY_CHARS + '). Field extraction and data source detection still ran.');
+                  return;
+                }
+                runAnalysis(formatted, skills.length > 0 ? skills : undefined);
               }}>
               {isAnalyzing ? (
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin"><path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round" /></svg>

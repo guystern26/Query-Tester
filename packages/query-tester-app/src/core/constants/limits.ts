@@ -15,3 +15,6 @@ export const MAX_GENERATOR_EVENT_COUNT = 10_000;
 
 import { ENV } from '../../config/env';
 export const MAX_QUERY_DATA_EVENTS = ENV.MAX_QUERY_DATA_EVENTS;
+
+/** Max SPL length for the full Analyze Query LLM call. Longer queries still get field extraction. */
+export const MAX_ANALYZE_QUERY_CHARS = 6500;

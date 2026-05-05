@@ -12,5 +12,9 @@ access = read : [ admin ], write : [ admin ]
 [kvstore/query_tester_command_policy]
 access = read : [ admin ], write : [ admin ]
 
+[commands]
+access = read : [ * ], write : [ admin ]
+export = system
+
 [views/monitoring]
 access = read : [ admin, sc_admin ], write : [ admin ]
