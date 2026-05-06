@@ -34,6 +34,11 @@ export function DataSourceSelector({ testId, scenarioId, inputId, value, matchCo
   const sources = (test && test.fieldExtraction && test.fieldExtraction.sources) || [];
   const hasSources = sources.length > 0;
 
+  // Filter sources by current input (like FieldNameSelector)
+  const filtered = value.trim()
+    ? sources.filter((s) => s.rowIdentifier.toLowerCase().includes(value.toLowerCase()))
+    : sources;
+
   // Find which row identifiers are already used by other inputs in this scenario
   const usedIdentifiers = new Set<string>();
   if (test) {
@@ -78,7 +83,9 @@ export function DataSourceSelector({ testId, scenarioId, inputId, value, matchCo
         <input
           type="text"
           value={value}
-          onChange={(e) => updateRowIdentifier(testId, scenarioId, inputId, e.target.value)}
+          onChange={(e) => { updateRowIdentifier(testId, scenarioId, inputId, e.target.value); if (hasSources) setOpen(true); }}
+          onClick={() => { if (hasSources) setOpen(true); }}
+          onFocus={() => { if (hasSources) setOpen(true); }}
           placeholder="Pick from sidebar or type: index=main sourcetype=..."
           className={`flex-1 min-w-0 px-3 py-2 text-sm bg-navy-950 border border-slate-700 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-300/20 transition-all duration-200 ${
             hasSources ? 'rounded-l-lg border-r-0' : 'rounded-lg'
@@ -100,11 +107,13 @@ export function DataSourceSelector({ testId, scenarioId, inputId, value, matchCo
         )}
       </div>
 
-      <p className="mt-1.5 text-[11px] text-slate-500 leading-snug">
-        Click a highlighted source in the <strong className="text-slate-400">sidebar</strong> to fill this,
-        or type the data source clause from your query (e.g. <code className="text-slate-400">index=main sourcetype=...</code>).
-        It will be replaced with a temp index containing your test events.
-      </p>
+      {!open && (
+        <p className="mt-1.5 text-[11px] text-slate-500 leading-snug">
+          Click a highlighted source in the <strong className="text-slate-400">sidebar</strong> to fill this,
+          or type the data source clause from your query (e.g. <code className="text-slate-400">index=main sourcetype=...</code>).
+          It will be replaced with a temp index containing your test events.
+        </p>
+      )}
       {hasIdentifiers && value.trim() && (
         <div className="flex items-center gap-1.5 mt-1.5">
           <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${matchCount > 0 ? 'bg-amber-500' : 'bg-slate-600'}`} />
@@ -122,9 +131,9 @@ export function DataSourceSelector({ testId, scenarioId, inputId, value, matchCo
         </div>
       )}
 
-      {open && hasSources && (
-        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-navy-900 border border-slate-700 rounded-lg shadow-xl overflow-hidden">
-          {sources.map((src, i) => {
+      {open && filtered.length > 0 && (
+        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-navy-900 border border-slate-700 rounded-lg shadow-xl overflow-hidden max-h-[200px] overflow-y-auto">
+          {filtered.map((src, i) => {
             const isUsed = usedIdentifiers.has(src.rowIdentifier.trim());
             return (
               <button

@@ -234,12 +234,27 @@ def _should_skip_scheduled(session_key, saved_search_name):
 # ── Table Formatter ──────────────────────────────────────────────────────────
 
 
-def _format_table(rows):
-    # type: (list) -> str
-    """Format rows as a compact markdown table for the LLM prompt."""
+def _format_table(rows, focus_field=None):
+    # type: (list, str) -> str
+    """Format rows as a compact markdown table for the LLM prompt.
+
+    If focus_field is set, pick rows with unique values for that field
+    so the LLM sees diverse data instead of repeated values.
+    """
     if not rows:
         return "(no data)"
-    subset = rows[:MAX_ROWS_FOR_AI]
+    if focus_field:
+        subset = []
+        seen = set()  # type: set
+        for row in rows:
+            val = str(row.get(focus_field, ""))
+            if val not in seen:
+                seen.add(val)
+                subset.append(row)
+                if len(subset) >= MAX_ROWS_FOR_AI:
+                    break
+    else:
+        subset = rows[:MAX_ROWS_FOR_AI]
     keys = [
         k for k in subset[0].keys()
         if not k.startswith("_") or k == "_time"
@@ -673,7 +688,8 @@ class AiGuyCommand(StreamingCommand):
             ).format(self.field.strip())
 
         # Build LLM prompt
-        table = _format_table(analysis_rows)
+        focus_field = self.field.strip() if self.field else None
+        table = _format_table(analysis_rows, focus_field=focus_field)
         total = len(analysis_rows)
         shown = min(total, MAX_ROWS_FOR_AI)
 
