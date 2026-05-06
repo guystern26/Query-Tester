@@ -10,17 +10,19 @@ Architecture:
     - Rate limit: for scheduled searches, checks saved search dispatch history
       via HTTP — skips LLM if it ran less than 10 minutes ago
 
-Performance:
-    - Uses session token from search metadata (no username/password auth roundtrip)
-    - Config comes from runtime_config module (already cached with 120s TTL)
-    - Ad-hoc searches skip rate-limit check entirely
-    - No direct KVStore access — everything goes through runtime_config
+Modes:
+    - Analysis modes (summary, anomaly, trend, compare, alert, health, top):
+      One LLM call, same ai_answer on every row.
+    - Extract mode (mode="extract"):
+      AI generates a Python regex; applied locally to ALL rows.
+      Falls back to dict mapping if regex fails or match rate < 50%.
+      Adds a new field (new_field_name) with per-row extracted values.
 
 Usage:
     ... | aiguy prompt="which sourcetype has the most events?"
     ... | aiguy mode="anomaly"
     ... | aiguy mode="alert" field="action" value="blocked"
-    ... | aiguy prompt="explain" field="status" value="Error"
+    ... | aiguy mode="extract" field="email" prompt="extract the domain" new_field_name="domain"
 
 Requires: Splunk 9.2+, LLM configured in Query Tester setup page.
 """
@@ -28,6 +30,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import ssl
 import sys
 import time
@@ -49,6 +52,9 @@ MAX_CELL_LEN = 80      # truncate cell values for LLM prompt
 LLM_TIMEOUT_SECS = 30  # HTTP timeout for LLM call
 MAX_RESPONSE_TOKENS = 600  # cap LLM response length
 MIN_INTERVAL_SECS = 600  # 10 min — skip LLM if scheduled search ran recently
+MAX_UNIQUE_FOR_DICT = 100  # max unique values sent to LLM for dict extraction
+MAX_SAMPLE_FOR_REGEX = 15  # sample values sent to LLM for regex generation
+MIN_REGEX_MATCH_RATE = 0.5  # fall back to dict if regex matches less than 50%
 
 SYSTEM_PROMPT = (
     "You are an AI assistant embedded in a Splunk search pipeline. "
@@ -67,6 +73,30 @@ SYSTEM_PROMPT = (
     "(delete, outputlookup, collect, sendemail, mcollect, script, run).\n"
     "- You are an ANALYST — you observe and explain. "
     "Your suggestions must be read-only queries only."
+)
+
+EXTRACT_REGEX_PROMPT = (
+    "You are a regex generator for Splunk field extraction. "
+    "Given sample values from a data field and a user description of what "
+    "to extract, return ONLY a JSON object with two keys:\n"
+    '- "regex": a Python-compatible regular expression with a single '
+    "named capture group (?P<result>...)\n"
+    '- "field_name": a short, snake_case field name for the extracted value '
+    "(inferred from the user's description)\n\n"
+    "No explanation, no markdown. ONLY valid JSON on a single line.\n"
+    'Example: {"regex": "(?P<result>(?<=@)[\\\\w.-]+)", "field_name": "domain"}'
+)
+
+EXTRACT_DICT_PROMPT = (
+    "You are a data extraction engine for Splunk. "
+    "Given a list of field values and a description of what to extract "
+    "from each, return ONLY a JSON object with two keys:\n"
+    '- "field_name": a short, snake_case field name for the extracted value '
+    "(inferred from the user's description)\n"
+    '- "mapping": an object mapping each input value to its extracted result. '
+    "If a value has nothing to extract, map it to an empty string.\n\n"
+    "No explanation, no markdown fences. ONLY valid JSON.\n"
+    'Example: {"field_name": "domain", "mapping": {"a@b.com": "b.com"}}'
 )
 
 MODE_PROMPTS = {
@@ -90,9 +120,7 @@ MODE_PROMPTS = {
 
 def _get_llm_config(session_key):
     # type: (str) -> dict
-    """Read LLM settings from runtime_config (cached, 120s TTL).
-    No direct KVStore access — runtime_config handles everything.
-    """
+    """Read LLM settings from runtime_config (cached, 120s TTL)."""
     from runtime_config import get_runtime_config
     cfg = get_runtime_config(session_key)
 
@@ -123,7 +151,7 @@ def _get_llm_config(session_key):
 
 def _call_llm(llm_cfg, system_prompt, user_message):
     # type: (dict, str, str) -> str
-    """Single HTTPS POST to the LLM endpoint. No Splunk queries executed."""
+    """Single HTTPS POST to the LLM endpoint."""
     try:
         from urllib.request import Request, urlopen
         from urllib.error import HTTPError, URLError
@@ -165,10 +193,7 @@ def _call_llm(llm_cfg, system_prompt, user_message):
 
 def _should_skip_scheduled(session_key, saved_search_name):
     # type: (str, str) -> bool
-    """Check if this scheduled search ran less than 10 min ago.
-    Uses Splunk REST API (HTTP) to read dispatch history — no KVStore.
-    Returns True if we should skip the LLM call.
-    """
+    """Check if this scheduled search ran less than 10 min ago."""
     if not saved_search_name or not session_key:
         return False
     try:
@@ -185,13 +210,9 @@ def _should_skip_scheduled(session_key, saved_search_name):
             owner="nobody",
         )
         ss = service.saved_searches[saved_search_name]
-        # history() returns Job objects (Entity subclass).
-        # Access fields via job["key"], NOT job.get() — Entity has
-        # no .get() method.
         jobs = ss.history()
         if len(jobs) < 2:
-            return False  # first or second run — always call LLM
-        # jobs[0] = current run, jobs[1] = previous run
+            return False
         prev = jobs[1]
         try:
             dispatch_time = prev["published"] or ""
@@ -199,7 +220,6 @@ def _should_skip_scheduled(session_key, saved_search_name):
             return False
         if not dispatch_time:
             return False
-        # Parse ISO time: "2026-05-05T14:30:00.000+00:00"
         clean = str(dispatch_time).split(".")[0].replace("T", " ")
         dt = datetime.datetime.strptime(clean, "%Y-%m-%d %H:%M:%S")
         age_secs = (datetime.datetime.utcnow() - dt).total_seconds()
@@ -242,6 +262,229 @@ def _format_table(rows):
     return header + "\n" + sep + "\n" + "\n".join(lines)
 
 
+# ── Extract Mode ─────────────────────────────────────────────────────────────
+
+
+def _clean_llm_response(raw):
+    # type: (str) -> str
+    """Strip markdown fences, quotes, and whitespace from LLM output."""
+    clean = raw.strip().strip('"').strip("'")
+    if clean.startswith("```"):
+        inner = clean[3:]
+        if inner.startswith("\n"):
+            inner = inner[1:]
+        elif "\n" in inner:
+            inner = inner.split("\n", 1)[1]
+        clean = inner.rsplit("```", 1)[0].strip()
+    return clean.strip("`")
+
+
+def _try_regex_extract(regex_str, rows, field_name):
+    # type: (str, list, str) -> tuple
+    """Apply a regex to all rows. Returns (val_to_extracted, match_rate)."""
+    clean = _clean_llm_response(regex_str)
+    try:
+        pattern = re.compile(clean)
+    except re.error:
+        return {}, 0.0
+
+    results = {}  # type: dict
+    matched = 0
+    total = 0
+    for row in rows:
+        val = str(row.get(field_name, ""))
+        if not val:
+            continue
+        if val in results:
+            matched += 1
+            total += 1
+            continue
+        total += 1
+        m = pattern.search(val)
+        if m:
+            try:
+                results[val] = m.group("result")
+                matched += 1
+            except IndexError:
+                if m.lastindex and m.lastindex >= 1:
+                    results[val] = m.group(1)
+                    matched += 1
+
+    rate = matched / total if total > 0 else 0.0
+    return results, rate
+
+
+def _try_dict_extract(dict_response, rows, field_name):
+    # type: (str, list, str) -> dict
+    """Parse a JSON dict response and map values. Returns val_to_extracted."""
+    clean = _clean_llm_response(dict_response)
+    try:
+        mapping = json.loads(clean)
+    except (json.JSONDecodeError, ValueError):
+        return {}
+    if not isinstance(mapping, dict):
+        return {}
+    results = {}
+    for row in rows:
+        val = str(row.get(field_name, ""))
+        if val in mapping:
+            results[val] = str(mapping[val])
+    return results
+
+
+def _parse_regex_response(raw):
+    # type: (str) -> tuple
+    """Parse LLM regex response. Returns (regex_str, suggested_field_name)."""
+    clean = _clean_llm_response(raw)
+    try:
+        obj = json.loads(clean)
+        if isinstance(obj, dict):
+            return (
+                str(obj.get("regex", "")),
+                str(obj.get("field_name", "")),
+            )
+    except (json.JSONDecodeError, ValueError):
+        pass
+    # Fallback: treat entire response as raw regex, no field name
+    return clean, ""
+
+
+def _parse_dict_response(raw):
+    # type: (str) -> tuple
+    """Parse LLM dict response. Returns (mapping_dict, suggested_field_name)."""
+    clean = _clean_llm_response(raw)
+    try:
+        obj = json.loads(clean)
+        if isinstance(obj, dict):
+            field_name = str(obj.get("field_name", ""))
+            mapping = obj.get("mapping", obj)
+            # If the response has "field_name" + "mapping", use mapping
+            # Otherwise the entire obj is the mapping (legacy format)
+            if "mapping" in obj and isinstance(mapping, dict):
+                return mapping, field_name
+            # Remove the field_name key from mapping if it leaked in
+            mapping_copy = dict(obj)
+            mapping_copy.pop("field_name", None)
+            return mapping_copy, field_name
+    except (json.JSONDecodeError, ValueError):
+        pass
+    return {}, ""
+
+
+def _run_extract(llm_cfg, collected, field_name, user_prompt, user_field_name):
+    # type: (dict, list, str, str, str) -> tuple
+    """Run extract mode: regex first, dict fallback.
+    LLM suggests a field name; user_field_name overrides if provided.
+    Returns (collected_with_new_field, source_str, ai_answer_str).
+    """
+    # Gather unique values of the source field
+    unique_vals = []
+    seen = set()  # type: set
+    for row in collected:
+        val = str(row.get(field_name, ""))
+        if val and val not in seen:
+            seen.add(val)
+            unique_vals.append(val)
+
+    if not unique_vals:
+        new_field = user_field_name or "extracted"
+        for row in collected:
+            row[new_field] = ""
+        return collected, "error", "No values found in field '{0}'".format(
+            field_name
+        )
+
+    # ── Step 1: Ask LLM for a regex + field name ─────────────────────
+    sample = unique_vals[:MAX_SAMPLE_FOR_REGEX]
+    regex_msg = (
+        "Field name: {field}\n"
+        "User request: {prompt}\n"
+        "Sample values:\n{values}"
+    ).format(
+        field=field_name,
+        prompt=user_prompt,
+        values="\n".join("- " + v for v in sample),
+    )
+
+    regex_response = ""
+    regex_str = ""
+    llm_field_name = ""
+    try:
+        regex_response = _call_llm(llm_cfg, EXTRACT_REGEX_PROMPT, regex_msg)
+        regex_str, llm_field_name = _parse_regex_response(regex_response)
+    except Exception:
+        pass
+
+    # Resolve field name: user override > LLM suggestion > "extracted"
+    new_field = user_field_name or llm_field_name or "extracted"
+    # Sanitize: only allow word chars and underscores
+    new_field = re.sub(r"[^\w]", "_", new_field).strip("_") or "extracted"
+
+    # ── Step 2: Try applying the regex ───────────────────────────────
+    results = {}  # type: dict
+    source = "regex"
+    match_rate = 0.0
+
+    if regex_str:
+        results, match_rate = _try_regex_extract(
+            regex_str, collected, field_name
+        )
+
+    # ── Step 3: Fall back to dict if regex failed ────────────────────
+    if match_rate < MIN_REGEX_MATCH_RATE:
+        dict_vals = unique_vals[:MAX_UNIQUE_FOR_DICT]
+        dict_msg = (
+            "Field name: {field}\n"
+            "User request: {prompt}\n"
+            "Values to extract from:\n{values}\n\n"
+            "Return a JSON object with field_name and mapping."
+        ).format(
+            field=field_name,
+            prompt=user_prompt,
+            values=json.dumps(dict_vals),
+        )
+        try:
+            dict_response = _call_llm(
+                llm_cfg, EXTRACT_DICT_PROMPT, dict_msg
+            )
+            mapping, dict_field_name = _parse_dict_response(dict_response)
+            dict_results = _try_dict_extract(
+                json.dumps(mapping), collected, field_name
+            )
+            if dict_results:
+                results = dict_results
+                source = "dict"
+                # Use dict field name if regex didn't provide one
+                if not user_field_name and dict_field_name and not llm_field_name:
+                    new_field = re.sub(r"[^\w]", "_", dict_field_name).strip("_") or "extracted"
+        except Exception:
+            pass
+
+    if not results:
+        source = "error"
+
+    # ── Step 4: Apply results to all rows ────────────────────────────
+    extracted_count = 0
+    for row in collected:
+        val = str(row.get(field_name, ""))
+        extracted = results.get(val, "")
+        row[new_field] = extracted
+        if extracted:
+            extracted_count += 1
+
+    answer = "Extracted '{new}' from '{src}' using {method} ({n}/{total} rows)".format(
+        new=new_field,
+        src=field_name,
+        method=source,
+        n=extracted_count,
+        total=len(collected),
+    )
+    if source == "regex" and regex_str:
+        answer += " | pattern: " + _clean_llm_response(regex_str)
+
+    return collected, source, answer
+
+
 # ── Command ──────────────────────────────────────────────────────────────────
 
 
@@ -252,7 +495,7 @@ class AiGuyCommand(StreamingCommand):
     ##Syntax
 
     .. code-block::
-        aiguy prompt=<string> [field=<string>] [value=<string>] [mode=<string>]
+        aiguy prompt=<string> [field=<string>] [value=<string>] [mode=<string>] [new_field_name=<string>]
 
     ##Description
 
@@ -261,23 +504,29 @@ class AiGuyCommand(StreamingCommand):
     every output row. The command is purely read-only — it never executes
     SPL or modifies any Splunk data.
 
+    **Extract mode** (mode="extract"): AI generates a regex to extract a
+    value from each row's field. Falls back to dict mapping if regex fails.
+    Adds a new field (new_field_name) with per-row extracted values.
+
     ##Options
 
     prompt
         Your question about the data (required unless mode is set).
     mode
-        Preset analysis: summary, anomaly, trend, compare, alert, health, top.
+        Preset analysis: summary, anomaly, trend, compare, alert, health, top, extract.
     field
-        Focus the AI on a specific field name.
+        Focus the AI on a specific field name. Required for extract mode.
     value
         Filter: only rows where ``field`` equals this value are sent to AI.
+    new_field_name
+        Name of the new field to create (extract mode only). Default: "extracted".
 
     ##Example
 
     .. code-block::
         index=main | stats count by host | aiguy prompt="which host is busiest?"
         index=main | stats count by status | aiguy mode="anomaly"
-        index=main | aiguy mode="alert" field="status" value="Error"
+        index=main | aiguy mode="extract" field="user" prompt="extract the domain from the email" new_field_name="domain"
     """
 
     prompt = Option(
@@ -285,64 +534,34 @@ class AiGuyCommand(StreamingCommand):
         require=False, default=None,
     )
     mode = Option(
-        doc="Preset: summary, anomaly, trend, compare, alert, health, top",
+        doc="Preset: summary, anomaly, trend, compare, alert, health, top, extract",
         require=False, default=None,
     )
     field = Option(
-        doc="Focus on a specific field name",
+        doc="Focus on a specific field name (required for extract mode)",
         require=False, default=None,
     )
     value = Option(
         doc="Filter rows where field equals this value",
         require=False, default=None,
     )
+    new_field_name = Option(
+        doc="Name of the new extracted field (extract mode). AI suggests one if omitted.",
+        require=False, default=None,
+    )
 
     def stream(self, records):
-        # ── 1. Resolve the effective prompt ──────────────────────────────
-        effective_prompt = self.prompt or ""
-        if self.mode:
-            mode_key = self.mode.strip().lower()
-            effective_prompt = MODE_PROMPTS.get(
-                mode_key,
-                "Analyze the data with focus on: " + self.mode,
-            )
-        if not effective_prompt:
-            effective_prompt = MODE_PROMPTS["summary"]
-
-        # ── 2. Collect all upstream rows ─────────────────────────────────
+        # ── 1. Collect all upstream rows ─────────────────────────────────
         collected = []
         for record in records:
             collected.append(dict(record))
         if not collected:
             return
 
-        # ── 3. Apply field/value focus filter ────────────────────────────
-        focus_note = ""
-        if self.field and self.value is not None:
-            f = self.field.strip()
-            v = self.value.strip()
-            filtered = [
-                r for r in collected
-                if str(r.get(f, "")).strip().lower() == v.lower()
-            ]
-            analysis_rows = filtered if filtered else collected
-            focus_note = (
-                "The user is focused on rows where {0}={1} "
-                "({2} of {3} rows match)."
-            ).format(f, v, len(filtered), len(collected))
-        elif self.field:
-            analysis_rows = collected
-            focus_note = (
-                "The user is specifically interested in the "
-                "'{0}' field."
-            ).format(self.field.strip())
-        else:
-            analysis_rows = collected
-
-        # ── 4. Read search metadata ─────────────────────────────────────
+        # ── 2. Read search metadata ─────────────────────────────────────
+        session_key = ""
         full_spl = ""
         sid = ""
-        session_key = ""
         try:
             full_spl = self._metadata.searchinfo.search or ""
             sid = self._metadata.searchinfo.sid or ""
@@ -350,14 +569,13 @@ class AiGuyCommand(StreamingCommand):
         except Exception:
             pass
 
-        # Extract saved search name from scheduler SID
         saved_search = ""
         if sid.startswith("scheduler__"):
             parts = sid.split("__")
             if len(parts) >= 2:
                 saved_search = parts[1]
 
-        # ── 5. Rate limit for scheduled searches (HTTP, no KVStore) ──────
+        # ── 3. Rate limit for scheduled searches ────────────────────────
         if saved_search:
             if _should_skip_scheduled(session_key, saved_search):
                 ts = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
@@ -371,7 +589,7 @@ class AiGuyCommand(StreamingCommand):
                     yield row
                 return
 
-        # ── 6. Get LLM config (from runtime_config, cached 120s) ────────
+        # ── 4. Get LLM config ───────────────────────────────────────────
         try:
             llm_cfg = _get_llm_config(session_key)
         except Exception as exc:
@@ -383,7 +601,77 @@ class AiGuyCommand(StreamingCommand):
                 yield row
             return
 
-        # ── 7. Build LLM prompt ──────────────────────────────────────────
+        # ── 5. Check for extract mode ───────────────────────────────────
+        mode_key = (self.mode or "").strip().lower()
+
+        if mode_key == "extract":
+            field_name = (self.field or "").strip()
+            if not field_name:
+                ts = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+                for row in collected:
+                    row["ai_answer"] = (
+                        "Extract mode requires field= parameter. "
+                        "Example: | aiguy mode=\"extract\" field=\"email\" "
+                        "prompt=\"extract the domain\" "
+                        "new_field_name=\"domain\""
+                    )
+                    row["aiguy_timestamp"] = ts
+                    row["aiguy_source"] = "error"
+                    yield row
+                return
+
+            user_prompt = self.prompt or "extract the value"
+            new_field = (self.new_field_name or "extracted").strip()
+
+            try:
+                collected, source, answer = _run_extract(
+                    llm_cfg, collected, field_name, user_prompt, new_field
+                )
+            except Exception as exc:
+                answer = "Extract error: {0}".format(str(exc))
+                source = "error"
+
+            ts = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+            for row in collected:
+                if source == "error":
+                    row["ai_answer"] = answer
+                row["aiguy_timestamp"] = ts
+                row["aiguy_source"] = source
+                yield row
+            return
+
+        # ── 6. Normal analysis mode ─────────────────────────────────────
+        effective_prompt = self.prompt or ""
+        if mode_key:
+            effective_prompt = MODE_PROMPTS.get(
+                mode_key,
+                "Analyze the data with focus on: " + self.mode,
+            )
+        if not effective_prompt:
+            effective_prompt = MODE_PROMPTS["summary"]
+
+        # Apply field/value focus filter
+        focus_note = ""
+        analysis_rows = collected
+        if self.field and self.value is not None:
+            f = self.field.strip()
+            v = self.value.strip()
+            filtered = [
+                r for r in collected
+                if str(r.get(f, "")).strip().lower() == v.lower()
+            ]
+            analysis_rows = filtered if filtered else collected
+            focus_note = (
+                "The user is focused on rows where {0}={1} "
+                "({2} of {3} rows match)."
+            ).format(f, v, len(filtered), len(collected))
+        elif self.field:
+            focus_note = (
+                "The user is specifically interested in the "
+                "'{0}' field."
+            ).format(self.field.strip())
+
+        # Build LLM prompt
         table = _format_table(analysis_rows)
         total = len(analysis_rows)
         shown = min(total, MAX_ROWS_FOR_AI)
@@ -407,7 +695,7 @@ class AiGuyCommand(StreamingCommand):
             )
         user_msg = "\n\n".join(msg_parts)
 
-        # ── 8. Call LLM ──────────────────────────────────────────────────
+        # Call LLM
         try:
             answer = _call_llm(llm_cfg, SYSTEM_PROMPT, user_msg)
             source = "live"
@@ -415,7 +703,7 @@ class AiGuyCommand(StreamingCommand):
             answer = "AI error: {0}".format(str(exc))
             source = "error"
 
-        # ── 9. Yield ALL original rows with AI fields ────────────────────
+        # Yield all rows with AI fields
         ts = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         for row in collected:
             row["ai_answer"] = answer
