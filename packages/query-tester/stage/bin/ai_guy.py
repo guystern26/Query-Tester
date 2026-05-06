@@ -79,8 +79,9 @@ EXTRACT_REGEX_PROMPT = (
     "You are a regex generator for Splunk field extraction. "
     "Given sample values from a data field and a user description of what "
     "to extract, return ONLY a JSON object with two keys:\n"
-    '- "regex": a Python-compatible regular expression with a single '
-    "named capture group (?P<result>...)\n"
+    '- "regex": a Python 3.7-compatible regular expression with a single '
+    "named capture group (?P<result>...). Do NOT use possessive quantifiers "
+    "(++, *+) or atomic groups — they require Python 3.11+.\n"
     '- "field_name": a short, snake_case field name for the extracted value '
     "(inferred from the user's description)\n\n"
     "No explanation, no markdown. ONLY valid JSON on a single line.\n"
