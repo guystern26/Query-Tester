@@ -456,7 +456,107 @@
   </row>
 
   <!-- ╔═══════════════════════════════════════════════════════════════════════╗ -->
-  <!-- ║  SECTION 5: PIPELINE                                                 ║ -->
+  <!-- ║  SECTION 5: AI GUY                                                    ║ -->
+  <!-- ╚═══════════════════════════════════════════════════════════════════════╝ -->
+
+  <row><panel><html><h2 style="color:#a78bfa;margin:0;padding:4px 0">AI Guy (| aiguy)</h2></html></panel></row>
+
+  <row>
+    <panel>
+      <title>Total Calls</title>
+      <single>
+        <search>
+          <query>index=_internal sourcetype=splunkd "aiguy" "mode=" earliest=$time_range.earliest$ latest=$time_range.latest$
+| stats count</query>
+        </search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Avg Duration (s)</title>
+      <single>
+        <search>
+          <query>index=_internal sourcetype=splunkd "aiguy" "mode=" "duration=" earliest=$time_range.earliest$ latest=$time_range.latest$
+| rex "duration=(?&lt;d&gt;\d+)ms"
+| stats avg(d) as a
+| eval a=round(a/1000,1)</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="unit">s</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Error Rate</title>
+      <single>
+        <search>
+          <query>index=_internal sourcetype=splunkd "aiguy" "mode=" earliest=$time_range.earliest$ latest=$time_range.latest$
+| rex "source=(?&lt;src&gt;\S+)"
+| eval is_err=if(src="error" OR src="config-error",1,0)
+| stats sum(is_err) as errors count as total
+| eval rate=if(total>0, round(errors/total*100,1), 0)</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="unit">%</option>
+        <option name="colorBy">value</option>
+        <option name="useColors">1</option>
+        <option name="rangeColors">["0x65a637","0xf58f39","0xd93f3c"]</option>
+        <option name="rangeValues">[5,20]</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Calls by Mode</title>
+      <chart>
+        <search>
+          <query>index=_internal sourcetype=splunkd "aiguy" "mode=" earliest=$time_range.earliest$ latest=$time_range.latest$
+| rex "mode=(?&lt;m&gt;\S+)"
+| stats count by m
+| sort - count
+| rename m as "Mode"</query>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="charting.drilldown">none</option>
+      </chart>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Calls by Source (regex / dict / live / error)</title>
+      <chart>
+        <search>
+          <query>index=_internal sourcetype=splunkd "aiguy" "mode=" "source=" earliest=$time_range.earliest$ latest=$time_range.latest$
+| rex "source=(?&lt;src&gt;\S+)"
+| stats count by src
+| sort - count
+| rename src as "Source"</query>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="charting.fieldColors">{"live":"#65a637","regex":"#60a5fa","dict":"#a78bfa","error":"#d93f3c","rate-limited":"#f58f39","config-error":"#f8be34"}</option>
+        <option name="charting.drilldown">none</option>
+      </chart>
+    </panel>
+    <panel>
+      <title>Recent Calls</title>
+      <table>
+        <search>
+          <query>index=_internal sourcetype=splunkd "aiguy" "mode=" earliest=$time_range.earliest$ latest=$time_range.latest$
+| rex "mode=(?&lt;m&gt;\S+)\s+field=(?&lt;f&gt;\S+)\s+source=(?&lt;src&gt;\S+)\s+rows=(?&lt;r&gt;\d+)\s+duration=(?&lt;d&gt;\d+)ms\s+prompt=(?&lt;p&gt;.+)"
+| eval dur=round(d/1000,1)." s"
+| eval p=if(len(p)>60, substr(p,1,60)."...", p)
+| sort - _time
+| head 20
+| eval ts=strftime(_time,"%m/%d %H:%M:%S")
+| table ts m f p src r dur
+| rename ts as "Time", m as "Mode", f as "Field", p as "Prompt", src as "Source", r as "Rows", dur as "Duration"</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="count">10</option>
+      </table>
+    </panel>
+  </row>
+
+  <!-- ╔═══════════════════════════════════════════════════════════════════════╗ -->
+  <!-- ║  SECTION 6: PIPELINE                                                 ║ -->
   <!-- ╚═══════════════════════════════════════════════════════════════════════╝ -->
 
   <row><panel><html><h2 style="color:#93C5FD;margin:0;padding:4px 0">Pipeline</h2></html></panel></row>
