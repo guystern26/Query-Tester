@@ -9,7 +9,7 @@ from .constants import (
     MAX_UNIQUE_FOR_DICT,
     MIN_REGEX_MATCH_RATE,
 )
-from .formatter import clean_llm_response
+from .formatter import clean_llm_response, trim_values_to_budget
 from .llm import call_llm
 from .prompts import EXTRACT_DICT_PROMPT, EXTRACT_REGEX_PROMPT
 
@@ -129,7 +129,7 @@ def run_extract(llm_cfg, collected, field_name, user_prompt, user_field_name):
     regex_str = ""
 
     if not use_dict_direct:
-        sample = unique_vals[:MAX_SAMPLE_FOR_REGEX]
+        sample = trim_values_to_budget(unique_vals[:MAX_SAMPLE_FOR_REGEX])
         regex_msg = (
             "Field name: {field}\n"
             "User request: {prompt}\n"
@@ -155,15 +155,16 @@ def run_extract(llm_cfg, collected, field_name, user_prompt, user_field_name):
     new_field = re.sub(r"[^\w]", "_", new_field).strip("_") or "extracted"
 
     if use_dict_direct or match_rate < MIN_REGEX_MATCH_RATE:
-        dict_vals = unique_vals[:MAX_UNIQUE_FOR_DICT]
+        dict_vals = trim_values_to_budget(unique_vals[:MAX_UNIQUE_FOR_DICT])
         dict_msg = (
             "Field name: {field}\n"
             "User request: {prompt}\n"
-            "Values to extract from:\n{values}\n\n"
+            "Values to extract from ({count}):\n{values}\n\n"
             "Return a JSON object with field_name and mapping."
         ).format(
             field=field_name,
             prompt=user_prompt,
+            count=len(dict_vals),
             values=json.dumps(dict_vals),
         )
         try:

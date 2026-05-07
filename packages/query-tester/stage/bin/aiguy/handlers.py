@@ -5,6 +5,8 @@ import re
 import time
 
 from .constants import (
+    ENRICH_BATCH_CHARS,
+    MAX_RESPONSE_TOKENS_ENRICH,
     MAX_ROWS_FOR_AI,
     MAX_SCAN_FOR_SAMPLE,
     MAX_UNIQUE_FOR_DICT,
@@ -16,9 +18,30 @@ from .prompts import (
     ENRICH_PROMPT,
     MODE_PROMPTS,
 )
+from . import llm as llm_mod
 from .llm import call_llm, log_usage
-from .formatter import format_table
+from .formatter import format_table, trim_values_to_budget
 from .extract import run_extract, parse_dict_response
+from .cache import load_cache, save_cache, split_cached
+
+
+def _batch_values(values, char_budget):
+    # type: (list, int) -> list
+    """Split values into batches that each fit within char_budget."""
+    batches = []
+    current = []
+    used = 2  # JSON brackets []
+    for val in values:
+        entry_len = len(val) + 4  # quotes + comma + space
+        if current and used + entry_len > char_budget:
+            batches.append(current)
+            current = []
+            used = 2
+        current.append(val)
+        used += entry_len
+    if current:
+        batches.append(current)
+    return batches or [[]]
 
 
 def _error_row(record, msg, ts):
@@ -131,35 +154,64 @@ def handle_enrich(records, llm_cfg, field_name, user_prompt,
         log_usage("enrich", field_name, user_prompt, "error", 1, t_start)
         return
 
-    enrich_msg = (
-        "Field name: {field}\n"
-        "User request: {prompt}\n"
-        "Values to classify:\n{values}"
-    ).format(
-        field=field_name,
-        prompt=user_prompt or "classify each value",
-        values=json.dumps(unique_vals),
-    )
+    # Load cache — only send NEW values to LLM
+    prompt_key = user_prompt or "classify each value"
+    cached = load_cache("enrich", field_name, prompt_key)
+    cached_hits, uncached = split_cached(unique_vals, cached)
 
-    mapping = {}  # type: dict
+    mapping = dict(cached_hits)  # start with cached answers
     llm_field_name = ""
-    source = "dict"
-    try:
-        response = call_llm(llm_cfg, ENRICH_PROMPT, enrich_msg)
-        mapping, llm_field_name = parse_dict_response(response)
-    except Exception:
-        source = "error"
+    source = "cached" if not uncached else "dict"
+    cache_info = "{0} cached, {1} new".format(len(cached_hits), len(uncached))
+
+    # Only call LLM for uncached values (in numbered batches)
+    if uncached:
+        enrich_cfg = dict(llm_cfg)
+        enrich_cfg["max_tokens"] = MAX_RESPONSE_TOKENS_ENRICH
+        batches = _batch_values(uncached, ENRICH_BATCH_CHARS)
+
+        for batch in batches:
+            # Send as numbered list so LLM returns numbered keys
+            numbered = "\n".join(
+                "{0}: {1}".format(i + 1, v) for i, v in enumerate(batch)
+            )
+            enrich_msg = (
+                "Field name: {field}\n"
+                "User request: {prompt}\n"
+                "Values ({count}):\n{numbered}"
+            ).format(
+                field=field_name,
+                prompt=prompt_key,
+                count=len(batch),
+                numbered=numbered,
+            )
+            try:
+                response = call_llm(enrich_cfg, ENRICH_PROMPT, enrich_msg)
+                idx_mapping, batch_field = parse_dict_response(response)
+                # Map numbered keys back to actual values
+                for i, val in enumerate(batch):
+                    key = str(i + 1)
+                    if key in idx_mapping:
+                        mapping[val] = str(idx_mapping[key])
+                if not llm_field_name and batch_field:
+                    llm_field_name = batch_field
+            except Exception:
+                source = "error"
+
+        # Save merged cache (old + new)
+        save_cache("enrich", field_name, prompt_key, mapping)
 
     new_field = new_field_name or llm_field_name or "label"
     new_field = re.sub(r"[^\w]", "_", new_field).strip("_") or "label"
 
     ts = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+    source_info = "{0} ({1})".format(source, cache_info)
     row_count = len(scanned)
     for row in scanned:
         val = str(row.get(field_name, ""))
         row[new_field] = str(mapping.get(val, ""))
         row["aiguy_timestamp"] = ts
-        row["aiguy_source"] = source
+        row["aiguy_source"] = source_info
         yield row
 
     for record in records:
@@ -167,7 +219,7 @@ def handle_enrich(records, llm_cfg, field_name, user_prompt,
         val = str(row.get(field_name, ""))
         row[new_field] = str(mapping.get(val, ""))
         row["aiguy_timestamp"] = ts
-        row["aiguy_source"] = source
+        row["aiguy_source"] = source_info
         row_count += 1
         yield row
 
@@ -269,7 +321,7 @@ def handle_analysis(records, llm_cfg, full_spl, mode_key,
             else:
                 key = "|".join(
                     str(row.get(k, "")) for k in row
-                    if not k.startswith("_") or k == "_time"
+                    if not k.startswith("_") or k in ("_time", "_raw")
                 )
             if key not in seen_keys:
                 seen_keys.add(key)
@@ -315,8 +367,9 @@ def handle_analysis(records, llm_cfg, full_spl, mode_key,
 
     ts = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
     row_count = len(scanned)
-    source_info = "{0} ({1} unique of {2} scanned)".format(
-        source, len(sample), row_count)
+    source_info = "{0} ({1} unique of {2} scanned, {3}ms llm, {4} chars sent)".format(
+        source, len(sample), row_count,
+        llm_mod.last_call_ms, llm_mod.last_prompt_chars)
     for idx, row in enumerate(sample):
         if idx == 0:
             row["ai_answer"] = answer

@@ -41,17 +41,17 @@ SUGGEST_PROMPT = (
 
 ENRICH_PROMPT = (
     "You are a data enrichment engine for Splunk. "
-    "Given a list of field values and a user description of how to classify them, "
-    "return ONLY a JSON object with two keys:\n"
-    '"field_name": a short, snake_case field name for the label '
+    "You receive numbered values from a field and a user instruction.\n"
+    "Return ONLY a JSON object with two keys:\n"
+    '- "field_name": a short, snake_case field name for the result '
     "(inferred from the user's description)\n"
-    '"mapping": an object mapping each input value to its classification/label.\n\n'
+    '- "mapping": an object mapping each NUMBER (as string) to your answer.\n\n'
     "Rules:\n"
-    "- Every input value MUST appear in the mapping.\n"
-    "- Labels should be short (1-3 words).\n"
-    "- Be consistent — similar values get the same label.\n"
+    "- Use the NUMBER as the key, NOT the value text.\n"
+    "- Every number MUST appear in the mapping.\n"
     "- No explanation, no markdown fences. ONLY valid JSON.\n"
-    'Example: {"field_name": "severity", "mapping": {"404": "client_error", "500": "server_error", "200": "success"}}'
+    'Example input: "1: 404\\n2: 500\\n3: 200"\n'
+    'Example output: {"field_name": "severity", "mapping": {"1": "client_error", "2": "server_error", "3": "success"}}'
 )
 
 EXTRACT_REGEX_PROMPT = (

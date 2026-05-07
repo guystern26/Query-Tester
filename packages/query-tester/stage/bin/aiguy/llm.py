@@ -33,14 +33,23 @@ def get_llm_config(_session_key):
     }
 
 
+try:
+    from urllib.request import Request, urlopen
+    from urllib.error import HTTPError, URLError
+except ImportError:
+    from urllib2 import Request, urlopen, HTTPError, URLError
+
+_SSL_CTX = ssl._create_unverified_context()
+
+# Track timing of last LLM call for diagnostics
+last_call_ms = 0
+last_prompt_chars = 0
+
+
 def call_llm(llm_cfg, system_prompt, user_message):
     # type: (dict, str, str) -> str
     """Single HTTPS POST to the LLM endpoint."""
-    try:
-        from urllib.request import Request, urlopen
-        from urllib.error import HTTPError, URLError
-    except ImportError:
-        from urllib2 import Request, urlopen, HTTPError, URLError
+    global last_call_ms, last_prompt_chars
 
     body = json.dumps({
         "model": llm_cfg["model"],
@@ -51,19 +60,27 @@ def call_llm(llm_cfg, system_prompt, user_message):
         ],
     }).encode("utf-8")
 
+    last_prompt_chars = len(system_prompt) + len(user_message)
+
     req = Request(llm_cfg["endpoint"], data=body, method="POST")
     req.add_header("Content-Type", "application/json")
     req.add_header("Authorization", "Bearer " + llm_cfg["api_key"])
 
-    ctx = ssl._create_unverified_context()
+    t0 = time.time()
     try:
-        resp = urlopen(req, timeout=LLM_TIMEOUT_SECS, context=ctx)
+        resp = urlopen(req, timeout=LLM_TIMEOUT_SECS, context=_SSL_CTX)
         data = json.loads(resp.read().decode("utf-8"))
     except HTTPError as exc:
         err = exc.read().decode("utf-8", errors="replace")[:200]
         raise ValueError("LLM HTTP {0}: {1}".format(exc.code, err))
     except URLError as exc:
         raise ValueError("Cannot reach LLM: {0}".format(exc.reason))
+    last_call_ms = int((time.time() - t0) * 1000)
+
+    _logger.info(
+        "aiguy llm_call prompt_chars=%d response_ms=%d",
+        last_prompt_chars, last_call_ms,
+    )
 
     choice = (data.get("choices") or [{}])[0]
     content = (choice.get("message") or {}).get("content", "")
