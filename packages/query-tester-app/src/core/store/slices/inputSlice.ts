@@ -164,15 +164,18 @@ export function inputSlice(set: SetState) {
         if (input.events.length === 0) {
           input.events = [{ id: genId(), fieldValues: [] }];
         }
-        // Auto-populate fields when source has 5+ extracted fields
-        if (source.fields.length >= 5) {
-          const existing = new Set(
-            input.events[0]?.fieldValues.map((fv) => fv.field) ?? []
-          );
-          const newFields = source.fields.filter((f) => !existing.has(f));
+        // Auto-populate fields when source has extracted fields
+        if (source.fields.length > 0) {
           for (const evt of input.events) {
-            for (const f of newFields) {
-              evt.fieldValues.push({ id: genId(), field: f, value: '' });
+            // Remove empty placeholder rows first
+            evt.fieldValues = evt.fieldValues.filter(
+              (fv) => fv.field.trim() !== '' || fv.value.trim() !== ''
+            );
+            const existing = new Set(evt.fieldValues.map((fv) => fv.field));
+            for (const f of source.fields) {
+              if (!existing.has(f)) {
+                evt.fieldValues.push({ id: genId(), field: f, value: '' });
+              }
             }
           }
         }
@@ -183,14 +186,42 @@ export function inputSlice(set: SetState) {
         const scenario = findScenario(findTest(draft.tests, testId), scenarioId);
         if (!scenario) return;
 
-        // Prevent duplicate row identifiers in the same scenario
         const riLower = rowIdentifier.trim().toLowerCase();
-        const alreadyExists = scenario.inputs.some(
+
+        // Exact duplicate — skip
+        const exactMatch = scenario.inputs.some(
           (inp) => inp.rowIdentifier.trim().toLowerCase() === riLower
         );
-        if (alreadyExists) return;
+        if (exactMatch) return;
 
-        // Find an existing empty input to fill instead of creating a new one
+        // Fuller version replaces shorter: if new RI contains an existing
+        // RI (same base search, more filters), upgrade in place
+        const shorterInput = scenario.inputs.find((inp) => {
+          const existing = inp.rowIdentifier.trim().toLowerCase();
+          return existing && riLower.includes(existing);
+        });
+        if (shorterInput) {
+            shorterInput.rowIdentifier = rowIdentifier;
+            // Merge new fields into existing
+            if (fields.length > 0) {
+                if (shorterInput.events.length === 0) {
+                    shorterInput.events = [{ id: genId(), fieldValues: [] }];
+                }
+                const existing = new Set(
+                    shorterInput.events[0].fieldValues.map((fv) => fv.field)
+                );
+                for (const evt of shorterInput.events) {
+                    for (const f of fields) {
+                        if (!existing.has(f)) {
+                            evt.fieldValues.push({ id: genId(), field: f, value: '' });
+                        }
+                    }
+                }
+            }
+            return;
+        }
+
+        // Find an existing empty input to fill
         const emptyInput = scenario.inputs.find((inp) => {
             if (inp.rowIdentifier.trim() !== '') return false;
             if (inp.events.length > 1) return false;
@@ -221,7 +252,6 @@ export function inputSlice(set: SetState) {
         const newInput = createDefaultInput();
         newInput.rowIdentifier = rowIdentifier;
         newInput.inputMode = 'fields';
-        // Pre-populate first event with field names from extraction
         if (fields.length > 0 && newInput.events.length > 0) {
             newInput.events[0].fieldValues = fields.map((f) => ({
                 id: genId(), field: f, value: '',
@@ -238,10 +268,13 @@ export function inputSlice(set: SetState) {
         if (!input || input.events.length === 0) return;
         // Cache sample values for later field picks
         input.sampleValues = { ...(input.sampleValues || {}), ...sampleRow };
-        for (const fv of input.events[0].fieldValues) {
-          const val = sampleRow[fv.field];
-          if (val !== undefined && val !== null && fv.value === '') {
-            fv.value = String(val);
+        // Fill empty values in ALL events
+        for (const evt of input.events) {
+          for (const fv of evt.fieldValues) {
+            const val = sampleRow[fv.field];
+            if (val !== undefined && val !== null && fv.value === '') {
+              fv.value = String(val);
+            }
           }
         }
       }),

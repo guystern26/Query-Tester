@@ -70,6 +70,8 @@ export interface TestInput {
   queryDataConfig: QueryDataConfig;
   /** Cached sample values from Splunk/LLM, keyed by field name. */
   sampleValues?: Record<string, string>;
+  /** True while sample values are being fetched. */
+  sampleValuesLoading?: boolean;
 }
 
 // ─── Scenario (4.3) ────────────────────────────────────────────────────────

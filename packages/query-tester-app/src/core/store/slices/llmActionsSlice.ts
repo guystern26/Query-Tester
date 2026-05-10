@@ -155,38 +155,50 @@ export function llmActionsSlice(_set: SetState, get: GetState) {
                 applyFieldSampleValues: (t: EntityId, s: EntityId, i: EntityId, row: Record<string, string>) => void;
             };
 
-            // Step 1: Try to get real data from Splunk
-            const matched: Record<string, string> = {};
-            for (const tr of ranges) {
-                try {
-                    const resp = await runIdeQuery(app, spl, tr);
-                    if (resp.resultRows && resp.resultRows.length > 0) {
-                        const row = resp.resultRows[0];
-                        for (const f of fields) {
-                            if (row[f] !== undefined && row[f] !== '') matched[f] = String(row[f]);
+            // Set loading flag
+            const setLoading = (v: boolean) => _set((draft) => {
+                const t = draft.tests.find((x) => x.id === testId);
+                const s = t?.scenarios.find((x) => x.id === scenarioId);
+                const inp = s?.inputs.find((x) => x.id === inputId);
+                if (inp) inp.sampleValuesLoading = v;
+            });
+            setLoading(true);
+
+            try {
+                // Step 1: Try to get real data from Splunk
+                const matched: Record<string, string> = {};
+                for (const tr of ranges) {
+                    try {
+                        const resp = await runIdeQuery(app, spl, tr);
+                        if (resp.resultRows && resp.resultRows.length > 0) {
+                            const row = resp.resultRows[0];
+                            for (const f of fields) {
+                                if (row[f] !== undefined && row[f] !== '') matched[f] = String(row[f]);
+                            }
+                            break;
                         }
-                        break; // Got data — stop trying wider ranges
-                    }
-                } catch { /* try next range */ }
-            }
+                    } catch { /* try next range */ }
+                }
 
-            // Apply whatever we found from Splunk
-            if (Object.keys(matched).length > 0) {
-                store.applyFieldSampleValues(testId, scenarioId, inputId, matched);
-            }
+                if (Object.keys(matched).length > 0) {
+                    store.applyFieldSampleValues(testId, scenarioId, inputId, matched);
+                }
 
-            // Step 2: For fields still empty, ask LLM for suggestions
-            const missing = fields.filter((f) => !matched[f]);
-            if (missing.length > 0) {
-                try {
-                    const raw = await callLLM(
-                        'Given these Splunk field names, suggest one realistic example value for each. Return ONLY a JSON object mapping field name to example value. No explanation.',
-                        'Fields: ' + missing.join(', ') + '\nQuery context: ' + rowIdentifier,
-                    );
-                    const cleaned = raw.replace(/```json\s*/g, '').replace(/```/g, '').trim();
-                    const parsed = JSON.parse(cleaned) as Record<string, string>;
-                    store.applyFieldSampleValues(testId, scenarioId, inputId, parsed);
-                } catch { /* leave empty */ }
+                // Step 2: For fields still empty, ask LLM for suggestions
+                const missing = fields.filter((f) => !matched[f]);
+                if (missing.length > 0) {
+                    try {
+                        const raw = await callLLM(
+                            'Given these Splunk field names, suggest one realistic example value for each. Return ONLY a JSON object mapping field name to example value. No explanation.',
+                            'Fields: ' + missing.join(', ') + '\nQuery context: ' + rowIdentifier,
+                        );
+                        const cleaned = raw.replace(/```json\s*/g, '').replace(/```/g, '').trim();
+                        const parsed = JSON.parse(cleaned) as Record<string, string>;
+                        store.applyFieldSampleValues(testId, scenarioId, inputId, parsed);
+                    } catch { /* leave empty */ }
+                }
+            } finally {
+                setLoading(false);
             }
         },
     };

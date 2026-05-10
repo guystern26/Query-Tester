@@ -11,6 +11,7 @@ export interface FieldValueEditorProps {
     events: InputEvent[];
     rowIdentifier: string;
     sampleValues?: Record<string, string>;
+    loading?: boolean;
 }
 
 const PlusIcon = () => (
@@ -50,6 +51,7 @@ export function FieldValueEditor({
     events,
     rowIdentifier,
     sampleValues,
+    loading,
 }: FieldValueEditorProps): React.ReactElement {
     const addEvent = useTestStore((s) => s.addEvent);
     const deleteEvent = useTestStore((s) => s.deleteEvent);
@@ -120,6 +122,19 @@ export function FieldValueEditor({
 
     return (
         <div>
+            {loading && (
+                <div style={{ marginBottom: 6 }}>
+                    <div style={{ width: '100%', height: 3, borderRadius: 2, background: '#1e293b', overflow: 'hidden' }}>
+                        <div style={{
+                            height: '100%', width: '30%', borderRadius: 2,
+                            background: 'linear-gradient(90deg, #3b82f6, #93c5fd)',
+                            animation: 'aiguy-loading 1.2s ease-in-out infinite',
+                        }} />
+                        <style dangerouslySetInnerHTML={{ __html: '@keyframes aiguy-loading { 0% { margin-left: -30%; } 100% { margin-left: 100%; } }' }} />
+                    </div>
+                    <span style={{ fontSize: 11, color: '#64748b', marginTop: 3, display: 'block' }}>Extracting default values...</span>
+                </div>
+            )}
             <div
                 ref={scrollRef}
                 onWheel={handleWheel}
