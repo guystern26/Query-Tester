@@ -118,11 +118,19 @@ export function llmActionsSlice(_set: SetState, get: GetState) {
             );
             const newFields = fields.filter((f) => !existingFields.has(f));
 
-            // Store suggested fields for the dropdown — don't auto-create groups
+            // Store suggested fields for the dropdown
             const store = get() as ReturnType<typeof get> & {
                 setSuggestedValidationFields: (id: EntityId, flds: string[]) => void;
+                addFieldGroup: (id: EntityId, initial?: { field?: string }) => void;
             };
             store.setSuggestedValidationFields(testId, fields);
+
+            // Auto-create field groups when 5+ new fields detected
+            if (newFields.length >= 5) {
+                for (const f of newFields) {
+                    store.addFieldGroup(testId, { field: f });
+                }
+            }
 
             return { fields, newCount: newFields.length };
         },

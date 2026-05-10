@@ -51,6 +51,53 @@ AI_SUMMARY_PROMPT = (
 
 MAX_RESULTS_FOR_EMAIL = 50  # max rows in the email table
 MAX_RESULTS_FOR_AI = 20     # max rows sent to LLM
+MIN_CRON_INTERVAL_SECS = 600  # 10 min — reject faster schedules
+
+_LAST_RUN_FILE = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    ".aiguy_cache", "ai_summary_last_run.json",
+)
+
+
+def _check_rate_limit(search_name):
+    # type: (str) -> Optional[str]
+    """Return an error message if this search fired too recently, else None."""
+    try:
+        if os.path.exists(_LAST_RUN_FILE):
+            with open(_LAST_RUN_FILE, "r") as f:
+                last_runs = json.load(f)
+        else:
+            last_runs = {}
+        last_ts = last_runs.get(search_name, 0)
+        elapsed = time.time() - last_ts
+        if elapsed < MIN_CRON_INTERVAL_SECS:
+            remaining = int(MIN_CRON_INTERVAL_SECS - elapsed)
+            return (
+                "AI Summary skipped: search '{0}' fired {1}s ago "
+                "(minimum interval is {2}s). "
+                "Set your cron schedule to 10 minutes or more."
+            ).format(search_name, int(elapsed), MIN_CRON_INTERVAL_SECS)
+    except Exception:
+        pass
+    return None
+
+
+def _record_run(search_name):
+    # type: (str) -> None
+    """Record that this search just ran."""
+    try:
+        cache_dir = os.path.dirname(_LAST_RUN_FILE)
+        if not os.path.isdir(cache_dir):
+            os.makedirs(cache_dir)
+        last_runs = {}
+        if os.path.exists(_LAST_RUN_FILE):
+            with open(_LAST_RUN_FILE, "r") as f:
+                last_runs = json.load(f)
+        last_runs[search_name] = time.time()
+        with open(_LAST_RUN_FILE, "w") as f:
+            json.dump(last_runs, f)
+    except Exception:
+        pass
 
 
 def _read_payload():
@@ -200,6 +247,13 @@ def run():
     session_key = payload.get("session_key", "")
     recipients_raw = config.get("recipients", "")
     custom_prompt = config.get("prompt", "")
+
+    # Rate limit: reject searches that fire more often than every 10 min
+    rate_err = _check_rate_limit(search_name)
+    if rate_err:
+        logger.error(rate_err)
+        return 1
+    _record_run(search_name)
 
     # Parse recipients
     recipients = [

@@ -22,58 +22,88 @@ def clean_llm_response(raw):
     return clean.strip("`")
 
 
-def _estimate_unique_count(rows, keys, focus_field):
-    # type: (list, list, str) -> int
-    """Quick count of unique rows (capped at MAX_ROWS_FOR_AI)."""
-    seen = set()  # type: set
-    for row in rows:
-        if focus_field:
-            key = str(row.get(focus_field, ""))
+def _pick_columns(rows, focus_field):
+    # type: (list, str) -> tuple
+    """Pick columns: drop constants, drop _raw when many rows.
+    Returns (keys, constants_note).
+    """
+    _KEEP = {"_time", "_raw"}
+    all_keys = [
+        k for k in rows[0].keys()
+        if not k.startswith("_") or k in _KEEP
+    ]
+    if not all_keys:
+        all_keys = list(rows[0].keys())
+
+    # Detect constant columns (same value in every row)
+    constants = {}  # type: dict
+    varying = []
+    sample = rows[:50]  # check first 50 for constants
+    for k in all_keys:
+        vals = set(str(r.get(k, "")) for r in sample)
+        if len(vals) == 1 and len(sample) > 1:
+            constants[k] = vals.pop()
         else:
-            key = "|".join(str(row.get(k, "")) for k in keys)
-        seen.add(key)
-        if len(seen) >= MAX_ROWS_FOR_AI:
-            break
-    return len(seen)
+            varying.append(k)
+
+    # Drop _raw when many unique rows (it's huge and repetitive)
+    unique_est = len(set(
+        str(r.get(focus_field or varying[0] if varying else "", ""))
+        for r in sample
+    ))
+    if unique_est > 5 and "_raw" in varying:
+        varying.remove("_raw")
+
+    keys = varying[:MAX_COLS_FOR_AI]
+    # Build a note about constant columns
+    note = ""
+    if constants:
+        parts = ["{0}={1}".format(k, v[:60]) for k, v in constants.items()]
+        note = "All rows share: " + ", ".join(parts[:5])
+
+    return keys, note
 
 
 def format_table(rows, focus_field=None, char_budget=0):
     # type: (list, str, int) -> str
-    """Format rows as a compact markdown table for the LLM prompt.
+    """Format rows as a compact table for the LLM.
 
-    Deduplicates by focus_field (or all visible columns), then adds
-    rows until the char budget is reached.
-    Cell length is dynamic: fewer rows = more chars per cell.
+    - Drops constant-value columns (noted once above table)
+    - Drops _raw when many rows
+    - Deduplicates rows
+    - Respects char budget
+    - Dynamic cell length based on row count
     """
     if not rows:
         return "(no data)"
     budget = char_budget or MAX_PROMPT_CHARS
 
-    # Pick visible columns
-    _KEEP = {"_time", "_raw"}
-    keys = [
-        k for k in rows[0].keys()
-        if not k.startswith("_") or k in _KEEP
-    ]
+    keys, constants_note = _pick_columns(rows, focus_field)
     if not keys:
         keys = list(rows[0].keys())[:MAX_COLS_FOR_AI]
-    keys = keys[:MAX_COLS_FOR_AI]
 
     # Dynamic cell length: fewer unique rows = more room per cell
-    unique_est = _estimate_unique_count(rows, keys, focus_field)
+    unique_est = len(set(
+        str(r.get(focus_field or keys[0], "")) for r in rows[:50]
+    ))
     if unique_est <= 3:
-        cell_limit = 2000  # full tracebacks, long messages
+        cell_limit = 2000
     elif unique_est <= 10:
-        cell_limit = 500   # decent context per cell
+        cell_limit = 500
     else:
-        cell_limit = MAX_CELL_LEN  # 80 — keep it compact
+        cell_limit = MAX_CELL_LEN
+
+    # Build table
+    parts = []
+    if constants_note:
+        parts.append(constants_note)
 
     header = "| " + " | ".join(keys) + " |"
     sep = "| " + " | ".join("---" for _ in keys) + " |"
-    used = len(header) + len(sep) + 2
+    parts.append(header)
+    parts.append(sep)
+    used = sum(len(p) for p in parts) + len(parts)
 
-    # Dedup + budget-aware row selection
-    lines = []
     seen = set()  # type: set
     for row in rows:
         if focus_field:
@@ -94,12 +124,12 @@ def format_table(rows, focus_field=None, char_budget=0):
 
         if used + len(line) + 1 > budget:
             break
-        lines.append(line)
+        parts.append(line)
         used += len(line) + 1
-        if len(lines) >= MAX_ROWS_FOR_AI:
+        if len(seen) >= MAX_ROWS_FOR_AI:
             break
 
-    return header + "\n" + sep + "\n" + "\n".join(lines)
+    return "\n".join(parts)
 
 
 def trim_values_to_budget(values, budget=0):

@@ -9,106 +9,51 @@
  * Extract data sources + original input fields from SPL.
  * Used by the "Extract Fields" button.
  */
-export const EXTRACT_DATA_SOURCES_PROMPT = `You are an expert Splunk SPL query analyzer. Your sole purpose is to parse SPL queries, identify every data source, and extract the original fields consumed from each source. You return ONLY valid JSON — no prose, no markdown, no commentary.
+export const EXTRACT_DATA_SOURCES_PROMPT = `You are a Splunk SPL field extractor. Given a query, identify each data source and the ORIGINAL fields it reads from the index. Return ONLY valid JSON.
 
-CONTEXT:
-Users need data lineage mapping: for a given SPL query, which raw/original fields from each data source are actually referenced? This powers field dependency analysis, query optimization, and automated test input generation where knowing required fields per source prevents false negatives.
+CORE RULE — include vs exclude:
+- INCLUDE: fields that ALREADY EXIST in the indexed data (the query READS them)
+- EXCLUDE: fields CREATED by the query (eval LHS, rename RHS, rex captures, stats aliases)
 
-TASK:
-Given a Splunk SPL query, return a JSON object mapping each data source to an array of unique original field names consumed from that source.
+THE EVAL RULE (most common mistake):
+  eval new_field = some_function(existing_field)
+  → INCLUDE: existing_field (comes from index)
+  → EXCLUDE: new_field (being CREATED — does NOT exist in the index)
+Example: eval avail_gb = tonumber(Avail) | eval total_gb = tonumber(substr(Size,1,len(Size)-1))
+  → INCLUDE: Avail, Size
+  → EXCLUDE: avail_gb, total_gb
 
-DATA SOURCE IDENTIFICATION:
-Recognize all of the following as distinct data sources and use the specified key format:
-- index=<n> → key: "index=<n>"
-- index=<n> sourcetype=<st> (same search clause) → key: "index=<n> sourcetype=<st>"
+DATA SOURCE KEYS:
+- index=<n> sourcetype=<st> → key: "index=<n> sourcetype=<st>"
 - inputlookup <file> → key: "inputlookup=<file>"
 - lookup <file> → key: "lookup=<file>"
-- from datamodel:<n> → key: "datamodel=<n>"
-- tstats ... from datamodel=<n> → key: "datamodel=<n>"
 - rest <endpoint> → key: "rest=<endpoint>"
-- inputcsv <file> → key: "inputcsv=<file>"
-- Subsearches [search index=...] → own source key per subsearch
-- append [search index=...] → own source key per subsearch
-- join ... [search index=...] → own source key per subsearch
-- multisearch (each sub-search) → own source key per sub-search
-- Macros \`macro_name\` → key: "macro=<macro_name>"
-- savedsearch "name" → key: "savedsearch=<n>"
+- savedsearch "name" → key: "savedsearch=<name>"
+- Macros \`name\` → key: "macro=<name>" with ["_unresolvable"]
+- Subsearches/append/join → separate source key each
+Include sourcetype, source, data_type, eventtype in the key if present. These are data source IDENTITY, not extracted fields.
 
-IMPORTANT — Data source key must include ALL base filter clauses:
-When index and sourcetype appear together in the same search clause, combine them into one key. Also include any other base filter predicates that IDENTIFY the data source — these are filters that appear in the initial search clause (before the first pipe) and narrow WHICH data is being queried, not WHAT fields to extract. Common examples:
-- sourcetype=<st> → always include in the data source key
-- source=<s> → include in data source key
-- data_type=<dt> → include in data source key
-- project=<p> → include in data source key
-- eventtype=<et> → include in data source key
-- tag=<t> → include in data source key
-- Any other key=value filter in the base search clause that acts as a data source selector
+FIELDS TO INCLUDE:
+- where/search filter fields: where status=500 → status
+- eval RIGHT side: eval x = a + b → a, b
+- stats/chart arguments + by fields: stats avg(resp) by host → resp, host
+- rex field= source: rex field=msg → msg
+- lookup match fields (pipeline side): lookup users.csv uid → uid
+- sort, dedup, table, fields references (if they read from index)
+- join ON fields (both sides)
+- transaction fields
 
-Example: "index=main sourcetype=access_combined data_type=web project=frontend" → key: "index=main sourcetype=access_combined data_type=web project=frontend"
+FIELDS TO EXCLUDE:
+- eval LEFT side (always a NEW field)
+- rename RIGHT side (the alias)
+- stats "as" aliases: stats count as total → exclude total
+- rex capture groups: (?<user>...) → exclude user
+- lookup OUTPUT fields (relative to pipeline)
+- Time fields: _time, earliest, latest, _index_earliest, _index_latest
+- Base filter fields already in the source key (index, sourcetype, source)
 
-These base filter fields (sourcetype, source, data_type, project, eventtype, tag, etc.) must NOT appear in the extracted fields array — they are part of the data source identity, not fields to populate in test events.
-If only index is present with no other filters, use index alone.
-
-FIELDS TO INCLUDE (original/source fields):
-These are fields that exist in the raw data source or are natively provided by Splunk for that source.
-1. Filter predicates — fields in where, search, or MID-PIPELINE search terms. Example: search index=main status=500 host=web* → status, host. NOTE: Base search clause filters that are part of the data source key (index, sourcetype, source, data_type, project, eventtype, tag) are EXCLUDED — they belong to the data source identity, not the fields array.
-   ALSO EXCLUDE internal Splunk time range fields: _time, _index_earliest, _index_latest, earliest, latest, _indextime, earliest_time, latest_time. These are set by the time picker, NOT by the data itself — they are never input fields.
-2. eval right-hand references — original fields consumed on the right side of =. Example: eval duration = end_time - start_time → end_time, start_time
-3. rex field= parameter — the source field being extracted from. Example: rex field=_raw "user=(?<extracted_user>\\w+)" → _raw
-4. stats/eventstats/streamstats — aggregation arguments and by-clause fields. Example: stats avg(response_time) by host → response_time, host
-5. rename — the original field (left side only). Example: rename src_ip as source_address → src_ip
-6. lookup match fields — the field used to match against the lookup. The match key from the pipeline is original to the pipeline source. The lookup column name and OUTPUT fields are original to the lookup file. Example: lookup users.csv username AS user OUTPUT department, email → For the pipeline source: user → For lookup=users.csv: username, department, email
-7. sort, dedup, table, fields — all field names referenced, but only if they are original (not computed).
-8. where / search (mid-pipeline) — fields in filter expressions. Example: where isnotnull(src_ip) AND action="login" → src_ip, action
-9. transaction — fields and by-fields. Example: transaction user startswith="login" → user
-10. join — ON fields belong to both sources. Example: join user [search index=hr ...] → user from both sides
-11. chart/timechart — aggregation, over, and by fields. Example: chart count over host by status → host, status
-12. spath / xmlkv / kvform — the input field being extracted from. Example: spath input=raw_json path=user.name → raw_json
-13. Splunk metadata fields — _time, _raw, source, sourcetype, host, index, etc. Include ONLY when explicitly referenced in the query.
-14. fillnull / filldown — field references. Example: fillnull value="N/A" src_ip dest_ip → src_ip, dest_ip
-15. mvexpand / makemv / mvcombine — field references. Example: mvexpand categories → categories
-16. foreach — field references. If wildcards are used and concrete names cannot be determined, note as "field_pattern (wildcard)".
-
-FIELDS TO EXCLUDE (computed/derived):
-Do NOT include these as original fields.
-1. eval left-hand side (the created field name). Example: eval full_name = first_name . " " . last_name → exclude full_name
-2. rename right-hand side (the new name). Example: rename src_ip as source_address → exclude source_address
-3. as/AS clause aliases. Example: stats count as total_count → exclude total_count
-4. rex named capture groups (the extracted field name). Example: rex field=_raw "user=(?<extracted_user>\\w+)" → exclude extracted_user
-5. lookup OUTPUT fields relative to the pipeline — they are original to the lookup file, not to the pipeline feeding into the lookup.
-6. makeresults generated fields — _time from makeresults is synthetic.
-7. eval function return values — now(), random(), pi() are not source fields.
-8. Fields created by addinfo, addtotals, addcoltotals.
-
-EDGE CASES:
-- Subsearches: Each subsearch is a separate data source scope. Fields inside [search index=X ...] belong to index=X, not to the outer query source.
-- Joins: Both sides of a join have independent source scopes. The ON field belongs to both sources.
-- Chained Lookups: When lookup A outputs a field that feeds lookup B, that intermediate field is original to lookup A (as OUTPUT) and used as a match key for lookup B. Trace the chain.
-- append / appendcols / multisearch: Each appended search is its own source scope.
-- Ambiguous Fields (post-merge): When a field appears after a join/append and its origin is unclear, assign it to all possible sources it could have come from. Add an "_ambiguous" array listing these fields.
-- eval with Nested Functions: Parse through all nesting levels to find original fields. Example: eval risk = if(threat_level > 7, "high", "low") → threat_level only
-- Wildcards: When wildcards are used in field references and concrete names cannot be determined, note as "pattern (wildcard)". Example: fields - _* → "_* (wildcard exclusion)"
-- map Command: The search inside map may reference $field$ tokens — these correspond to fields from the preceding pipeline.
-- Macros and Saved Searches: If the query contains \`macro_name\` or savedsearch "name", you cannot resolve the inner fields. Return: "macro=macro_name": ["_unresolvable: macro content not provided"]
-- tstats: Include the datamodel-prefixed field names exactly as written. Example: tstats count from datamodel=Authentication where Authentication.action=success by Authentication.user → datamodel=Authentication: Authentication.action, Authentication.user
-
-OUTPUT FORMAT:
-Return ONLY a valid JSON object. No text before or after.
-{ "<data_source_key>": ["field1", "field2"], "_ambiguous": ["fieldX"] }
-Rules:
-- Double-quoted keys and string values.
-- Each data source maps to an array of unique original field names with no duplicates.
-- Sort fields alphabetically within each array.
-- Use _ambiguous only when post-merge fields genuinely cannot be attributed. Omit if empty.
-- Use _unresolvable entries only for macros/saved searches. Omit if empty.
-
-CRITICAL REMINDERS:
-1. Return ONLY the JSON object. No explanations, no markdown, no reasoning.
-2. When in doubt whether a field is original or computed, trace it backward through the pipeline to its earliest appearance. If it first appears as a raw search term or data source column, it is original.
-3. Splunk internal fields (_time, _raw, etc.) are original ONLY when explicitly referenced in the query.
-4. The count field generated by stats count is NOT an original field. But count used in where count > 5 after stats is referencing the computed field — do not include it.
-5. For lookups: OUTPUT fields are original to the lookup file. Match fields (before AS) are original to the pipeline source. Match fields (after AS or the lookup column name) are original to the lookup file.
-6. Every field in every by clause, every AS source, every function argument, every filter predicate must be traced to its source.`;
+OUTPUT: { "<source_key>": ["field1", "field2"] }
+- Alphabetical, no duplicates, no markdown, no explanation. JSON only.`;
 
 /**
  * Extract output/validation fields from SPL.

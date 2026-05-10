@@ -54,6 +54,7 @@ def call_llm(llm_cfg, system_prompt, user_message):
     body = json.dumps({
         "model": llm_cfg["model"],
         "max_tokens": llm_cfg["max_tokens"],
+        "temperature": 0,
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_message},

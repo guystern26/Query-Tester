@@ -161,9 +161,20 @@ export function inputSlice(set: SetState) {
         if (!input) return;
         input.rowIdentifier = source.rowIdentifier;
         input.inputMode = 'fields';
-        // Don't auto-populate fields — user picks from dropdown
         if (input.events.length === 0) {
           input.events = [{ id: genId(), fieldValues: [] }];
+        }
+        // Auto-populate fields when source has 5+ extracted fields
+        if (source.fields.length >= 5) {
+          const existing = new Set(
+            input.events[0]?.fieldValues.map((fv) => fv.field) ?? []
+          );
+          const newFields = source.fields.filter((f) => !existing.has(f));
+          for (const evt of input.events) {
+            for (const f of newFields) {
+              evt.fieldValues.push({ id: genId(), field: f, value: '' });
+            }
+          }
         }
       }),
 

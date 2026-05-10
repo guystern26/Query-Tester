@@ -132,7 +132,7 @@ export function DataSourceSelector({ testId, scenarioId, inputId, value, matchCo
       )}
 
       {open && filtered.length > 0 && (
-        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-navy-900 border border-slate-700 rounded-lg shadow-xl overflow-hidden max-h-[200px] overflow-y-auto">
+        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-navy-800 border-2 border-blue-400/40 rounded-lg shadow-[0_4px_20px_rgba(0,0,0,0.5)] overflow-hidden max-h-[200px] overflow-y-auto">
           {filtered.map((src, i) => {
             const isUsed = usedIdentifiers.has(src.rowIdentifier.trim());
             return (

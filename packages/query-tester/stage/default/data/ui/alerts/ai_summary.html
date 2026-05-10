@@ -1,5 +1,14 @@
 <form class="form-horizontal">
     <div class="control-group">
+        <div class="controls">
+            <div style="padding:8px 12px;margin-bottom:12px;background:#fef3c7;border:1px solid #f59e0b;border-radius:4px;color:#92400e;font-size:13px">
+                <strong>&#9888; Minimum cron interval: 10 minutes.</strong><br/>
+                AI Summary will not fire on searches scheduled more frequently than every 10 minutes.
+                If the interval is too short, the action will be skipped and an error will be logged.
+            </div>
+        </div>
+    </div>
+    <div class="control-group">
         <label class="control-label" for="recipients">Email Recipients</label>
         <div class="controls">
             <input type="text" name="action.ai_summary.param.recipients" id="recipients"

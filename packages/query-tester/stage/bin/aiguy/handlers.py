@@ -96,8 +96,9 @@ def handle_suggest(records, llm_cfg, full_spl, field, prompt, t_start):
         if len(sample) >= MAX_ROWS_FOR_AI:
             break
     table = format_table(sample) if sample else "(no data)"
-    user_msg = "SPL query:\n{0}\n\nResults ({1} rows):\n{2}".format(
-        full_spl or "(not available)", len(sample), table)
+    spl_short = (full_spl or "")[:500]
+    user_msg = "SPL: {0}\n\nResults ({1} rows):\n{2}".format(
+        spl_short or "(not available)", len(sample), table)
     try:
         answer = call_llm(llm_cfg, SUGGEST_PROMPT, user_msg)
         source = "live"
@@ -351,8 +352,9 @@ def handle_analysis(records, llm_cfg, full_spl, mode_key,
     msg_parts = ["Question: " + effective_prompt]
     if focus_note:
         msg_parts.append("Focus: " + focus_note)
-    msg_parts.append(
-        "Full SPL query:\n```\n{0}\n```".format(full_spl or "(not available)"))
+    spl_trimmed = (full_spl or "")[:500]
+    if spl_trimmed:
+        msg_parts.append("SPL: " + spl_trimmed)
     msg_parts.append(
         "Query results ({0} unique rows sampled):\n{1}".format(
             len(sample), table))

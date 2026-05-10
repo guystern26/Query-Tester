@@ -59,6 +59,8 @@ export function FieldNameDropdown({
                     type="text"
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
+                    onClick={() => { if (hasSuggestions) setOpen(true); }}
+                    onFocus={() => { if (hasSuggestions) setOpen(true); }}
                     placeholder="field name"
                 />
                 {hasSuggestions && (

@@ -22,7 +22,6 @@ const COLORS = ['#f59e0b', '#3b82f6', '#22c55e', '#a855f7', '#ec4899', '#06b6d4'
 
 export function SourceBadge({ testId, scenarioId, inputId, value, colorIndex, matchCount }: SourceBadgeProps): React.ReactElement {
     const updateRowIdentifier = useTestStore((s) => s.updateRowIdentifier);
-    const deleteInput = useTestStore((s) => s.deleteInput);
     const test = useTestStore(selectActiveTest);
     const spl = (test && test.query && test.query.spl) || '';
     const [focused, setFocused] = useState(false);
@@ -56,8 +55,8 @@ export function SourceBadge({ testId, scenarioId, inputId, value, colorIndex, ma
     }, [testId, scenarioId, inputId, updateRowIdentifier]);
 
     const handleRemove = useCallback(() => {
-        deleteInput(testId, scenarioId, inputId);
-    }, [testId, scenarioId, inputId, deleteInput]);
+        updateRowIdentifier(testId, scenarioId, inputId, '');
+    }, [testId, scenarioId, inputId, updateRowIdentifier]);
 
     return (
         <div className="mb-3">
