@@ -19,7 +19,7 @@ if _BIN not in sys.path:
 _ANALYSIS_MODES = {
     "summary", "anomaly", "trend", "compare", "alert", "health", "top"
 }
-_SPECIAL_MODES = {"extract", "enrich", "explain", "suggest"}
+_SPECIAL_MODES = {"extract", "enrich", "explain", "suggest", "dashboard"}
 _ALL_MODES = _ANALYSIS_MODES | _SPECIAL_MODES
 
 
@@ -65,6 +65,10 @@ def _write_output(rows):
     w = csv.DictWriter(sys.stdout, fieldnames=fields, extrasaction="ignore")
     w.writeheader()
     for row in rows:
+        # Sanitize AI fields — collapse newlines to keep CSV clean
+        for k in ("ai_answer", "explanation", "label"):
+            if k in row and row[k]:
+                row[k] = row[k].replace("\r\n", "; ").replace("\n", "; ").replace("\r", "; ")
         w.writerow(row)
 
 
@@ -151,7 +155,11 @@ def main():
         for r in rows:
             yield r
 
-    if mode == "explain":
+    if mode == "dashboard":
+        from aiguy.dashboard import handle_dashboard
+        result = list(handle_dashboard(
+            row_iter(), llm_cfg, prompt, t_start))
+    elif mode == "explain":
         from aiguy.handlers import handle_explain
         result = list(handle_explain(
             row_iter(), llm_cfg, full_spl, field, prompt, t_start))

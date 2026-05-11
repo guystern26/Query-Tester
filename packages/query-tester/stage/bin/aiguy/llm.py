@@ -83,11 +83,27 @@ def call_llm(llm_cfg, system_prompt, user_message):
         last_prompt_chars, last_call_ms,
     )
 
+    # Parse response — try multiple formats (OpenAI, Anthropic, custom)
     choice = (data.get("choices") or [{}])[0]
     content = (choice.get("message") or {}).get("content", "")
     if not content:
         content = data.get("content", "") or data.get("output", "") or ""
-    return content or "(no response from AI)"
+    # Some models nest content in delta (streaming leftover)
+    if not content:
+        content = (choice.get("delta") or {}).get("content", "")
+    # Log empty responses for debugging
+    if not content:
+        finish = choice.get("finish_reason", "unknown")
+        raw_keys = list(data.keys())
+        _logger.warning(
+            "aiguy empty LLM response: finish_reason=%s keys=%s model=%s chars_sent=%d",
+            finish, raw_keys, llm_cfg.get("model", "?"), last_prompt_chars,
+        )
+    if not content:
+        finish = choice.get("finish_reason", "unknown")
+        return "(empty AI response — finish_reason={0}, {1}ms, {2} chars sent)".format(
+            finish, last_call_ms, last_prompt_chars)
+    return content
 
 
 def should_skip_scheduled(session_key, saved_search_name):

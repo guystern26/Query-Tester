@@ -199,8 +199,9 @@ def handle_enrich(records, llm_cfg, field_name, user_prompt,
             except Exception:
                 source = "error"
 
-        # Save merged cache (old + new)
-        save_cache("enrich", field_name, prompt_key, mapping)
+        # Save merged cache (old + new) — only if we got real results
+        if any(v for v in mapping.values()):
+            save_cache("enrich", field_name, prompt_key, mapping)
 
     new_field = new_field_name or llm_field_name or "label"
     new_field = re.sub(r"[^\w]", "_", new_field).strip("_") or "label"
