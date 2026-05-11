@@ -2,213 +2,180 @@
 """
 ai_guy.py — Custom Splunk streaming command: | aiguy
 
-No splunklib dependency. Reads CSV from stdin, writes CSV to stdout.
-Authenticates to Splunk via admin credentials from config.py for
-the rate limit check. Any user can run this command.
+Pure CSV stdin/stdout. All imports lazy for fast startup.
 """
 from __future__ import annotations
 
 import csv
 import os
-import re
 import sys
 import time
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+_BIN = os.path.dirname(os.path.abspath(__file__))
+if _BIN not in sys.path:
+    sys.path.insert(0, _BIN)
 
-from aiguy.prompts import MODE_PROMPTS, SPECIAL_MODES
-from aiguy.llm import get_llm_config, should_skip_scheduled, log_usage
-from aiguy.handlers import (
-    handle_explain,
-    handle_suggest,
-    handle_enrich,
-    handle_extract,
-    handle_analysis,
-)
+# Valid modes — hardcoded to avoid importing prompts at startup
+_ANALYSIS_MODES = {
+    "summary", "anomaly", "trend", "compare", "alert", "health", "top"
+}
+_SPECIAL_MODES = {"extract", "enrich", "explain", "suggest"}
+_ALL_MODES = _ANALYSIS_MODES | _SPECIAL_MODES
 
 
 def _parse_args(argv):
     # type: (list) -> dict
-    """Parse key=value arguments from the command line."""
     opts = {}  # type: dict
     for arg in argv:
         if "=" in arg:
-            key, _, val = arg.partition("=")
-            # Strip quotes
-            val = val.strip('"').strip("'")
-            opts[key.strip().lower()] = val
+            k, _, v = arg.partition("=")
+            opts[k.strip().lower()] = v.strip('"').strip("'")
     return opts
-
-
-def _get_session_key():
-    # type: () -> str
-    """Get a session key using admin credentials from config.py."""
-    try:
-        import config as cfg
-        from splunklib import client as splunk_client
-        service = splunk_client.connect(
-            host=cfg.SPLUNK_HOST,
-            port=cfg.SPLUNK_PORT,
-            scheme=cfg.SPLUNK_SCHEME,
-            username=cfg.SPLUNK_USERNAME,
-            password=cfg.SPLUNK_PASSWORD,
-            app="query-tester",
-            autologin=True,
-        )
-        return service.token
-    except Exception:
-        return ""
 
 
 def _read_input():
     # type: () -> list
-    """Read CSV rows from stdin (Splunk pipes results here)."""
+    """Read CSV from stdin. Splits on blank line to skip Splunk metadata."""
+    raw = sys.stdin.read()
+    if "\n\n" in raw:
+        _, csv_text = raw.split("\n\n", 1)
+    elif "\r\n\r\n" in raw:
+        _, csv_text = raw.split("\r\n\r\n", 1)
+    else:
+        csv_text = raw
     rows = []
-    reader = csv.DictReader(sys.stdin)
-    for row in reader:
-        rows.append(dict(row))
+    csv_text = csv_text.strip()
+    if csv_text:
+        for row in csv.DictReader(csv_text.splitlines()):
+            rows.append(dict(row))
     return rows
 
 
 def _write_output(rows):
     # type: (list) -> None
-    """Write CSV rows to stdout."""
     if not rows:
         return
-    # Collect all field names from all rows
     fields = []  # type: list
     seen = set()  # type: set
     for row in rows:
-        for k in row.keys():
+        for k in row:
             if k not in seen:
                 seen.add(k)
                 fields.append(k)
-    writer = csv.DictWriter(sys.stdout, fieldnames=fields, extrasaction="ignore")
-    writer.writeheader()
+    w = csv.DictWriter(sys.stdout, fieldnames=fields, extrasaction="ignore")
+    w.writeheader()
     for row in rows:
-        writer.writerow(row)
+        w.writerow(row)
 
 
-def _validate(opts):
-    # type: (dict) -> str
-    """Return error message or empty string."""
-    mode_key = opts.get("mode", "")
-    valid_modes = set(MODE_PROMPTS.keys()) | SPECIAL_MODES | {""}
-    if mode_key and mode_key not in valid_modes:
-        all_modes = sorted(MODE_PROMPTS.keys()) + sorted(SPECIAL_MODES)
-        return 'Unknown mode="{0}". Valid: {1}.'.format(
-            mode_key, ", ".join(all_modes))
-    if not mode_key and not opts.get("prompt", ""):
-        return (
-            "Missing prompt= or mode=. Examples: "
-            '| aiguy prompt="which host is busiest?" '
-            '| aiguy mode="summary" '
-            '| aiguy mode="enrich" field="status" prompt="classify"'
-        )
-    if opts.get("value") and not opts.get("field"):
-        return 'value= requires field=. Example: | aiguy field="status" value="500" prompt="..."'
-    return ""
+def _error_out(rows, msg):
+    # type: (list, str) -> None
+    ts = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+    out = rows[:1] if rows else [{}]
+    out[0]["ai_answer"] = msg
+    out[0]["aiguy_timestamp"] = ts
+    out[0]["aiguy_source"] = "error"
+    _write_output(out)
 
 
 def main():
     t_start = time.time()
-
-    # Parse command arguments (Splunk passes them after the command name)
-    # argv looks like: ['ai_guy.py', 'prompt=...', 'mode=...', ...]
     opts = _parse_args(sys.argv[1:])
-    mode_key = opts.get("mode", "").strip().lower()
+    mode = opts.get("mode", "").strip().lower()
     field = opts.get("field", "").strip()
     value = opts.get("value", "")
     prompt = opts.get("prompt", "").strip()
-    new_field_name = opts.get("new_field_name", "").strip()
+    new_field = opts.get("new_field_name", "").strip()
 
-    # Read all input rows
-    rows = _read_input()
-
-    # Validation
-    err = _validate(opts)
-    if err:
-        ts = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-        if rows:
-            rows[0]["ai_answer"] = err
-            rows[0]["aiguy_timestamp"] = ts
-            rows[0]["aiguy_source"] = "error"
-            _write_output(rows[:1])
-        else:
-            _write_output([{"ai_answer": err, "aiguy_timestamp": ts,
-                            "aiguy_source": "error"}])
+    # ── Validate (no imports needed) ────────────────────────────────
+    if mode and mode not in _ALL_MODES:
+        rows = _read_input()
+        _error_out(rows, 'Unknown mode="{0}". Valid: {1}.'.format(
+            mode, ", ".join(sorted(_ALL_MODES))))
+        return
+    if not mode and not prompt:
+        rows = _read_input()
+        _error_out(rows, 'Missing prompt= or mode=. Example: | aiguy prompt="..."')
+        return
+    if value and not field:
+        rows = _read_input()
+        _error_out(rows, 'value= requires field=.')
         return
 
-    # Get session key for rate limit check
-    session_key = _get_session_key()
+    # ── Read data ───────────────────────────────────────────────────
+    rows = _read_input()
+    if not rows and mode != "explain":
+        _error_out([], "No input data.")
+        return
 
-    # Rate limit for scheduled searches
-    # (detect from environment — Splunk sets SPLUNK_SID)
+    # ── Rate limit (lazy import, only for scheduled) ────────────────
     sid = os.environ.get("SPLUNK_DISPATCH_CHECK_SID", "")
-    saved_search = ""
     if sid.startswith("scheduler__"):
         parts = sid.split("__")
         if len(parts) >= 2:
-            saved_search = parts[1]
+            from aiguy.llm import should_skip_scheduled
+            try:
+                from splunklib import client as sc
+                import config as cfg
+                svc = sc.connect(
+                    host=cfg.SPLUNK_HOST, port=cfg.SPLUNK_PORT,
+                    scheme=cfg.SPLUNK_SCHEME,
+                    username=cfg.SPLUNK_USERNAME,
+                    password=cfg.SPLUNK_PASSWORD,
+                    app="query-tester", autologin=True,
+                )
+                if should_skip_scheduled(svc.token, parts[1]):
+                    ts = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+                    if rows:
+                        rows[0]["ai_answer"] = "(aiguy skipped — last run < 10 min ago)"
+                    for r in rows:
+                        r["aiguy_timestamp"] = ts
+                        r["aiguy_source"] = "rate-limited"
+                    _write_output(rows)
+                    return
+            except Exception:
+                pass
 
-    if saved_search and should_skip_scheduled(session_key, saved_search):
-        ts = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-        for idx, row in enumerate(rows):
-            if idx == 0:
-                row["ai_answer"] = "(aiguy skipped — last run < 10 min ago)"
-            row["aiguy_timestamp"] = ts
-            row["aiguy_source"] = "rate-limited"
-        _write_output(rows)
-        log_usage("rate-limited", field, prompt,
-                  "rate-limited", len(rows), t_start)
-        return
-
-    # Get LLM config
+    # ── LLM config (lazy import) ────────────────────────────────────
+    from aiguy.llm import get_llm_config, log_usage
     try:
-        llm_cfg = get_llm_config(session_key)
+        llm_cfg = get_llm_config("")
     except Exception as exc:
-        ts = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-        err_msg = "AI error: {0}".format(str(exc))
-        if rows:
-            rows[0]["ai_answer"] = err_msg
-            rows[0]["aiguy_timestamp"] = ts
-            rows[0]["aiguy_source"] = "error"
-            _write_output(rows[:1])
-        else:
-            _write_output([{"ai_answer": err_msg, "aiguy_timestamp": ts,
-                            "aiguy_source": "error"}])
-        log_usage("config-error", field, prompt, "error", len(rows), t_start)
+        _error_out(rows, "AI error: {0}".format(exc))
         return
 
-    # Get full SPL from environment (Splunk sets this for search commands)
     full_spl = os.environ.get("SPLUNK_SEARCH", "")
 
-    # Create an iterator-like interface from the rows list
-    # (handlers expect an iterator of records)
+    # ── Dispatch (lazy import per mode) ─────────────────────────────
     def row_iter():
         for r in rows:
             yield r
 
-    # Dispatch to handler
-    if mode_key == "explain":
-        handler = handle_explain(
-            row_iter(), llm_cfg, full_spl, field, prompt, t_start)
-    elif mode_key == "suggest":
-        handler = handle_suggest(
-            row_iter(), llm_cfg, full_spl, field, prompt, t_start)
-    elif mode_key == "enrich":
-        handler = handle_enrich(
-            row_iter(), llm_cfg, field, prompt, new_field_name, t_start)
-    elif mode_key == "extract":
-        handler = handle_extract(
-            row_iter(), llm_cfg, field, prompt, new_field_name, t_start)
+    if mode == "explain":
+        from aiguy.handlers import handle_explain
+        result = list(handle_explain(
+            row_iter(), llm_cfg, full_spl, field, prompt, t_start))
+    elif mode == "suggest":
+        from aiguy.handlers import handle_suggest
+        result = list(handle_suggest(
+            row_iter(), llm_cfg, full_spl, field, prompt, t_start))
+    elif mode == "enrich":
+        from aiguy.handlers import handle_enrich
+        result = list(handle_enrich(
+            row_iter(), llm_cfg, field, prompt, new_field, t_start))
+    elif mode == "extract":
+        from aiguy.handlers import handle_extract
+        result = list(handle_extract(
+            row_iter(), llm_cfg, field, prompt, new_field, t_start))
     else:
-        handler = handle_analysis(
-            row_iter(), llm_cfg, full_spl, mode_key,
-            field, value, prompt, opts.get("mode", ""), t_start)
+        from aiguy.handlers import handle_analysis
+        result = list(handle_analysis(
+            row_iter(), llm_cfg, full_spl, mode,
+            field, value, prompt, opts.get("mode", ""), t_start))
 
-    result = list(handler)
     _write_output(result)
+    log_usage(mode or "prompt", field, prompt,
+              "live", len(rows), t_start)
 
 
 if __name__ == "__main__":
