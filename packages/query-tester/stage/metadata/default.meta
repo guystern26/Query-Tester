@@ -21,5 +21,9 @@ access = read : [ * ], write : [ admin ]
 export = system
 owner = nobody
 
+[searchbnf]
+access = read : [ * ], write : [ admin ]
+export = system
+
 [views/monitoring]
 access = read : [ admin, sc_admin ], write : [ admin ]
