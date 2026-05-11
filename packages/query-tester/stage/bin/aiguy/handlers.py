@@ -129,18 +129,17 @@ def handle_enrich(records, llm_cfg, field_name, user_prompt,
         log_usage("enrich", field_name, user_prompt, "error", 1, t_start)
         return
 
-    # Scan first batch for unique values
+    # Scan all rows and collect ALL unique values (batching handles LLM size)
     scanned = []
     unique_vals = []
     seen = set()  # type: set
     for record in records:
         row = dict(record)
         scanned.append(row)
-        if len(seen) < MAX_UNIQUE_FOR_DICT:
-            val = str(row.get(field_name, ""))
-            if val and val not in seen:
-                seen.add(val)
-                unique_vals.append(val)
+        val = str(row.get(field_name, ""))
+        if val and val not in seen:
+            seen.add(val)
+            unique_vals.append(val)
         if len(scanned) >= MAX_SCAN_FOR_SAMPLE:
             break
 

@@ -41,15 +41,17 @@ except ImportError:
 
 _SSL_CTX = ssl._create_unverified_context()
 
-# Track timing of last LLM call for diagnostics
+# Track timing across ALL LLM calls
 last_call_ms = 0
 last_prompt_chars = 0
+total_call_ms = 0
+total_calls = 0
 
 
 def call_llm(llm_cfg, system_prompt, user_message):
     # type: (dict, str, str) -> str
     """Single HTTPS POST to the LLM endpoint."""
-    global last_call_ms, last_prompt_chars
+    global last_call_ms, last_prompt_chars, total_call_ms, total_calls
 
     body = json.dumps({
         "model": llm_cfg["model"],
@@ -77,6 +79,8 @@ def call_llm(llm_cfg, system_prompt, user_message):
     except URLError as exc:
         raise ValueError("Cannot reach LLM: {0}".format(exc.reason))
     last_call_ms = int((time.time() - t0) * 1000)
+    total_call_ms += last_call_ms
+    total_calls += 1
 
     _logger.info(
         "aiguy llm_call prompt_chars=%d response_ms=%d",

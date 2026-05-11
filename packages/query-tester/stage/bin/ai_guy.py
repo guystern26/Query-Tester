@@ -107,7 +107,9 @@ def main():
         return
 
     # ── Read data ───────────────────────────────────────────────────
+    t_read = time.time()
     rows = _read_input()
+    t_read_done = time.time()
     if not rows and mode != "explain":
         _error_out([], "No input data.")
         return
@@ -141,12 +143,14 @@ def main():
                 pass
 
     # ── LLM config (lazy import) ────────────────────────────────────
+    t_import = time.time()
     from aiguy.llm import get_llm_config, log_usage
     try:
         llm_cfg = get_llm_config("")
     except Exception as exc:
         _error_out(rows, "AI error: {0}".format(exc))
         return
+    t_config_done = time.time()
 
     full_spl = os.environ.get("SPLUNK_SEARCH", "")
 
@@ -180,6 +184,21 @@ def main():
         result = list(handle_analysis(
             row_iter(), llm_cfg, full_spl, mode,
             field, value, prompt, opts.get("mode", ""), t_start))
+
+    # Add timing breakdown to first result row
+    t_end = time.time()
+    if result:
+        from aiguy import llm as llm_mod
+        result[0]["aiguy_timing"] = (
+            "read={0}ms import={1}ms llm={2}ms({3}calls) total={4}ms rows={5}"
+        ).format(
+            int((t_read_done - t_read) * 1000),
+            int((t_config_done - t_import) * 1000),
+            llm_mod.total_call_ms,
+            llm_mod.total_calls,
+            int((t_end - t_start) * 1000),
+            len(rows),
+        )
 
     _write_output(result)
     log_usage(mode or "prompt", field, prompt,
