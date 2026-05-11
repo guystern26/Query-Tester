@@ -16,5 +16,10 @@ access = read : [ admin ], write : [ admin ]
 access = read : [ * ], write : [ admin ]
 export = system
 
+[commands/aiguy]
+access = read : [ * ], write : [ admin ]
+export = system
+owner = nobody
+
 [views/monitoring]
 access = read : [ admin, sc_admin ], write : [ admin ]
