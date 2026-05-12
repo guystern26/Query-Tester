@@ -22,7 +22,6 @@ from . import llm as llm_mod
 from .llm import call_llm, log_usage
 from .formatter import format_table, trim_values_to_budget
 from .extract import run_extract, parse_dict_response
-from .cache import load_cache, save_cache, split_cached
 
 
 def _batch_values(values, char_budget):
@@ -154,59 +153,45 @@ def handle_enrich(records, llm_cfg, field_name, user_prompt,
         log_usage("enrich", field_name, user_prompt, "error", 1, t_start)
         return
 
-    # Load cache — only send NEW values to LLM
-    prompt_key = user_prompt or "classify each value"
-    cached = load_cache("enrich", field_name, prompt_key)
-    cached_hits, uncached = split_cached(unique_vals, cached)
-
-    mapping = dict(cached_hits)  # start with cached answers
+    # Send all unique values to LLM (in numbered batches)
+    mapping = {}  # type: dict
     llm_field_name = ""
-    source = "cached" if not uncached else "dict"
-    cache_info = "{0} cached, {1} new".format(len(cached_hits), len(uncached))
+    source = "dict"
+    enrich_cfg = dict(llm_cfg)
+    enrich_cfg["max_tokens"] = MAX_RESPONSE_TOKENS_ENRICH
+    batches = _batch_values(unique_vals, ENRICH_BATCH_CHARS)
 
-    # Only call LLM for uncached values (in numbered batches)
-    if uncached:
-        enrich_cfg = dict(llm_cfg)
-        enrich_cfg["max_tokens"] = MAX_RESPONSE_TOKENS_ENRICH
-        batches = _batch_values(uncached, ENRICH_BATCH_CHARS)
-
-        for batch in batches:
-            # Send as numbered list so LLM returns numbered keys
-            numbered = "\n".join(
-                "{0}: {1}".format(i + 1, v) for i, v in enumerate(batch)
-            )
-            enrich_msg = (
-                "Field name: {field}\n"
-                "User request: {prompt}\n"
-                "Values ({count}):\n{numbered}"
-            ).format(
-                field=field_name,
-                prompt=prompt_key,
-                count=len(batch),
-                numbered=numbered,
-            )
-            try:
-                response = call_llm(enrich_cfg, ENRICH_PROMPT, enrich_msg)
-                idx_mapping, batch_field = parse_dict_response(response)
-                # Map numbered keys back to actual values
-                for i, val in enumerate(batch):
-                    key = str(i + 1)
-                    if key in idx_mapping:
-                        mapping[val] = str(idx_mapping[key])
-                if not llm_field_name and batch_field:
-                    llm_field_name = batch_field
-            except Exception:
-                source = "error"
-
-        # Save merged cache (old + new) — only if we got real results
-        if any(v for v in mapping.values()):
-            save_cache("enrich", field_name, prompt_key, mapping)
+    for batch in batches:
+        numbered = "\n".join(
+            "{0}: {1}".format(i + 1, v) for i, v in enumerate(batch)
+        )
+        enrich_msg = (
+            "Field name: {field}\n"
+            "User request: {prompt}\n"
+            "Values ({count}):\n{numbered}"
+        ).format(
+            field=field_name,
+            prompt=user_prompt or "classify each value",
+            count=len(batch),
+            numbered=numbered,
+        )
+        try:
+            response = call_llm(enrich_cfg, ENRICH_PROMPT, enrich_msg)
+            idx_mapping, batch_field = parse_dict_response(response)
+            for i, val in enumerate(batch):
+                key = str(i + 1)
+                if key in idx_mapping:
+                    mapping[val] = str(idx_mapping[key])
+            if not llm_field_name and batch_field:
+                llm_field_name = batch_field
+        except Exception:
+            source = "error"
 
     new_field = new_field_name or llm_field_name or "label"
     new_field = re.sub(r"[^\w]", "_", new_field).strip("_") or "label"
 
     ts = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-    source_info = "{0} ({1})".format(source, cache_info)
+    source_info = source
     row_count = len(scanned)
     for row in scanned:
         val = str(row.get(field_name, ""))
