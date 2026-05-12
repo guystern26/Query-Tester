@@ -143,8 +143,13 @@ export function validationSlice(set: SetState) {
       set((draft) => {
         const t = findTest(draft.tests, testId);
         if (!t || t.validation.validationType === validationType) return;
+        const oldType = t.validation.validationType;
+        // Stash current fields under old type, restore from new type
+        const stash = (t.validation as any)._fieldGroupStash || {};
+        stash[oldType] = t.validation.fieldGroups;
+        (t.validation as any)._fieldGroupStash = stash;
         t.validation.validationType = validationType;
-        t.validation.fieldGroups = [];
+        t.validation.fieldGroups = stash[validationType] || [];
       }),
 
     updateResultCount: (
