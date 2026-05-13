@@ -38,7 +38,8 @@ function TestsTableRowInner({
     test, schedule, isLoading, isToggling, isCreatingSchedule, onOpen, onEdit, onClone, isCloning, onSchedule, onHistory, onToggleSchedule, onDelete, deleteError,
 }: TestsTableRowProps): React.ReactElement {
     const [isConfirming, setIsConfirming] = useState(false);
-    const badge = TYPE_BADGE[test.validationType] || TYPE_BADGE[test.testType] || TYPE_BADGE.standard;
+    const badge = test.testType === 'query_only' ? TYPE_BADGE.query_only
+        : TYPE_BADGE[test.validationType] || TYPE_BADGE[test.testType] || TYPE_BADGE.standard;
     const isEnabled = schedule ? normalizeEnabled(schedule.enabled) : false;
 
     const handleRowClick = (e: React.MouseEvent) => {
