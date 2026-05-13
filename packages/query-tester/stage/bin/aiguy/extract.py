@@ -113,7 +113,7 @@ def run_extract(llm_cfg, collected, field_name, user_prompt, user_field_name):
             unique_vals.append(val)
 
     if not unique_vals:
-        new_field = user_field_name or "extracted"
+        new_field = user_field_name or "ai_answer"
         for row in collected:
             row[new_field] = ""
         return collected, "error", "No values found in field '{0}'".format(
@@ -151,8 +151,11 @@ def run_extract(llm_cfg, collected, field_name, user_prompt, user_field_name):
                 regex_str, collected, field_name
             )
 
-    new_field = user_field_name or llm_field_name or "extracted"
-    new_field = re.sub(r"[^\w]", "_", new_field).strip("_") or "extracted"
+    new_field = user_field_name or llm_field_name or "ai_answer"
+    new_field = re.sub(r"[^\w]", "_", new_field).strip("_") or "ai_answer"
+    # Never overwrite the source field
+    if new_field == field_name:
+        new_field = "ai_answer"
 
     if use_dict_direct or match_rate < MIN_REGEX_MATCH_RATE:
         dict_vals = trim_values_to_budget(unique_vals[:MAX_UNIQUE_FOR_DICT])
@@ -179,7 +182,7 @@ def run_extract(llm_cfg, collected, field_name, user_prompt, user_field_name):
                 if not user_field_name and dict_field_name and not llm_field_name:
                     new_field = re.sub(
                         r"[^\w]", "_", dict_field_name
-                    ).strip("_") or "extracted"
+                    ).strip("_") or "ai_answer"
         except Exception:
             pass
 

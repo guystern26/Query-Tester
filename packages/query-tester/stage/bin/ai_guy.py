@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 ai_guy.py — | aiguy — Splunk custom streaming command.
-
-chunked=true + splunklib for speed. No file writes. No admin-only deps.
+chunked=true + splunklib. All heavy imports deferred.
 """
 from __future__ import annotations
 
@@ -12,6 +11,8 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# Defer splunklib import to module level (required by dispatch)
+# but keep it as light as possible
 from splunklib.searchcommands import (
     dispatch,
     StreamingCommand,
@@ -28,7 +29,6 @@ _ALL_MODES = _ANALYSIS_MODES | _SPECIAL_MODES
 
 @Configuration()
 class AiGuyCommand(StreamingCommand):
-    """| aiguy — Ask AI about your Splunk query results."""
 
     prompt = Option(require=False, default=None)
     mode = Option(require=False, default=None)
@@ -37,9 +37,8 @@ class AiGuyCommand(StreamingCommand):
     new_field_name = Option(require=False, default=None)
 
     def stream(self, records):
-        t_start = time.time()
+        t0 = time.time()
 
-        # ── Metadata ────────────────────────────────────────────────
         session_key = ""
         full_spl = ""
         sid = ""
@@ -68,73 +67,61 @@ class AiGuyCommand(StreamingCommand):
             err = 'value= requires field=.'
         if err:
             for record in records:
-                row = dict(record)
-                row["ai_answer"] = err
-                row["aiguy_timestamp"] = ts
-                row["aiguy_source"] = "error"
-                yield row
+                yield dict(record, ai_answer=err, aiguy_timestamp=ts, aiguy_source="error")
                 break
             return
 
         # ── Rate limit (scheduled only) ─────────────────────────────
-        saved_search = ""
         if sid.startswith("scheduler__"):
             parts = sid.split("__")
             if len(parts) >= 2:
-                saved_search = parts[1]
-        if saved_search:
-            from aiguy.llm import should_skip_scheduled
-            if should_skip_scheduled(session_key, saved_search):
-                for idx, record in enumerate(records):
-                    row = dict(record)
-                    if idx == 0:
-                        row["ai_answer"] = "(aiguy skipped — last run < 10 min ago)"
-                    row["aiguy_timestamp"] = ts
-                    row["aiguy_source"] = "rate-limited"
-                    yield row
-                return
+                from aiguy.llm import should_skip_scheduled
+                if should_skip_scheduled(session_key, parts[1]):
+                    first = True
+                    for record in records:
+                        row = dict(record)
+                        if first:
+                            row["ai_answer"] = "(aiguy skipped — last run < 10 min ago)"
+                            first = False
+                        row["aiguy_timestamp"] = ts
+                        row["aiguy_source"] = "rate-limited"
+                        yield row
+                    return
 
         # ── LLM config ──────────────────────────────────────────────
-        from aiguy.llm import get_llm_config, log_usage
+        from aiguy.llm import get_llm_config, set_deadline
+        set_deadline(t0)
         try:
             llm_cfg = get_llm_config(session_key)
         except Exception as exc:
             for record in records:
-                row = dict(record)
-                row["ai_answer"] = "AI error: {0}".format(exc)
-                row["aiguy_timestamp"] = ts
-                row["aiguy_source"] = "error"
-                yield row
+                yield dict(record, ai_answer="AI error: {0}".format(exc),
+                           aiguy_timestamp=ts, aiguy_source="error")
                 break
             return
 
         # ── Dispatch ────────────────────────────────────────────────
         if mode == "dashboard":
             from aiguy.dashboard import handle_dashboard
-            handler = handle_dashboard(records, llm_cfg, prompt, t_start)
+            gen = handle_dashboard(records, llm_cfg, prompt, t0)
         elif mode == "explain":
             from aiguy.handlers import handle_explain
-            handler = handle_explain(
-                records, llm_cfg, full_spl, field, prompt, t_start)
+            gen = handle_explain(records, llm_cfg, full_spl, field, prompt, t0)
         elif mode == "suggest":
             from aiguy.handlers import handle_suggest
-            handler = handle_suggest(
-                records, llm_cfg, full_spl, field, prompt, t_start)
+            gen = handle_suggest(records, llm_cfg, full_spl, field, prompt, t0)
         elif mode == "enrich":
             from aiguy.handlers import handle_enrich
-            handler = handle_enrich(
-                records, llm_cfg, field, prompt, new_field, t_start)
+            gen = handle_enrich(records, llm_cfg, field, prompt, new_field, t0)
         elif mode == "extract":
             from aiguy.handlers import handle_extract
-            handler = handle_extract(
-                records, llm_cfg, field, prompt, new_field, t_start)
+            gen = handle_extract(records, llm_cfg, field, prompt, new_field, t0)
         else:
             from aiguy.handlers import handle_analysis
-            handler = handle_analysis(
-                records, llm_cfg, full_spl, mode,
-                field, value, prompt, self.mode or "", t_start)
+            gen = handle_analysis(records, llm_cfg, full_spl, mode,
+                                 field, value, prompt, self.mode or "", t0)
 
-        for row in handler:
+        for row in gen:
             yield row
 
 

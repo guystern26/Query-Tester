@@ -5,9 +5,63 @@ import logging
 import ssl
 import time
 
-from .constants import LLM_TIMEOUT_SECS, MAX_RESPONSE_TOKENS, MIN_INTERVAL_SECS
+from .constants import LLM_TIMEOUT_SECS, MAX_RESPONSE_TOKENS, MIN_INTERVAL_SECS, AIGUY_DEADLINE_SECS
 
 _logger = logging.getLogger("aiguy")
+_SSL_CTX = ssl._create_unverified_context()
+
+# Persistent HTTPS connection (reused across batch calls)
+_conn = None  # type: any
+_conn_host = ""
+
+# Track timing across ALL LLM calls
+last_call_ms = 0
+last_prompt_chars = 0
+total_call_ms = 0
+total_calls = 0
+
+# Global deadline — set by ai_guy.py at command start
+_deadline = 0.0  # type: float
+
+
+class DeadlineExceeded(Exception):
+    """Raised when the total command time budget is exhausted."""
+    pass
+
+
+def set_deadline(t_start):
+    # type: (float) -> None
+    """Set the global deadline from command start time."""
+    global _deadline
+    _deadline = t_start + AIGUY_DEADLINE_SECS
+
+
+def _get_connection(endpoint):
+    # type: (str) -> any
+    """Get or create a persistent HTTPS connection to the LLM endpoint."""
+    global _conn, _conn_host
+    try:
+        from urllib.parse import urlparse
+    except ImportError:
+        from urlparse import urlparse
+
+    parsed = urlparse(endpoint)
+    host = parsed.hostname or ""
+    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    host_key = "{0}:{1}".format(host, port)
+
+    if _conn and _conn_host == host_key:
+        return _conn, parsed.path
+
+    # New connection
+    if parsed.scheme == "https":
+        import http.client
+        _conn = http.client.HTTPSConnection(host, port, timeout=LLM_TIMEOUT_SECS, context=_SSL_CTX)
+    else:
+        import http.client
+        _conn = http.client.HTTPConnection(host, port, timeout=LLM_TIMEOUT_SECS)
+    _conn_host = host_key
+    return _conn, parsed.path
 
 
 def get_llm_config(_session_key):
@@ -33,25 +87,14 @@ def get_llm_config(_session_key):
     }
 
 
-try:
-    from urllib.request import Request, urlopen
-    from urllib.error import HTTPError, URLError
-except ImportError:
-    from urllib2 import Request, urlopen, HTTPError, URLError
-
-_SSL_CTX = ssl._create_unverified_context()
-
-# Track timing across ALL LLM calls
-last_call_ms = 0
-last_prompt_chars = 0
-total_call_ms = 0
-total_calls = 0
-
-
 def call_llm(llm_cfg, system_prompt, user_message):
     # type: (dict, str, str) -> str
-    """Single HTTPS POST to the LLM endpoint."""
-    global last_call_ms, last_prompt_chars, total_call_ms, total_calls
+    """HTTPS POST to LLM. Reuses connection. Respects deadline."""
+    global last_call_ms, last_prompt_chars, total_call_ms, total_calls, _conn
+
+    # Check deadline before making the call
+    if _deadline and time.time() > _deadline:
+        raise DeadlineExceeded("Time budget exceeded ({0}s)".format(AIGUY_DEADLINE_SECS))
 
     body = json.dumps({
         "model": llm_cfg["model"],
@@ -64,20 +107,36 @@ def call_llm(llm_cfg, system_prompt, user_message):
     }).encode("utf-8")
 
     last_prompt_chars = len(system_prompt) + len(user_message)
-
-    req = Request(llm_cfg["endpoint"], data=body, method="POST")
-    req.add_header("Content-Type", "application/json")
-    req.add_header("Authorization", "Bearer " + llm_cfg["api_key"])
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + llm_cfg["api_key"],
+        "Connection": "keep-alive",
+    }
 
     t0 = time.time()
     try:
-        resp = urlopen(req, timeout=LLM_TIMEOUT_SECS, context=_SSL_CTX)
-        data = json.loads(resp.read().decode("utf-8"))
-    except HTTPError as exc:
-        err = exc.read().decode("utf-8", errors="replace")[:200]
-        raise ValueError("LLM HTTP {0}: {1}".format(exc.code, err))
-    except URLError as exc:
-        raise ValueError("Cannot reach LLM: {0}".format(exc.reason))
+        conn, path = _get_connection(llm_cfg["endpoint"])
+        try:
+            conn.request("POST", path, body=body, headers=headers)
+            resp = conn.getresponse()
+            raw = resp.read().decode("utf-8")
+        except Exception:
+            # Connection stale — reconnect once
+            _conn = None
+            conn, path = _get_connection(llm_cfg["endpoint"])
+            conn.request("POST", path, body=body, headers=headers)
+            resp = conn.getresponse()
+            raw = resp.read().decode("utf-8")
+
+        if resp.status >= 400:
+            raise ValueError("LLM HTTP {0}: {1}".format(resp.status, raw[:200]))
+        data = json.loads(raw)
+    except ValueError:
+        raise
+    except Exception as exc:
+        _conn = None
+        raise ValueError("Cannot reach LLM: {0}".format(exc))
+
     last_call_ms = int((time.time() - t0) * 1000)
     total_call_ms += last_call_ms
     total_calls += 1
@@ -87,21 +146,17 @@ def call_llm(llm_cfg, system_prompt, user_message):
         last_prompt_chars, last_call_ms,
     )
 
-    # Parse response — try multiple formats (OpenAI, Anthropic, custom)
     choice = (data.get("choices") or [{}])[0]
     content = (choice.get("message") or {}).get("content", "")
     if not content:
         content = data.get("content", "") or data.get("output", "") or ""
-    # Some models nest content in delta (streaming leftover)
     if not content:
         content = (choice.get("delta") or {}).get("content", "")
-    # Log empty responses for debugging
     if not content:
         finish = choice.get("finish_reason", "unknown")
-        raw_keys = list(data.keys())
         _logger.warning(
-            "aiguy empty LLM response: finish_reason=%s keys=%s model=%s chars_sent=%d",
-            finish, raw_keys, llm_cfg.get("model", "?"), last_prompt_chars,
+            "aiguy empty LLM response: finish_reason=%s model=%s chars_sent=%d",
+            finish, llm_cfg.get("model", "?"), last_prompt_chars,
         )
     if not content:
         finish = choice.get("finish_reason", "unknown")
@@ -151,7 +206,6 @@ def should_skip_scheduled(session_key, saved_search_name):
 
 def log_usage(mode, field, prompt, source, row_count, t_start):
     # type: (str, str, str, str, int, float) -> None
-    """Log usage to stderr -> Splunk _internal index."""
     try:
         dur = int((time.time() - t_start) * 1000)
         _logger.info(

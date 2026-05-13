@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>| aiguy — AI in Your Splunk Pipeline</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0f1a; color: #e2e8f0; font-family: 'Inter', sans-serif; }
+
+  .container { max-width: 900px; margin: 0 auto; padding: 40px 24px; }
+
+  /* Hero */
+  .hero { text-align: center; padding: 48px 0 32px; }
+  .hero-badge { display: inline-block; padding: 4px 16px; border-radius: 20px; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; background: rgba(96,165,250,0.15); color: #60a5fa; border: 1px solid rgba(96,165,250,0.3); margin-bottom: 16px; }
+  .hero h1 { font-size: 42px; font-weight: 700; margin-bottom: 8px; }
+  .hero h1 .cmd { font-family: 'JetBrains Mono', monospace; color: #60a5fa; }
+  .hero p { font-size: 16px; color: #94a3b8; max-width: 600px; margin: 0 auto; line-height: 1.6; }
+
+  /* Syntax block */
+  .syntax { background: #111827; border: 1px solid #1e293b; border-radius: 12px; padding: 20px 24px; margin: 32px 0; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.8; }
+  .syntax .pipe { color: #f59e0b; font-weight: 700; }
+  .syntax .cmd { color: #60a5fa; font-weight: 600; }
+  .syntax .param { color: #a78bfa; }
+  .syntax .val { color: #4ade80; }
+  .syntax .comment { color: #475569; font-style: italic; }
+
+  /* Section */
+  .section { margin: 40px 0; }
+  .section-title { font-size: 20px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+  .section-title .dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  /* Mode cards */
+  .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .mode-card { background: #111827; border: 1px solid #1e293b; border-radius: 10px; padding: 16px; transition: border-color 0.2s; }
+  .mode-card:hover { border-color: #334155; }
+  .mode-name { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+  .mode-desc { font-size: 12px; color: #94a3b8; line-height: 1.5; }
+  .mode-card.blue .mode-name { color: #60a5fa; }
+  .mode-card.purple .mode-name { color: #a78bfa; }
+  .mode-card.green .mode-name { color: #4ade80; }
+  .mode-card.amber .mode-name { color: #f59e0b; }
+  .mode-card.rose .mode-name { color: #fb7185; }
+  .mode-card.cyan .mode-name { color: #22d3ee; }
+
+  /* Options table */
+  .options-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .options-table th { text-align: left; padding: 10px 12px; color: #64748b; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid #1e293b; }
+  .options-table td { padding: 10px 12px; border-bottom: 1px solid #1e293b; }
+  .options-table .param { font-family: 'JetBrains Mono', monospace; color: #a78bfa; font-weight: 600; white-space: nowrap; }
+  .options-table .req { font-size: 10px; padding: 2px 6px; border-radius: 3px; }
+  .options-table .req-yes { background: rgba(251,113,133,0.15); color: #fb7185; }
+  .options-table .req-no { background: rgba(148,163,184,0.1); color: #64748b; }
+
+  /* Examples */
+  .example { background: #111827; border-left: 3px solid #60a5fa; border-radius: 0 8px 8px 0; padding: 12px 16px; margin: 10px 0; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.7; white-space: pre-wrap; word-break: break-all; }
+  .example-label { font-family: 'Inter', sans-serif; font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+
+  /* Features strip */
+  .features { display: flex; gap: 8px; flex-wrap: wrap; margin: 24px 0; }
+  .feat { padding: 6px 14px; border-radius: 6px; font-size: 11px; font-weight: 600; background: rgba(96,165,250,0.1); color: #60a5fa; border: 1px solid rgba(96,165,250,0.2); }
+
+  /* Output fields */
+  .output-fields { display: flex; gap: 12px; margin: 16px 0; }
+  .output-field { flex: 1; background: #111827; border: 1px solid #1e293b; border-radius: 8px; padding: 12px; text-align: center; }
+  .output-field .name { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #4ade80; font-weight: 600; }
+  .output-field .desc { font-size: 11px; color: #64748b; margin-top: 4px; }
+
+  /* Safety */
+  .safety { background: rgba(251,191,36,0.08); border: 1px solid rgba(251,191,36,0.2); border-radius: 10px; padding: 16px; margin: 32px 0; }
+  .safety-title { font-size: 13px; font-weight: 700; color: #fbbf24; margin-bottom: 6px; }
+  .safety-text { font-size: 12px; color: #94a3b8; line-height: 1.6; }
+
+  .footer { text-align: center; padding: 32px 0; color: #334155; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="hero">
+    <div class="hero-badge">Splunk Custom Command</div>
+    <h1><span class="cmd">| aiguy</span></h1>
+    <p>AI-powered analysis, enrichment, and extraction — right inside your SPL pipeline. Ask questions, classify data, extract fields, and get suggestions.</p>
+  </div>
+
+  <div class="syntax">
+    <span class="comment">&#35; Basic question</span><br>
+    ... <span class="pipe">|</span> <span class="cmd">aiguy</span> <span class="param">prompt=</span><span class="val">"which host is busiest?"</span><br><br>
+    <span class="comment">&#35; Preset mode</span><br>
+    ... <span class="pipe">|</span> <span class="cmd">aiguy</span> <span class="param">mode=</span><span class="val">"anomaly"</span><br><br>
+    <span class="comment">&#35; Enrich each row</span><br>
+    ... <span class="pipe">|</span> <span class="cmd">aiguy</span> <span class="param">mode=</span><span class="val">"enrich"</span> <span class="param">field=</span><span class="val">"message"</span> <span class="param">prompt=</span><span class="val">"classify as critical, warning, or info"</span><br><br>
+    <span class="comment">&#35; Extract a value</span><br>
+    ... <span class="pipe">|</span> <span class="cmd">aiguy</span> <span class="param">mode=</span><span class="val">"extract"</span> <span class="param">field=</span><span class="val">"email"</span> <span class="param">prompt=</span><span class="val">"extract the domain"</span> <span class="param">new_field_name=</span><span class="val">"domain"</span>
+  </div>
+
+  <!-- Modes -->
+  <div class="section">
+    <div class="section-title"><span class="dot" style="background:#60a5fa"></span> Modes</div>
+    <div class="modes">
+      <div class="mode-card blue">
+        <div class="mode-name">summary</div>
+        <div class="mode-desc">Key findings and takeaways from the results.</div>
+      </div>
+      <div class="mode-card purple">
+        <div class="mode-name">anomaly</div>
+        <div class="mode-desc">Outliers, unusual patterns, things that stand out.</div>
+      </div>
+      <div class="mode-card green">
+        <div class="mode-name">trend</div>
+        <div class="mode-desc">Time-based patterns — increasing, decreasing, stable.</div>
+      </div>
+      <div class="mode-card amber">
+        <div class="mode-name">alert</div>
+        <div class="mode-desc">Should an alert fire? Yes/no with reasoning.</div>
+      </div>
+      <div class="mode-card rose">
+        <div class="mode-name">health</div>
+        <div class="mode-desc">Overall system health assessment.</div>
+      </div>
+      <div class="mode-card cyan">
+        <div class="mode-name">compare</div>
+        <div class="mode-desc">Differences between groups in the data.</div>
+      </div>
+      <div class="mode-card blue">
+        <div class="mode-name">enrich</div>
+        <div class="mode-desc">Per-row AI labeling — classify, categorize, explain each value.</div>
+      </div>
+      <div class="mode-card purple">
+        <div class="mode-name">extract</div>
+        <div class="mode-desc">AI generates regex to extract values from a field. Falls back to dict mapping.</div>
+      </div>
+      <div class="mode-card green">
+        <div class="mode-name">explain</div>
+        <div class="mode-desc">Plain English explanation of the SPL query itself.</div>
+      </div>
+      <div class="mode-card amber">
+        <div class="mode-name">suggest</div>
+        <div class="mode-desc">Suggests one follow-up SPL query to dig deeper.</div>
+      </div>
+      <div class="mode-card rose">
+        <div class="mode-name">dashboard</div>
+        <div class="mode-desc">Fetches all panels from a dashboard and summarizes the overall situation.</div>
+      </div>
+      <div class="mode-card cyan">
+        <div class="mode-name">top</div>
+        <div class="mode-desc">Top items and why they're significant.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Options -->
+  <div class="section">
+    <div class="section-title"><span class="dot" style="background:#a78bfa"></span> Options</div>
+    <table class="options-table">
+      <tr><th>Parameter</th><th>Required</th><th>Description</th></tr>
+      <tr><td class="param">prompt=</td><td><span class="req req-no">if mode set</span></td><td>Your question or instruction for the AI.</td></tr>
+      <tr><td class="param">mode=</td><td><span class="req req-no">if prompt set</span></td><td>Preset analysis mode (see above).</td></tr>
+      <tr><td class="param">field=</td><td><span class="req req-yes">enrich/extract</span></td><td>Which field to analyze, classify, or extract from.</td></tr>
+      <tr><td class="param">value=</td><td><span class="req req-no">optional</span></td><td>Filter: only rows where field=value are sent to AI.</td></tr>
+      <tr><td class="param">new_field_name=</td><td><span class="req req-no">optional</span></td><td>Name for the new field (extract/enrich). Default: ai_answer.</td></tr>
+    </table>
+  </div>
+
+  <!-- Output fields -->
+  <div class="section">
+    <div class="section-title"><span class="dot" style="background:#4ade80"></span> Output Fields</div>
+    <div class="output-fields">
+      <div class="output-field">
+        <div class="name">ai_answer</div>
+        <div class="desc">The AI's response or extracted/enriched value</div>
+      </div>
+      <div class="output-field">
+        <div class="name">aiguy_timestamp</div>
+        <div class="desc">When the AI processed this row</div>
+      </div>
+      <div class="output-field">
+        <div class="name">aiguy_source</div>
+        <div class="desc">Source: live, regex, dict, partial, error</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Examples -->
+  <div class="section">
+    <div class="section-title"><span class="dot" style="background:#f59e0b"></span> Examples</div>
+
+    <div class="example-label">Ask a question</div>
+    <div class="example">index=main | stats count by sourcetype | aiguy prompt="which sourcetype generates the most noise?"</div>
+
+    <div class="example-label">Classify errors</div>
+    <div class="example">index=_internal log_level=ERROR | dedup message | head 25
+| aiguy mode="enrich" field="message" prompt="explain each error and how to fix it"</div>
+
+    <div class="example-label">Extract a field</div>
+    <div class="example">... | aiguy mode="extract" field="user" prompt="extract the domain from the email" new_field_name="domain"</div>
+
+    <div class="example-label">Explain a complex query</div>
+    <div class="example">index=firewall action=blocked | stats count by src_ip | sort -count | head 10
+| aiguy mode="explain"</div>
+
+    <div class="example-label">Dashboard summary</div>
+    <div class="example">| makeresults | aiguy mode="dashboard" prompt="search/monitoring: any issues I should know about?"</div>
+
+    <div class="example-label">Chain with Splunk commands</div>
+    <div class="example">index=web status>=400 | stats count by uri
+| aiguy mode="enrich" field="uri" prompt="classify as API, static asset, or page" new_field_name="category"
+| stats sum(count) by category</div>
+  </div>
+
+  <!-- Features -->
+  <div class="features">
+    <span class="feat">25s deadline — returns partial results</span>
+    <span class="feat">Persistent HTTPS connection</span>
+    <span class="feat">Smart sampling — 20 unique rows from 10k</span>
+    <span class="feat">Dynamic cell length for tracebacks</span>
+    <span class="feat">Scheduled search rate limiting</span>
+    <span class="feat">Works for all users</span>
+  </div>
+
+  <!-- Quick Reference -->
+  <div class="section">
+    <div class="section-title"><span class="dot" style="background:#22d3ee"></span> Quick Reference</div>
+    <div style="background:#111827;border:1px solid #1e293b;border-radius:10px;padding:20px 24px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:2.2">
+      <span style="color:#475569">&#35; Analysis (one answer for all rows)</span><br>
+      ... | <span style="color:#60a5fa">aiguy</span> <span style="color:#a78bfa">prompt=</span><span style="color:#4ade80">"your question"</span><br>
+      ... | <span style="color:#60a5fa">aiguy</span> <span style="color:#a78bfa">mode=</span><span style="color:#4ade80">"summary|anomaly|trend|compare|alert|health|top"</span><br>
+      ... | <span style="color:#60a5fa">aiguy</span> <span style="color:#a78bfa">mode=</span><span style="color:#4ade80">"summary"</span> <span style="color:#a78bfa">field=</span><span style="color:#4ade80">"host"</span> <span style="color:#a78bfa">value=</span><span style="color:#4ade80">"web01"</span><br><br>
+      <span style="color:#475569">&#35; Per-row enrichment (AI labels each unique value)</span><br>
+      ... | <span style="color:#60a5fa">aiguy</span> <span style="color:#a78bfa">mode=</span><span style="color:#4ade80">"enrich"</span> <span style="color:#a78bfa">field=</span><span style="color:#4ade80">"field_name"</span> <span style="color:#a78bfa">prompt=</span><span style="color:#4ade80">"instruction"</span><br>
+      ... | <span style="color:#60a5fa">aiguy</span> <span style="color:#a78bfa">mode=</span><span style="color:#4ade80">"enrich"</span> <span style="color:#a78bfa">field=</span><span style="color:#4ade80">"msg"</span> <span style="color:#a78bfa">prompt=</span><span style="color:#4ade80">"explain"</span> <span style="color:#a78bfa">new_field_name=</span><span style="color:#4ade80">"explanation"</span><br><br>
+      <span style="color:#475569">&#35; Field extraction (AI generates regex, fallback to dict)</span><br>
+      ... | <span style="color:#60a5fa">aiguy</span> <span style="color:#a78bfa">mode=</span><span style="color:#4ade80">"extract"</span> <span style="color:#a78bfa">field=</span><span style="color:#4ade80">"field_name"</span> <span style="color:#a78bfa">prompt=</span><span style="color:#4ade80">"what to extract"</span><br>
+      ... | <span style="color:#60a5fa">aiguy</span> <span style="color:#a78bfa">mode=</span><span style="color:#4ade80">"extract"</span> <span style="color:#a78bfa">field=</span><span style="color:#4ade80">"email"</span> <span style="color:#a78bfa">prompt=</span><span style="color:#4ade80">"domain"</span> <span style="color:#a78bfa">new_field_name=</span><span style="color:#4ade80">"domain"</span><br><br>
+      <span style="color:#475569">&#35; Query tools</span><br>
+      ... | <span style="color:#60a5fa">aiguy</span> <span style="color:#a78bfa">mode=</span><span style="color:#4ade80">"explain"</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#475569">&#35; what does this SPL do?</span><br>
+      ... | <span style="color:#60a5fa">aiguy</span> <span style="color:#a78bfa">mode=</span><span style="color:#4ade80">"suggest"</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#475569">&#35; suggest a follow-up query</span><br>
+      | makeresults | <span style="color:#60a5fa">aiguy</span> <span style="color:#a78bfa">mode=</span><span style="color:#4ade80">"dashboard"</span> <span style="color:#a78bfa">prompt=</span><span style="color:#4ade80">"app/name"</span> <span style="color:#475569">&#35; summarize a dashboard</span>
+    </div>
+  </div>
+
+  <!-- Behavior notes -->
+  <div class="section">
+    <div class="section-title"><span class="dot" style="background:#fb7185"></span> Behavior</div>
+    <table class="options-table">
+      <tr><th>Behavior</th><th>Detail</th></tr>
+      <tr><td class="param">Sampling</td><td>Scans first 10,000 rows, picks 20 unique for the LLM. Remaining rows stream through.</td></tr>
+      <tr><td class="param">Batching</td><td>Enrich mode sends values in 3,000-char batches. Connection reused across batches.</td></tr>
+      <tr><td class="param">Deadline</td><td>25 second total time budget. If exceeded, returns partial results with what it has.</td></tr>
+      <tr><td class="param">Field safety</td><td>Never overwrites the source field. Defaults to ai_answer if no new_field_name set.</td></tr>
+      <tr><td class="param">Rate limit</td><td>Scheduled searches skip LLM if the same alert ran within 10 minutes.</td></tr>
+      <tr><td class="param">Small sets</td><td>8 or fewer unique values skip regex, go straight to dict mapping (faster).</td></tr>
+      <tr><td class="param">Errors</td><td>Shows diagnostics: finish_reason, response time, chars sent. Never crashes the search.</td></tr>
+    </table>
+  </div>
+
+  <!-- Safety -->
+  <div class="safety">
+    <div class="safety-title">&#9888; Safety</div>
+    <div class="safety-text">
+      aiguy is <strong>read-only</strong> — it never executes SPL, modifies data, or writes to indexes. The only external call is HTTPS to your configured LLM endpoint. For scheduled searches, it auto-skips if the same alert ran within 10 minutes to avoid unnecessary API costs.
+    </div>
+  </div>
+
+  <div class="footer">
+    Powered by Query Tester &mdash; | aiguy v2
+  </div>
+
+</div>
+</body>
+</html>

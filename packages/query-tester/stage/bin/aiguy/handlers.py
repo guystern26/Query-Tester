@@ -19,7 +19,7 @@ from .prompts import (
     MODE_PROMPTS,
 )
 from . import llm as llm_mod
-from .llm import call_llm, log_usage
+from .llm import call_llm, log_usage, DeadlineExceeded
 from .formatter import format_table, trim_values_to_budget
 from .extract import run_extract, parse_dict_response
 
@@ -161,6 +161,7 @@ def handle_enrich(records, llm_cfg, field_name, user_prompt,
     enrich_cfg["max_tokens"] = MAX_RESPONSE_TOKENS_ENRICH
     batches = _batch_values(unique_vals, ENRICH_BATCH_CHARS)
 
+    timed_out = False
     for batch in batches:
         numbered = "\n".join(
             "{0}: {1}".format(i + 1, v) for i, v in enumerate(batch)
@@ -184,11 +185,21 @@ def handle_enrich(records, llm_cfg, field_name, user_prompt,
                     mapping[val] = str(idx_mapping[key])
             if not llm_field_name and batch_field:
                 llm_field_name = batch_field
+        except DeadlineExceeded:
+            source = "partial"
+            timed_out = True
+            break
         except Exception:
             source = "error"
 
-    new_field = new_field_name or llm_field_name or "label"
-    new_field = re.sub(r"[^\w]", "_", new_field).strip("_") or "label"
+    new_field = new_field_name or llm_field_name or "ai_answer"
+    new_field = re.sub(r"[^\w]", "_", new_field).strip("_") or "ai_answer"
+    # Never overwrite the source field
+    if new_field == field_name:
+        new_field = "ai_answer"
+    if timed_out:
+        source = "partial (deadline exceeded — returning {0} of {1} values)".format(
+            len(mapping), len(unique_vals))
 
     ts = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
     source_info = source
