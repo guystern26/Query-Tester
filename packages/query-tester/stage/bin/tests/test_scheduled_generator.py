@@ -270,3 +270,282 @@ class TestScheduledGeneratorPipeline:
         second_gen = payload["scenarios"][0]["inputs"][1]["generatorConfig"]
         assert second_gen["rules"][0]["fieldName"] == "host"
         assert second_gen["rules"][0]["generationType"] == "pick_list"
+
+
+class TestQueryDataConfigNormalization:
+    """Tests for queryDataConfig.timeRange → earliestTime/latestTime conversion."""
+
+    def test_timerange_converted_to_flat_keys(self):
+        """Frontend stores timeRange nested, backend expects flat keys."""
+        definition = _kvstore_definition()
+        definition["scenarios"][0]["inputs"][0]["inputMode"] = "query_data"
+        definition["scenarios"][0]["inputs"][0]["queryDataConfig"] = {
+            "spl": "index=main | stats count",
+            "timeRange": {"earliest": "-7d@d", "latest": "now"},
+        }
+        saved_test = {"name": "Test", "app": "search"}
+        scheduled = {"testName": "Test"}
+
+        payload, _ = build_test_payload(definition, saved_test, scheduled)
+        qd = payload["scenarios"][0]["inputs"][0]["queryDataConfig"]
+
+        assert qd["earliestTime"] == "-7d@d"
+        assert qd["latestTime"] == "now"
+        assert "timeRange" not in qd
+
+    def test_already_flat_keys_not_broken(self):
+        """If keys are already earliestTime/latestTime, don't break them."""
+        definition = _kvstore_definition()
+        definition["scenarios"][0]["inputs"][0]["inputMode"] = "query_data"
+        definition["scenarios"][0]["inputs"][0]["queryDataConfig"] = {
+            "spl": "index=main | stats count",
+            "earliestTime": "-24h",
+            "latestTime": "now",
+        }
+        saved_test = {"name": "Test", "app": "search"}
+        scheduled = {"testName": "Test"}
+
+        payload, _ = build_test_payload(definition, saved_test, scheduled)
+        qd = payload["scenarios"][0]["inputs"][0]["queryDataConfig"]
+
+        assert qd["earliestTime"] == "-24h"
+        assert qd["latestTime"] == "now"
+
+    def test_empty_query_data_config(self):
+        """Empty SPL in queryDataConfig should not crash."""
+        definition = _kvstore_definition()
+        definition["scenarios"][0]["inputs"][0]["queryDataConfig"] = {
+            "spl": "",
+            "timeRange": {"earliest": "", "latest": ""},
+        }
+        saved_test = {"name": "Test", "app": "search"}
+        scheduled = {"testName": "Test"}
+
+        payload, _ = build_test_payload(definition, saved_test, scheduled)
+        # Empty SPL — should not be normalized (skipped)
+        qd = payload["scenarios"][0]["inputs"][0]["queryDataConfig"]
+        assert "timeRange" in qd  # not touched because spl is empty
+
+    def test_missing_query_data_config(self):
+        """Missing queryDataConfig entirely should not crash."""
+        definition = _kvstore_definition()
+        del definition["scenarios"][0]["inputs"][0]["queryDataConfig"]
+        saved_test = {"name": "Test", "app": "search"}
+        scheduled = {"testName": "Test"}
+
+        payload, _ = build_test_payload(definition, saved_test, scheduled)
+        assert "queryDataConfig" not in payload["scenarios"][0]["inputs"][0]
+
+
+class TestEdgeCases:
+    """Edge cases that could break the scheduled pipeline."""
+
+    def test_empty_scenarios(self):
+        """Definition with no scenarios."""
+        definition = _kvstore_definition()
+        definition["scenarios"] = []
+        payload, _ = build_test_payload(definition, {}, {})
+        assert payload["scenarios"] == []
+
+    def test_empty_inputs(self):
+        """Scenario with no inputs."""
+        definition = _kvstore_definition()
+        definition["scenarios"][0]["inputs"] = []
+        payload, _ = build_test_payload(definition, {}, {})
+        assert payload["scenarios"][0]["inputs"] == []
+
+    def test_empty_events(self):
+        """Input with no events."""
+        definition = _kvstore_definition()
+        definition["scenarios"][0]["inputs"][0]["events"] = []
+        payload, _ = build_test_payload(definition, {}, {})
+        assert payload["scenarios"][0]["inputs"][0]["events"] == []
+
+    def test_already_flat_events(self):
+        """Events already in flat dict format (not fieldValues)."""
+        definition = _kvstore_definition()
+        definition["scenarios"][0]["inputs"][0]["events"] = [
+            {"sourcetype": "splunkd", "count": "50"},
+        ]
+        payload, _ = build_test_payload(definition, {}, {})
+        events = payload["scenarios"][0]["inputs"][0]["events"]
+        assert events[0]["sourcetype"] == "splunkd"
+
+    def test_generator_with_empty_rules(self):
+        """Generator enabled but no rules."""
+        definition = _kvstore_definition()
+        definition["scenarios"][0]["inputs"][0]["generatorConfig"] = {
+            "enabled": True,
+            "eventCount": 10,
+            "rules": [],
+        }
+        payload, _ = build_test_payload(definition, {}, {})
+        gen = payload["scenarios"][0]["inputs"][0]["generatorConfig"]
+        assert gen["enabled"] is True
+        assert gen["rules"] == []
+
+    def test_generator_rule_missing_config(self):
+        """Generator rule with no config dict."""
+        definition = _kvstore_definition()
+        definition["scenarios"][0]["inputs"][0]["generatorConfig"]["rules"] = [
+            {"id": "r1", "field": "host", "type": "pick_list"},
+        ]
+        payload, _ = build_test_payload(definition, {}, {})
+        rule = payload["scenarios"][0]["inputs"][0]["generatorConfig"]["rules"][0]
+        assert rule["fieldName"] == "host"
+        assert rule["generationType"] == "pick_list"
+
+    def test_query_as_string(self):
+        """Definition where query is a plain string (old format)."""
+        definition = _kvstore_definition()
+        definition["query"] = "index=main | stats count"
+        payload, spl = build_test_payload(definition, {}, {})
+        assert spl == "index=main | stats count"
+        assert payload["earliestTime"] == "-24h"  # default
+
+    def test_name_fallback_chain(self):
+        """Test name falls back: definition → saved_test → scheduled."""
+        definition = {"query": {"spl": "test", "timeRange": {}}, "scenarios": []}
+
+        # No name anywhere
+        payload, _ = build_test_payload(definition, {}, {})
+        assert payload["testName"] == ""
+
+        # Name in saved_test
+        payload, _ = build_test_payload(definition, {"name": "From Saved"}, {})
+        assert payload["testName"] == "From Saved"
+
+        # Name in definition overrides
+        definition["name"] = "From Definition"
+        payload, _ = build_test_payload(definition, {"name": "From Saved"}, {})
+        assert payload["testName"] == "From Definition"
+
+    def test_validation_passes_through(self):
+        """Validation object should pass through unchanged."""
+        definition = _kvstore_definition()
+        payload, _ = build_test_payload(definition, {}, {})
+        v = payload["validation"]
+        assert v["validationType"] == "standard"
+        assert v["fieldLogic"] == "and"
+        assert v["validationScope"] == "all_events"
+
+    def test_mixed_inputs_all_normalized(self):
+        """Multiple inputs with different modes all get normalized."""
+        definition = _kvstore_definition()
+        # Input 1: fields mode with generator (already in fixture)
+        # Input 2: query_data mode
+        qd_input = {
+            "id": "inp-2",
+            "rowIdentifier": "",
+            "inputMode": "query_data",
+            "events": [],
+            "generatorConfig": {"enabled": False, "eventCount": 0, "rules": []},
+            "queryDataConfig": {
+                "spl": "index=firewall | stats count by src_ip",
+                "timeRange": {"earliest": "-1h", "latest": "now"},
+            },
+            "jsonContent": "",
+            "fileRef": None,
+        }
+        definition["scenarios"][0]["inputs"].append(qd_input)
+
+        payload, _ = build_test_payload(definition, {}, {})
+        inputs = payload["scenarios"][0]["inputs"]
+
+        # Input 1: generator normalized
+        gen = inputs[0]["generatorConfig"]
+        assert gen["rules"][0]["fieldName"] == "sourcetype"
+
+        # Input 2: queryDataConfig normalized
+        qd = inputs[1]["queryDataConfig"]
+        assert qd["earliestTime"] == "-1h"
+        assert qd["latestTime"] == "now"
+        assert "timeRange" not in qd
+
+    def test_validation_defaults_when_missing(self):
+        """Missing validation keys should get safe defaults."""
+        definition = _kvstore_definition()
+        definition["validation"] = {}
+        payload, _ = build_test_payload(definition, {}, {})
+        v = payload["validation"]
+        assert v["validationType"] == "standard"
+        assert v["fieldLogic"] == "and"
+        assert v["validationScope"] == "any_event"
+        assert v["fieldGroups"] == []
+
+    def test_validation_null_becomes_dict(self):
+        """None/null validation should not crash."""
+        definition = _kvstore_definition()
+        definition["validation"] = None
+        payload, _ = build_test_payload(definition, {}, {})
+        v = payload["validation"]
+        assert isinstance(v, dict)
+        assert v["fieldGroups"] == []
+
+    def test_validation_fieldgroups_null_becomes_list(self):
+        """Null fieldGroups should become empty list."""
+        definition = _kvstore_definition()
+        definition["validation"]["fieldGroups"] = None
+        payload, _ = build_test_payload(definition, {}, {})
+        assert payload["validation"]["fieldGroups"] == []
+
+    def test_disabled_generator_with_frontend_keys_no_crash(self):
+        """Enable generator → add rules → disable → scheduled run should not crash."""
+        definition = _kvstore_definition()
+        gen = definition["scenarios"][0]["inputs"][0]["generatorConfig"]
+        gen["enabled"] = False
+        # Rules still have frontend keys (field/type) from when it was enabled
+        assert gen["rules"][0]["field"] == "sourcetype"
+        assert gen["rules"][0]["type"] == "pick_list"
+
+        payload, _ = build_test_payload(definition, {}, {})
+        gen_out = payload["scenarios"][0]["inputs"][0]["generatorConfig"]
+
+        # Rules should be normalized even though disabled
+        assert gen_out["rules"][0]["fieldName"] == "sourcetype"
+        assert gen_out["rules"][0]["generationType"] == "pick_list"
+        assert gen_out["enabled"] is False
+
+    def test_disabled_generator_not_parsed_by_payload_parser(self):
+        """Disabled generator should be skipped by payload_parser — no KeyError."""
+        from core.payload_parser import _parse_input
+
+        raw_input = {
+            "rowIdentifier": "index=main",
+            "inputMode": "fields",
+            "events": [{"host": "web01"}],
+            "generatorConfig": {
+                "enabled": False,
+                "eventCount": 10,
+                "rules": [
+                    {"id": "r1", "field": "host", "type": "pick_list",
+                     "config": {"values": ["web01"]}},
+                ],
+            },
+        }
+        # This should NOT crash even with frontend keys + disabled
+        parsed = _parse_input(raw_input)
+        assert parsed.generator_config is None  # disabled = not parsed
+
+    def test_reenable_generator_after_disable(self):
+        """Disable then re-enable: rules should still parse correctly."""
+        definition = _kvstore_definition()
+        gen = definition["scenarios"][0]["inputs"][0]["generatorConfig"]
+        # Simulate: was enabled, got disabled, re-enabled
+        gen["enabled"] = True
+        # Rules still have frontend keys from original save
+
+        payload, _ = build_test_payload(definition, {}, {})
+        gen_out = payload["scenarios"][0]["inputs"][0]["generatorConfig"]
+
+        gen_config = parse_generator_config(gen_out)
+        assert gen_config.enabled is True
+        assert gen_config.rules[0].field_name == "sourcetype"
+
+    def test_kvstore_key_format(self):
+        """KVStore returns _key, not id. build_test_payload should handle both."""
+        definition = _kvstore_definition()
+        saved_test = {"_key": "abc123", "name": "Test"}
+        scheduled = {"_key": "sched456", "testName": "Test"}
+        payload, _ = build_test_payload(definition, saved_test, scheduled)
+        # Should not crash — _key is used internally, not in payload

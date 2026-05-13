@@ -117,17 +117,38 @@ def _normalize_generator_rules(gen_config):
     return gen_config
 
 
+def _normalize_query_data_config(qd):
+    # type: (Dict[str, Any]) -> Dict[str, Any]
+    """Normalize queryDataConfig from frontend format to backend format.
+
+    KVStore stores: { spl, timeRange: { earliest, latest } }
+    Backend expects: { spl, earliestTime, latestTime }
+    """
+    tr = qd.get("timeRange")
+    if isinstance(tr, dict):
+        if "earliestTime" not in qd:
+            qd["earliestTime"] = tr.get("earliest", "0")
+        if "latestTime" not in qd:
+            qd["latestTime"] = tr.get("latest", "now")
+        del qd["timeRange"]
+    return qd
+
+
 def _normalize_scenarios(scenarios):
     # type: (List[Dict[str, Any]]) -> List[Dict[str, Any]]
-    """Flatten events and normalize generator keys in each scenario input."""
+    """Flatten events and normalize all nested configs in each scenario input."""
     for scenario in scenarios:
         for inp in scenario.get("inputs", []):
             raw_events = inp.get("events", [])
             inp["events"] = [_flatten_event(e) for e in raw_events if e]
-            # Normalize generator config keys
+            # Normalize generator config keys (even if disabled — parser reads them anyway)
             gen = inp.get("generatorConfig")
-            if isinstance(gen, dict) and gen.get("enabled"):
+            if isinstance(gen, dict) and gen.get("rules"):
                 _normalize_generator_rules(gen)
+            # Normalize queryDataConfig time range
+            qd = inp.get("queryDataConfig")
+            if isinstance(qd, dict) and qd.get("spl"):
+                _normalize_query_data_config(qd)
     return scenarios
 
 
@@ -149,6 +170,16 @@ def build_test_payload(definition, saved_test, scheduled):
     if scenarios:
         scenarios = _normalize_scenarios(scenarios)
 
+    # Ensure validation has required structure
+    validation = definition.get("validation", {})
+    if not isinstance(validation, dict):
+        validation = {}
+    if not isinstance(validation.get("fieldGroups"), list):
+        validation["fieldGroups"] = []
+    validation.setdefault("validationType", "standard")
+    validation.setdefault("fieldLogic", "and")
+    validation.setdefault("validationScope", "any_event")
+
     payload = {
         "testName": definition.get("name", saved_test.get(
             "name", scheduled.get("testName", ""))),
@@ -158,6 +189,6 @@ def build_test_payload(definition, saved_test, scheduled):
         "earliestTime": earliest,
         "latestTime": latest,
         "scenarios": scenarios,
-        "validation": definition.get("validation", {}),
+        "validation": validation,
     }
     return payload, query_spl

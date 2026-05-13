@@ -92,7 +92,8 @@ def run(payload_path, session_key):
         last_run = scheduled.get("lastRunAt", "")
         if last_run:
             try:
-                ran_ts = time.mktime(time.strptime(last_run, "%Y-%m-%dT%H:%M:%SZ"))
+                import calendar
+                ran_ts = calendar.timegm(time.strptime(last_run, "%Y-%m-%dT%H:%M:%SZ"))
                 if (time.time() - ran_ts) < 120:
                     logger.info("Skipping alert action for %s — ran %ds ago (dedup).",
                                 test_id, int(time.time() - ran_ts))

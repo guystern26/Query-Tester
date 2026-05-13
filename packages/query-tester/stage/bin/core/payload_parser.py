@@ -156,7 +156,7 @@ def _parse_input(raw: Dict[str, Any]) -> ParsedInput:
             "received %s. Treating as disabled.",
             type(generator_config_raw).__name__,
         )
-    else:
+    elif generator_config_raw.get("enabled"):
         generator_config = parse_generator_config(generator_config_raw)
 
     # Parse query_data config if present

@@ -441,7 +441,7 @@ def _process_queue(kv, session_key, all_tests, max_workers):
 
     # Mark batch as 'running' before submitting
     for rec in batch:
-        _update_record(kv, rec["id"], {"queueStatus": "running"})
+        _update_record(kv, rec.get("_key") or rec.get("id", ""), {"queueStatus": "running"})
 
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
         futures = {}  # type: Dict[Any, str]
