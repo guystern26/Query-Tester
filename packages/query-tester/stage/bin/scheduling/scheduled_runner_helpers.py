@@ -101,13 +101,33 @@ def _flatten_event(event):
     return result
 
 
+def _normalize_generator_rules(gen_config):
+    # type: (Dict[str, Any]) -> Dict[str, Any]
+    """Normalize generator rule keys from frontend format to backend format.
+
+    KVStore stores frontend keys (field, type).
+    Backend expects (fieldName, generationType).
+    """
+    rules = gen_config.get("rules", [])
+    for rule in rules:
+        if "field" in rule and "fieldName" not in rule:
+            rule["fieldName"] = rule.pop("field")
+        if "type" in rule and "generationType" not in rule:
+            rule["generationType"] = rule.pop("type")
+    return gen_config
+
+
 def _normalize_scenarios(scenarios):
     # type: (List[Dict[str, Any]]) -> List[Dict[str, Any]]
-    """Flatten events in each scenario input from frontend format."""
+    """Flatten events and normalize generator keys in each scenario input."""
     for scenario in scenarios:
         for inp in scenario.get("inputs", []):
             raw_events = inp.get("events", [])
             inp["events"] = [_flatten_event(e) for e in raw_events if e]
+            # Normalize generator config keys
+            gen = inp.get("generatorConfig")
+            if isinstance(gen, dict) and gen.get("enabled"):
+                _normalize_generator_rules(gen)
     return scenarios
 
 
