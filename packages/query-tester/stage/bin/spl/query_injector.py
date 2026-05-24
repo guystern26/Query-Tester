@@ -23,11 +23,18 @@ _RE_INPUTLOOKUP = re.compile(r"(?:^|\|)\s*inputlookup\b", re.IGNORECASE)
 _RE_TSTATS = re.compile(r"(?:^|\|)\s*tstats\b", re.IGNORECASE)
 _RE_LOOKUP = re.compile(r"(?:^|\|)\s*lookup\s+\w", re.IGNORECASE)
 _RE_REST = re.compile(r"(?:^|\|)\s*rest\b", re.IGNORECASE)
+_RE_SAVEDSEARCH = re.compile(r"(?:^|\|)\s*savedsearch\b", re.IGNORECASE)
 _RE_INDEX = re.compile(r"\bindex\s*=", re.IGNORECASE)
 
 # Matches the full '| rest ...' clause up to the next pipe or end of string.
 # Uses a non-greedy match and stops before trailing whitespace + pipe.
 REST_PATTERN = re.compile(r"(?i)(?:\|\s*)?rest\s+[^|]+?(?=\s*\||$)")
+
+# Matches '| savedsearch <name>' where <name> can be quoted (with spaces/pipes)
+# or unquoted (word chars only). Quoted names are matched as one atomic token.
+SAVEDSEARCH_PATTERN = re.compile(
+    r'(?i)(?:\|\s*)?savedsearch\s+(?:"[^"]+"|\'[^\']+\'|[\w\-\.]+)'
+)
 
 
 
@@ -103,6 +110,8 @@ def detect_strategy(spl: str) -> str:
         return "tstats"
     if _RE_REST.search(outer):
         return "rest"
+    if _RE_SAVEDSEARCH.search(outer):
+        return "savedsearch"
     if _RE_LOOKUP.search(spl_clean):
         return "lookup"
     if _RE_INDEX.search(outer):
@@ -201,6 +210,22 @@ def _inject_rest(spl: str, run_id: str, inputs: List[ParsedInput]) -> str:
     return spl[:match.start()] + replacement + spl[match.end():]
 
 
+def _inject_savedsearch(spl: str, run_id: str, inputs: List[ParsedInput]) -> str:
+    """Replace '| savedsearch <name>' with the temp index.
+    Handles quoted names with spaces and pipes inside them.
+    """
+    replacement = _build_replacement(run_id)
+    result = _apply_row_identifiers(spl, inputs, replacement)
+    if result is not None:
+        return result
+    outer = _outer_segment(spl)
+    match = SAVEDSEARCH_PATTERN.search(outer)
+    if not match:
+        logger.warning("savedsearch strategy but pattern not found — returning SPL unchanged.")
+        return spl
+    return spl[:match.start()] + replacement + spl[match.end():]
+
+
 _LOOKUP_RI_RE = re.compile(r'(?i)^(?:lookup|inputlookup)\s+([\w\-\.]+)')
 
 
@@ -254,6 +279,7 @@ def _replace_by_row_identifier(
     needs_pipe_cleanup = (
         ri_lower.startswith("inputlookup ")
         or ri_lower.startswith("rest ")
+        or ri_lower.startswith("savedsearch ")
     )
     if needs_pipe_cleanup:
         # Match optional leading pipe+whitespace before the RI
@@ -344,6 +370,7 @@ STRATEGY_HANDLERS: Dict[str, Callable[[str, str, List[ParsedInput]], str]] = {
     "lookup": _inject_lookup,
     "inputlookup": _inject_inputlookup,
     "rest": _inject_rest,
+    "savedsearch": _inject_savedsearch,
     "tstats": _inject_noop,
     "no_index": _inject_no_index,
 }

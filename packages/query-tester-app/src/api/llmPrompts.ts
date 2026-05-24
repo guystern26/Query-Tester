@@ -28,7 +28,7 @@ DATA SOURCE KEYS:
 - inputlookup <file> → key: "inputlookup=<file>"
 - lookup <file> → key: "lookup=<file>"
 - rest <endpoint> → key: "rest=<endpoint>"
-- savedsearch "name" → key: "savedsearch=<name>"
+- savedsearch <name> → key: "savedsearch <name>" (exact SPL, no = sign)
 - Macros \`name\` → key: "macro=<name>" with ["_unresolvable"]
 - Subsearches/append/join → separate source key each
 Include sourcetype, source, data_type, eventtype in the key if present. These are data source IDENTITY, not extracted fields.

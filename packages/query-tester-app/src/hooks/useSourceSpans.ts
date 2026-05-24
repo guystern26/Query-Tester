@@ -30,7 +30,7 @@ const INDEX_SOURCE_RE = /\bindex\s*=\s*["']?[\w*\-\.]+["']?(?:\s+(?:sourcetype|s
 const COMMAND_PATTERNS: Array<{ re: RegExp; label: string }> = [
     { re: /(?:^|\|)\s*inputlookup\s+[\w\-\.]+(?:\.csv)?/gi, label: 'inputlookup' },
     { re: /(?:^|\|)\s*rest\s+[^|]+?(?=\s*\||$)/gi, label: 'rest' },
-    { re: /(?:^|\|)\s*savedsearch\s+[\w\-\."']+/gi, label: 'savedsearch' },
+    { re: /(?:^|\|)\s*savedsearch\s+(?:"[^"]+"|'[^']+'|[\w\-\.]+)/gi, label: 'savedsearch' },
     { re: /\|\s*lookup\s+[\w\-\.]+/gi, label: 'lookup' },
     { re: INDEX_SOURCE_RE, label: 'index' },
 ];
