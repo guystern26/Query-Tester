@@ -112,23 +112,22 @@ export function buildPayload(test: TestDefinition): ApiPayload {
           })),
     validation: {
       validationType: test.validation.validationType,
-      // iJump uses its own validation — don't send standard fieldGroups
-      fieldConditions: test.validation.validationType === 'ijump_alert' ? [] :
-        test.validation.fieldGroups.flatMap((g) =>
-          g.conditions.map((c) => ({
-            field: g.field.trim(),
-            operator: c.operator,
-            value: c.value,
-            scenarioScope: g.scenarioScope,
-          }))
-        ),
-      fieldGroups: test.validation.validationType === 'ijump_alert' ? [] :
-        test.validation.fieldGroups.map((g) => ({
+      // Both standard and ijump_alert use fieldGroups/fieldConditions —
+      // the backend dispatches behavior based on validationType.
+      fieldConditions: test.validation.fieldGroups.flatMap((g) =>
+        g.conditions.map((c) => ({
           field: g.field.trim(),
-          conditionLogic: g.conditionLogic,
+          operator: c.operator,
+          value: c.value,
           scenarioScope: g.scenarioScope,
-          conditions: g.conditions.map((c) => ({ operator: c.operator, value: c.value })),
-        })),
+        }))
+      ),
+      fieldGroups: test.validation.fieldGroups.map((g) => ({
+        field: g.field.trim(),
+        conditionLogic: g.conditionLogic,
+        scenarioScope: g.scenarioScope,
+        conditions: g.conditions.map((c) => ({ operator: c.operator, value: c.value })),
+      })),
       fieldLogic: test.validation.fieldLogic,
       validationScope: test.validation.validationScope,
       scopeN: test.validation.scopeN,
