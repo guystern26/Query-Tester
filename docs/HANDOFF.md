@@ -100,7 +100,27 @@ Modes:
 - `origin` — dev repo with full history (`Query-Tester`)
 - `clean` — deploy repo, orphan-pushed with sanitized `config.py` (`QueryTester4Ever`)
 
-To push to clean: clone, orphan branch, copy stage, sanitize config, force-push. Search recent commits for the exact bash command sequence.
+Push to **origin** normally: `git add ...`, `git commit -m "..."`, `git push origin main`.
+
+Push to **clean** (orphan, sanitized, force-push). Run this single command — it clones the clean repo to a temp dir, copies just `stage/`, strips secrets, and force-pushes:
+
+```bash
+TEMP_DIR=$(mktemp -d) && cd "$TEMP_DIR" && \
+  git clone --depth 1 https://github.com/guystern26/QueryTester4Ever.git clean-repo && \
+  cd clean-repo && \
+  git checkout --orphan fresh-push && \
+  git rm -rf . > /dev/null 2>&1 ; \
+  cp -r <REPO_PATH>/packages/query-tester/stage/* . && \
+  rm -rf bin/.aiguy_cache bin/__pycache__ bin/email_preview_success.html && \
+  sed -i 's/LLM_API_KEY = ".*"/LLM_API_KEY = ""/' bin/config.py && \
+  sed -i 's/LLM_ENDPOINT = ".*"/LLM_ENDPOINT = ""/' bin/config.py && \
+  sed -i 's/SPLUNK_PASSWORD = ".*"/SPLUNK_PASSWORD = ""/' bin/config.py && \
+  git add -A && git commit -m "deploy" && \
+  git push --force origin fresh-push:main && \
+  cd / && rm -rf "$TEMP_DIR"
+```
+
+Replace `<REPO_PATH>` with your local repo path. Clean repo only contains the Splunk app `stage/` contents — no docs, no source code, no git history. Used to deploy to the prod Splunk server.
 
 ## Known live deltas / things to watch
 
